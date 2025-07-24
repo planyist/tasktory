@@ -1,0 +1,72 @@
+{
+  "name": "tasktory",
+  "version": "0.1.0",
+  "description": "A compact desktop application for managing tasks with always-on-top functionality. Track your tasks efficiently without losing focus.",
+  "main": "main.js",
+  "scripts": {
+    "test": "jest",
+    "start": "electron .",
+    "build": "electron-builder",
+    "build:win": "electron-builder --win",
+    "build:mac": "electron-builder --mac",
+    "build:linux": "electron-builder --linux",
+    "dist": "npm run build"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/planyist/tasktory.git"
+  },
+  "keywords": [
+    "electron",
+    "task-manager",
+    "productivity",
+    "desktop-app",
+    "task-tracker",
+    "always-on-top",
+    "tasktory"
+  ],
+  "author": {
+    "name": "Jeonghwan Yoo",
+    "email": "your-email@example.com"
+  },
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/planyist/tasktory/issues"
+  },
+  "homepage": "https://github.com/planyist/tasktory#readme",
+  "devDependencies": {
+    "electron": "^32.0.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.tasktory.app",
+    "productName": "Tasktory",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "renderer.js",
+      "index.html",
+      "styles.css",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "assets/icon.ico"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "assets/icon.icns"
+    },
+    "linux": {
+      "target": "AppImage",
+      "icon": "assets/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}

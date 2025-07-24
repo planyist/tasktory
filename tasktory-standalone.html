@@ -1,0 +1,852 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasktory - 독립실행형</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+
+        .container {
+            padding: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #e0e0e0;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .header-buttons {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 10px 15px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .add-btn {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .add-btn:hover {
+            background-color: #219a52;
+        }
+
+        .export-btn {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .export-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .import-btn {
+            background-color: #f39c12;
+            color: white;
+        }
+
+        .import-btn:hover {
+            background-color: #e67e22;
+        }
+
+        main {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .table-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow: auto;
+            max-height: 70vh;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+            min-width: 800px;
+        }
+
+        thead {
+            background-color: #34495e;
+            color: white;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            padding: 12px 8px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        th:nth-child(1) { width: 15%; }
+        th:nth-child(2) { width: 15%; }
+        th:nth-child(3) { width: 40%; }
+        th:nth-child(4) { width: 10%; }
+        th:nth-child(5) { width: 20%; }
+
+        tbody tr {
+            border-bottom: 1px solid #e0e0e0;
+            transition: background-color 0.2s ease;
+        }
+
+        tbody tr:hover {
+            background-color: #f8f9fa;
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #fafafa;
+        }
+
+        tbody tr:nth-child(even):hover {
+            background-color: #f0f0f0;
+        }
+
+        td {
+            padding: 10px 8px;
+            vertical-align: top;
+        }
+
+        .task-content {
+            max-width: 300px;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .status {
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 500;
+            text-align: center;
+            display: inline-block;
+            min-width: 50px;
+        }
+
+        .status.pending {
+            background-color: #fff3cd;
+            color: #856404;
+        }
+
+        .status.overdue {
+            background-color: #f8d7da;
+            color: #721c24;
+        }
+
+        .status.completed {
+            background-color: #d4edda;
+            color: #155724;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 5px;
+            flex-wrap: wrap;
+        }
+
+        .action-btn {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .edit-btn {
+            background-color: #3498db;
+            color: white;
+        }
+
+        .edit-btn:hover {
+            background-color: #2980b9;
+        }
+
+        .complete-btn {
+            background-color: #27ae60;
+            color: white;
+        }
+
+        .complete-btn:hover {
+            background-color: #219a52;
+        }
+
+        .delete-btn {
+            background-color: #e74c3c;
+            color: white;
+        }
+
+        .delete-btn:hover {
+            background-color: #c0392b;
+        }
+
+        /* 모달 스타일 */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+        }
+
+        .modal-content {
+            background-color: white;
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 8px;
+            width: 500px;
+            max-width: 90%;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: #aaa;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            position: absolute;
+            right: 15px;
+            top: 10px;
+            cursor: pointer;
+        }
+
+        .close:hover {
+            color: #333;
+        }
+
+        #modalTitle {
+            margin-bottom: 20px;
+            color: #2c3e50;
+            font-size: 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 500;
+            color: #555;
+        }
+
+        input[type="datetime-local"],
+        textarea {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            font-family: inherit;
+            transition: border-color 0.3s ease;
+        }
+
+        input[type="datetime-local"]:focus,
+        textarea:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .form-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        #cancelBtn {
+            background-color: #95a5a6;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #cancelBtn:hover {
+            background-color: #7f8c8d;
+        }
+
+        #saveBtn {
+            background-color: #27ae60;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        #saveBtn:hover {
+            background-color: #219a52;
+        }
+
+        .empty-message {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
+        .info-bar {
+            background-color: #ecf0f1;
+            padding: 10px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .container {
+                padding: 15px;
+            }
+            
+            header {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            
+            .header-buttons {
+                width: 100%;
+                justify-content: center;
+            }
+            
+            .btn {
+                flex: 1;
+                min-width: 120px;
+            }
+            
+            table {
+                font-size: 12px;
+            }
+            
+            th, td {
+                padding: 8px 5px;
+            }
+            
+            .modal-content {
+                margin: 2% auto;
+                width: 95%;
+                padding: 20px;
+            }
+            
+            .action-buttons {
+                flex-direction: column;
+            }
+            
+            .action-btn {
+                width: 100%;
+                margin-bottom: 3px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="info-bar">
+            💡 이 앱은 브라우저의 로컬 스토리지를 사용합니다. 데이터는 컴퓨터에 저장되며, 브라우저 데이터를 지우면 삭제될 수 있습니다.
+        </div>
+        
+        <header>
+            <h1>Tasktory</h1>
+            <div class="header-buttons">
+                <button id="addTaskBtn" class="btn add-btn">+ 새 작업 추가</button>
+                <button id="exportBtn" class="btn export-btn">📁 데이터 내보내기</button>
+                <button id="importBtn" class="btn import-btn">📂 데이터 가져오기</button>
+            </div>
+        </header>
+        
+        <main>
+            <div class="table-container">
+                <table id="tasksTable">
+                    <thead>
+                        <tr>
+                            <th>시작 시간</th>
+                            <th>목표 시간</th>
+                            <th>작업 내용</th>
+                            <th>상태</th>
+                            <th>작업</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksBody">
+                        <!-- 동적으로 생성될 작업 목록 -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- 작업 추가/편집 모달 -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle">새 작업 추가</h2>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="startDateTime">시작 시간:</label>
+                    <input type="datetime-local" id="startDateTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="targetDateTime">목표 시간:</label>
+                    <input type="datetime-local" id="targetDateTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskContent">작업 내용:</label>
+                    <textarea id="taskContent" rows="3" required placeholder="작업 내용을 입력하세요..."></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="cancelBtn">취소</button>
+                    <button type="submit" id="saveBtn">저장</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- 숨겨진 파일 입력 -->
+    <input type="file" id="fileInput" class="hidden" accept=".json">
+
+    <script>
+        class TaskManager {
+            constructor() {
+                this.tasks = [];
+                this.logs = [];
+                this.editingTaskId = null;
+                this.init();
+            }
+
+            async init() {
+                this.setupEventListeners();
+                this.loadData();
+                this.renderTasks();
+            }
+
+            setupEventListeners() {
+                // 새 작업 추가 버튼
+                document.getElementById('addTaskBtn').addEventListener('click', () => {
+                    this.showModal();
+                });
+
+                // 내보내기 버튼
+                document.getElementById('exportBtn').addEventListener('click', () => {
+                    this.exportData();
+                });
+
+                // 가져오기 버튼
+                document.getElementById('importBtn').addEventListener('click', () => {
+                    document.getElementById('fileInput').click();
+                });
+
+                // 파일 입력
+                document.getElementById('fileInput').addEventListener('change', (e) => {
+                    this.importData(e.target.files[0]);
+                });
+
+                // 모달 닫기
+                document.querySelector('.close').addEventListener('click', () => {
+                    this.hideModal();
+                });
+
+                document.getElementById('cancelBtn').addEventListener('click', () => {
+                    this.hideModal();
+                });
+
+                // 모달 배경 클릭 시 닫기
+                document.getElementById('taskModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'taskModal') {
+                        this.hideModal();
+                    }
+                });
+
+                // 폼 제출
+                document.getElementById('taskForm').addEventListener('submit', (e) => {
+                    e.preventDefault();
+                    this.saveTask();
+                });
+            }
+
+            loadData() {
+                try {
+                    const tasksData = localStorage.getItem('tasklogger_tasks');
+                    const logsData = localStorage.getItem('tasklogger_logs');
+                    
+                    this.tasks = tasksData ? JSON.parse(tasksData) : [];
+                    this.logs = logsData ? JSON.parse(logsData) : [];
+                } catch (error) {
+                    console.error('Failed to load data:', error);
+                    this.tasks = [];
+                    this.logs = [];
+                }
+            }
+
+            saveData() {
+                try {
+                    localStorage.setItem('tasklogger_tasks', JSON.stringify(this.tasks));
+                    localStorage.setItem('tasklogger_logs', JSON.stringify(this.logs));
+                } catch (error) {
+                    console.error('Failed to save data:', error);
+                    alert('데이터 저장에 실패했습니다. 브라우저 저장공간을 확인해주세요.');
+                }
+            }
+
+            addLog(action, task) {
+                this.logs.push({
+                    action,
+                    task: { ...task },
+                    timestamp: new Date().toISOString()
+                });
+                this.saveData();
+            }
+
+            generateId() {
+                return Date.now().toString() + Math.random().toString(36).substr(2, 9);
+            }
+
+            formatDateTime(dateTime) {
+                if (!dateTime) return '';
+                const date = new Date(dateTime);
+                return date.toLocaleString('ko-KR', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+
+            getTaskStatus(task) {
+                const now = new Date();
+                const targetDate = new Date(task.targetDateTime);
+                
+                if (task.completed) {
+                    return { status: 'completed', text: '완료' };
+                } else if (now > targetDate) {
+                    return { status: 'overdue', text: '지연' };
+                } else {
+                    return { status: 'pending', text: '대기' };
+                }
+            }
+
+            renderTasks() {
+                const tbody = document.getElementById('tasksBody');
+                tbody.innerHTML = '';
+
+                if (this.tasks.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="empty-message">
+                                등록된 작업이 없습니다. '+ 새 작업 추가' 버튼을 클릭하여 작업을 추가해보세요.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                // 활성 작업만 표시 (완료되지 않은 작업)
+                const activeTasks = this.tasks.filter(task => !task.completed);
+
+                if (activeTasks.length === 0) {
+                    tbody.innerHTML = `
+                        <tr>
+                            <td colspan="5" class="empty-message">
+                                모든 작업이 완료되었습니다! 새로운 작업을 추가해보세요.
+                            </td>
+                        </tr>
+                    `;
+                    return;
+                }
+
+                activeTasks.forEach(task => {
+                    const taskStatus = this.getTaskStatus(task);
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${this.formatDateTime(task.startDateTime)}</td>
+                        <td>${this.formatDateTime(task.targetDateTime)}</td>
+                        <td class="task-content">${task.content}</td>
+                        <td><span class="status ${taskStatus.status}">${taskStatus.text}</span></td>
+                        <td class="action-buttons">
+                            <button class="action-btn edit-btn" onclick="taskManager.editTask('${task.id}')">편집</button>
+                            <button class="action-btn complete-btn" onclick="taskManager.completeTask('${task.id}')">완료</button>
+                            <button class="action-btn delete-btn" onclick="taskManager.deleteTask('${task.id}')">삭제</button>
+                        </td>
+                    `;
+                    
+                    tbody.appendChild(row);
+                });
+            }
+
+            showModal(task = null) {
+                const modal = document.getElementById('taskModal');
+                const modalTitle = document.getElementById('modalTitle');
+                const form = document.getElementById('taskForm');
+                
+                if (task) {
+                    // 편집 모드
+                    modalTitle.textContent = '작업 편집';
+                    document.getElementById('startDateTime').value = task.startDateTime;
+                    document.getElementById('targetDateTime').value = task.targetDateTime;
+                    document.getElementById('taskContent').value = task.content;
+                    this.editingTaskId = task.id;
+                } else {
+                    // 추가 모드
+                    modalTitle.textContent = '새 작업 추가';
+                    form.reset();
+                    
+                    // 현재 시간을 기본값으로 설정
+                    const now = new Date();
+                    const nowString = now.toISOString().slice(0, 16);
+                    document.getElementById('startDateTime').value = nowString;
+                    
+                    // 목표 시간을 1시간 후로 설정
+                    const targetTime = new Date(now.getTime() + 60 * 60 * 1000);
+                    const targetString = targetTime.toISOString().slice(0, 16);
+                    document.getElementById('targetDateTime').value = targetString;
+                    
+                    this.editingTaskId = null;
+                }
+                
+                modal.style.display = 'block';
+                
+                // 첫 번째 입력 필드에 포커스
+                setTimeout(() => {
+                    document.getElementById('startDateTime').focus();
+                }, 100);
+            }
+
+            hideModal() {
+                const modal = document.getElementById('taskModal');
+                modal.style.display = 'none';
+                this.editingTaskId = null;
+            }
+
+            saveTask() {
+                const startDateTime = document.getElementById('startDateTime').value;
+                const targetDateTime = document.getElementById('targetDateTime').value;
+                const content = document.getElementById('taskContent').value.trim();
+
+                if (!startDateTime || !targetDateTime || !content) {
+                    alert('모든 필드를 입력해주세요.');
+                    return;
+                }
+
+                const startDate = new Date(startDateTime);
+                const targetDate = new Date(targetDateTime);
+
+                if (startDate >= targetDate) {
+                    alert('목표 시간은 시작 시간보다 늦어야 합니다.');
+                    return;
+                }
+
+                const taskData = {
+                    id: this.editingTaskId || this.generateId(),
+                    startDateTime,
+                    targetDateTime,
+                    content,
+                    completed: false,
+                    createdAt: this.editingTaskId ? 
+                        this.tasks.find(t => t.id === this.editingTaskId).createdAt : 
+                        new Date().toISOString()
+                };
+
+                if (this.editingTaskId) {
+                    // 편집
+                    const taskIndex = this.tasks.findIndex(t => t.id === this.editingTaskId);
+                    if (taskIndex !== -1) {
+                        const oldTask = { ...this.tasks[taskIndex] };
+                        this.tasks[taskIndex] = taskData;
+                        this.addLog('EDIT', { old: oldTask, new: taskData });
+                    }
+                } else {
+                    // 추가
+                    this.tasks.push(taskData);
+                    this.addLog('ADD', taskData);
+                }
+
+                this.saveData();
+                this.renderTasks();
+                this.hideModal();
+            }
+
+            editTask(taskId) {
+                const task = this.tasks.find(t => t.id === taskId);
+                if (task) {
+                    this.showModal(task);
+                }
+            }
+
+            completeTask(taskId) {
+                const taskIndex = this.tasks.findIndex(t => t.id === taskId);
+                if (taskIndex !== -1) {
+                    const task = this.tasks[taskIndex];
+                    task.completed = true;
+                    task.completedAt = new Date().toISOString();
+                    
+                    this.addLog('COMPLETE', task);
+                    this.saveData();
+                    this.renderTasks();
+                }
+            }
+
+            deleteTask(taskId) {
+                if (confirm('이 작업을 삭제하시겠습니까?')) {
+                    const taskIndex = this.tasks.findIndex(t => t.id === taskId);
+                    if (taskIndex !== -1) {
+                        const task = this.tasks[taskIndex];
+                        this.tasks.splice(taskIndex, 1);
+                        
+                        this.addLog('DELETE', task);
+                        this.saveData();
+                        this.renderTasks();
+                    }
+                }
+            }
+
+            exportData() {
+                const data = {
+                    tasks: this.tasks,
+                    logs: this.logs,
+                    exportDate: new Date().toISOString(),
+                    version: '1.0'
+                };
+
+                const dataStr = JSON.stringify(data, null, 2);
+                const dataBlob = new Blob([dataStr], { type: 'application/json' });
+                
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(dataBlob);
+                link.download = `tasklogger-backup-${new Date().toISOString().slice(0, 10)}.json`;
+                link.click();
+                
+                URL.revokeObjectURL(link.href);
+            }
+
+            importData(file) {
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    try {
+                        const data = JSON.parse(e.target.result);
+                        
+                        if (data.tasks && data.logs) {
+                            if (confirm('현재 데이터가 모두 대체됩니다. 계속하시겠습니까?')) {
+                                this.tasks = data.tasks;
+                                this.logs = data.logs;
+                                this.saveData();
+                                this.renderTasks();
+                                alert('데이터를 성공적으로 가져왔습니다.');
+                            }
+                        } else {
+                            alert('올바르지 않은 파일 형식입니다.');
+                        }
+                    } catch (error) {
+                        alert('파일을 읽는 중 오류가 발생했습니다.');
+                        console.error('Import error:', error);
+                    }
+                };
+                reader.readAsText(file);
+                
+                // 파일 입력 초기화
+                document.getElementById('fileInput').value = '';
+            }
+        }
+
+        // 앱 초기화
+        let taskManager;
+
+        document.addEventListener('DOMContentLoaded', () => {
+            taskManager = new TaskManager();
+        });
+
+        // 키보드 단축키
+        document.addEventListener('keydown', (e) => {
+            // Ctrl/Cmd + N: 새 작업 추가
+            if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
+                e.preventDefault();
+                taskManager.showModal();
+            }
+            
+            // ESC: 모달 닫기
+            if (e.key === 'Escape') {
+                taskManager.hideModal();
+            }
+        });
+
+        // 페이지 종료 전 확인 (데이터 손실 방지)
+        window.addEventListener('beforeunload', (e) => {
+            if (taskManager && taskManager.tasks.length > 0) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
+    </script>
+</body>
+</html>

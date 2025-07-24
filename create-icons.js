@@ -1,0 +1,23 @@
+const fs = require('fs');
+const path = require('path');
+
+// Simple SVG icon for Tasktory
+const svgIcon = `<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <rect width="256" height="256" fill="#2c3e50" rx="32"/>
+  <rect x="64" y="64" width="128" height="16" fill="#ffffff" rx="8"/>
+  <rect x="64" y="96" width="96" height="16" fill="#ffffff" rx="8"/>
+  <rect x="64" y="128" width="112" height="16" fill="#ffffff" rx="8"/>
+  <rect x="64" y="160" width="80" height="16" fill="#ffffff" rx="8"/>
+  <circle cx="48" cy="72" r="6" fill="#27ae60"/>
+  <circle cx="48" cy="104" r="6" fill="#27ae60"/>
+  <circle cx="48" cy="136" r="6" fill="#f39c12"/>
+  <circle cx="48" cy="168" r="6" fill="#e74c3c"/>
+  <rect x="180" y="60" width="32" height="32" fill="#3498db" rx="4"/>
+  <rect x="188" y="68" width="16" height="16" fill="#ffffff" rx="2"/>
+</svg>`;
+
+// Save SVG temporarily
+fs.writeFileSync(path.join(__dirname, 'assets', 'temp-icon.svg'), svgIcon);
+
+console.log('SVG icon created. Please convert it to ICO, ICNS, and PNG formats.');
+console.log('Visit https://convertio.co/ or similar to convert the SVG to required formats.');

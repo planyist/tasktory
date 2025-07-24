@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tasktory</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <div id="infoBar" class="info-bar" style="display: none;">
+            💡 Browser Mode: Data is stored in local storage. Use Electron mode for always-on-top functionality.
+        </div>
+        
+        <header>
+            <div class="header-left">
+                <h1>Tasktory</h1>
+            </div>
+            <div class="header-buttons">
+                <button id="exportBtn" class="btn icon-btn" style="display: none;" title="">💾</button>
+                <button id="importBtn" class="btn icon-btn" style="display: none;" title="">📂</button>
+                <button id="settingsBtn" class="btn icon-btn" title="">⚙️</button>
+                <button id="aboutBtn" class="btn icon-btn" title="">ℹ️</button>
+            </div>
+        </header>
+        
+        <main>
+            <div class="table-controls">
+                <div class="controls-right">
+                    <input type="text" id="searchInput" placeholder="" class="search-input">
+                    <button id="addTaskBtn" class="btn icon-btn add-btn" title="">✚</button>
+                </div>
+            </div>
+            <div class="table-container">
+                <table id="tasksTable">
+                    <thead>
+                        <tr>
+                            <th id="thNumber">#</th>
+                            <th id="thStartTime">Start Time</th>
+                            <th id="thTargetTime">Target Time</th>
+                            <th id="thTags">Tags</th>
+                            <th id="thTaskContent">Task Content</th>
+                            <th id="thStatus">Status</th>
+                            <th id="thActions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tasksBody">
+                        <!-- Dynamically generated task list -->
+                    </tbody>
+                </table>
+            </div>
+        </main>
+    </div>
+
+    <!-- Task Add/Edit Modal -->
+    <div id="taskModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h2 id="modalTitle"></h2>
+            <form id="taskForm">
+                <div class="form-group">
+                    <label for="startDateTime" id="labelStartTime">Start Time:</label>
+                    <input type="datetime-local" id="startDateTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="targetDateTime" id="labelTargetTime">Target Time:</label>
+                    <input type="datetime-local" id="targetDateTime" required>
+                </div>
+                <div class="form-group">
+                    <label for="taskTags" id="labelTags">Tags:</label>
+                    <input type="text" id="taskTags" placeholder="">
+                </div>
+                <div class="form-group">
+                    <label for="taskContent" id="labelTaskContent">Task Content:</label>
+                    <textarea id="taskContent" rows="3" required placeholder=""></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="cancelBtn"></button>
+                    <button type="submit" id="saveBtn"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div id="settingsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="settings">&times;</span>
+            <h2>Settings</h2>
+            
+            <div class="settings-group">
+                <label>Theme Mode:</label>
+                <div class="theme-toggle">
+                    <button id="lightModeBtn" class="theme-btn active" title="Light Mode">☀️</button>
+                    <button id="darkModeBtn" class="theme-btn" title="Dark Mode">🌙</button>
+                </div>
+            </div>
+            
+            <div class="settings-group">
+                <label for="settingsOpacitySlider">Unfocused Opacity:</label>
+                <input type="range" id="settingsOpacitySlider" min="0.3" max="1" step="0.1" value="1">
+                <span id="opacityValue">1</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- About Modal -->
+    <div id="aboutModal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="about">&times;</span>
+            <h2>About Tasktory</h2>
+            <p><strong>Version:</strong> 0.1.0</p>
+            <p><strong>Log Location:</strong> <span id="aboutLogPath">Loading...</span></p>
+            <p><strong>License:</strong> MIT</p>
+            <p><strong>Author:</strong> Jeonghwan Yoo &lt;your-email@gmail.com&gt;</p>
+            
+            <h3>How to Use</h3>
+            <ul>
+                <li><strong>Add Task:</strong> Click ✚ or press Ctrl+N</li>
+                <li><strong>Edit:</strong> Click ✏️ icon in Actions column</li>
+                <li><strong>Complete:</strong> Click ✅ icon to mark as done</li>
+                <li><strong>Delete:</strong> Click 🗑️ icon to remove task</li>
+                <li><strong>Highlight:</strong> Click 🔶 to highlight important tasks</li>
+                <li><strong>Reorder:</strong> Use ⬆️⬇️ arrows to change task order</li>
+                <li><strong>Export/Import:</strong> Use 💾📂 to backup/restore data</li>
+                <li><strong>Tags:</strong> Use #hashtags in Tags field for categorization</li>
+            </ul>
+            
+            <h3>Keyboard Shortcuts</h3>
+            <ul>
+                <li><strong>Ctrl+N:</strong> Add new task</li>
+                <li><strong>ESC:</strong> Close modal or date picker</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- Confirmation Modal for Complete/Delete -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="confirm">&times;</span>
+            <h2 id="confirmModalTitle"></h2>
+            <form id="confirmForm">
+                <div class="form-group">
+                    <label for="confirmDetails" id="confirmDetailsLabel"></label>
+                    <textarea id="confirmDetails" rows="3" placeholder=""></textarea>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="confirmCancelBtn"></button>
+                    <button type="submit" id="confirmActionBtn"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" class="hidden" accept=".json">
+
+    <script src="renderer.js"></script>
+</body>
+</html>
