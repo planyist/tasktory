@@ -45,6 +45,63 @@ h1 {
     letter-spacing: -0.5px;
 }
 
+.completion-counter-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 15px;
+}
+
+.completion-counter {
+    font-size: 16px;
+    font-weight: 600;
+    color: #333;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 8px 16px;
+    border-radius: 20px;
+    border: 2px solid #dee2e6;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+.completion-count {
+    color: #28a745;
+    font-weight: 700;
+    font-size: 18px;
+    transition: all 0.3s ease;
+}
+
+.completion-count.animate {
+    transform: scale(1.3);
+    color: #20c997;
+}
+
+@keyframes confetti {
+    0% {
+        transform: scale(0) rotate(0deg);
+        opacity: 1;
+    }
+    100% {
+        transform: scale(1) rotate(360deg);
+        opacity: 0;
+    }
+}
+
+.confetti {
+    position: fixed;
+    width: 10px;
+    height: 10px;
+    background: #ffd700;
+    animation: confetti 1s ease-out forwards;
+    pointer-events: none;
+    z-index: 1000;
+}
+
+.confetti:nth-child(2n) { background: #ff6b6b; }
+.confetti:nth-child(3n) { background: #4ecdc4; }
+.confetti:nth-child(4n) { background: #45b7d1; }
+.confetti:nth-child(5n) { background: #96ceb4; }
+.confetti:nth-child(6n) { background: #ffeaa7; }
+
 .header-buttons {
     display: flex;
     gap: 5px;

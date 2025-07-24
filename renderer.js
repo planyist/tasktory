@@ -8,6 +8,7 @@ class TaskManager {
         this.darkMode = localStorage.getItem('darkMode') === 'true';
         this.searchQuery = '';
         this.notifiedTasks = new Set(); // 이미 알림을 보낸 태스크들
+        this.completionCount = this.getTodayCompletionCount();
         this.init();
     }
 
@@ -22,6 +23,7 @@ class TaskManager {
         this.applyTheme();
         await this.loadTasks();
         this.renderTasks();
+        this.updateCompletionCounter();
         this.startNotificationCheck();
     }
 
@@ -851,10 +853,14 @@ class TaskManager {
             task.completed = true;
             task.completedAt = new Date().toISOString();
             
-            const logDetails = details ? `Completion notes: ${details}` : 'Task completed';
+            const logDetails = details ? `(완료) ${details}` : '(완료) Task completed';
             await this.addLog('COMPLETE', task, logDetails);
             await this.saveTasks();
             this.renderTasks();
+            
+            // Update completion counter with animation and confetti
+            this.incrementCompletionCounter();
+            this.showConfetti();
         }
     }
 
@@ -868,7 +874,7 @@ class TaskManager {
             const task = this.tasks[taskIndex];
             this.tasks.splice(taskIndex, 1);
             
-            const logDetails = details ? `Deletion reason: ${details}` : 'Task deleted';
+            const logDetails = details ? `(삭제) ${details}` : '(삭제) Task deleted';
             await this.addLog('DELETE', task, logDetails);
             await this.saveTasks();
             this.renderTasks();
@@ -1031,6 +1037,72 @@ document.addEventListener('keydown', (e) => {
         taskManager.hideSettingsModal();
         taskManager.hideAboutModal();
         taskManager.hideConfirmModal();
+    }
+
+    // Completion counter methods
+    getTodayCompletionCount() {
+        const today = new Date().toDateString();
+        const storedDate = localStorage.getItem('completionCountDate');
+        const storedCount = parseInt(localStorage.getItem('completionCount')) || 0;
+        
+        if (storedDate === today) {
+            return storedCount;
+        } else {
+            // New day, reset counter
+            localStorage.setItem('completionCountDate', today);
+            localStorage.setItem('completionCount', '0');
+            return 0;
+        }
+    }
+
+    updateCompletionCounter() {
+        const counterElement = document.getElementById('completionCount');
+        if (counterElement) {
+            counterElement.textContent = this.completionCount;
+        }
+    }
+
+    incrementCompletionCounter() {
+        this.completionCount++;
+        localStorage.setItem('completionCount', this.completionCount.toString());
+        
+        const counterElement = document.getElementById('completionCount');
+        if (counterElement) {
+            // Add animation class
+            counterElement.classList.add('animate');
+            counterElement.textContent = this.completionCount;
+            
+            // Remove animation class after animation completes
+            setTimeout(() => {
+                counterElement.classList.remove('animate');
+            }, 300);
+        }
+    }
+
+    showConfetti() {
+        const colors = ['#ffd700', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7'];
+        const confettiCount = 20;
+        
+        for (let i = 0; i < confettiCount; i++) {
+            setTimeout(() => {
+                const confetti = document.createElement('div');
+                confetti.className = 'confetti';
+                confetti.style.left = Math.random() * window.innerWidth + 'px';
+                confetti.style.top = Math.random() * window.innerHeight + 'px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.animationDelay = Math.random() * 0.3 + 's';
+                confetti.style.animationDuration = (Math.random() * 0.5 + 0.5) + 's';
+                
+                document.body.appendChild(confetti);
+                
+                // Remove confetti after animation
+                setTimeout(() => {
+                    if (confetti.parentNode) {
+                        confetti.parentNode.removeChild(confetti);
+                    }
+                }, 1000);
+            }, i * 50);
+        }
     }
 });
 

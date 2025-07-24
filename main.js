@@ -78,7 +78,7 @@ const ensureDataDir = async () => {
 // 오늘 날짜의 로그 파일 경로 생성
 const getTodayLogFile = () => {
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD 형식
-    return path.join(logsDir, `${today}.json`)
+    return path.join(logsDir, `${today}.log`)
 }
 
 // 태스크 로드
@@ -109,35 +109,47 @@ ipcMain.handle('add-log', async (event, logEntry) => {
     try {
         await ensureDataDir()
         const todayLogFile = getTodayLogFile()
-        let logs = []
         
-        try {
-            const data = await fs.readFile(todayLogFile, 'utf8')
-            logs = JSON.parse(data)
-        } catch (error) {
-            // 파일이 없으면 빈 배열로 시작
-        }
+        // Format timestamp to fixed 25 characters
+        const timestamp = new Date().toISOString().padEnd(25);
         
-        // UUID와 함께 상세한 정보 저장
-        const detailedLog = {
-            logId: 'log-' + Date.now() + '-' + Math.random().toString(36).substr(2, 5),
-            timestamp: new Date().toISOString(),
-            action: logEntry.action,
-            taskId: logEntry.task.id || logEntry.task.taskId,
-            details: logEntry.details || '',
-            taskData: {
-                id: logEntry.task.id || logEntry.task.taskId,
-                content: logEntry.task.content ? logEntry.task.content.substring(0, 100) : '',
-                tags: logEntry.task.tags || '',
-                startDateTime: logEntry.task.startDateTime || '',
-                targetDateTime: logEntry.task.targetDateTime || '',
-                status: logEntry.task.completed ? 'completed' : 'active'
-            }
-        }
+        // Convert action to English and pad to 15 characters
+        const actionMap = {
+            'ADD': 'ADD',
+            'EDIT': 'EDIT', 
+            'COMPLETE': 'COMPLETE',
+            'DELETE': 'DELETE',
+            'MOVE_UP': 'MOVE_UP',
+            'MOVE_DOWN': 'MOVE_DOWN'
+        };
+        const action = (actionMap[logEntry.action] || logEntry.action).padEnd(15);
         
-        logs.push(detailedLog)
+        // Convert status to English and pad to 10 characters  
+        const statusMap = {
+            'completed': 'COMPLETED',
+            'active': 'ACTIVE',
+            'pending': 'PENDING',
+            'overdue': 'OVERDUE'
+        };
+        const taskStatus = logEntry.task.completed ? 'COMPLETED' : 'ACTIVE';
+        const status = (statusMap[taskStatus] || taskStatus).padEnd(10);
         
-        await fs.writeFile(todayLogFile, JSON.stringify(logs, null, 2))
+        // Task ID padded to 25 characters
+        const taskId = (logEntry.task.id || logEntry.task.taskId || '').padEnd(25);
+        
+        // Start and target times padded to 25 characters each
+        const startTime = (logEntry.task.startDateTime || '').padEnd(25);
+        const targetTime = (logEntry.task.targetDateTime || '').padEnd(25);
+        
+        // Tags and content (no padding needed - variable length)
+        const tags = logEntry.task.tags || '';
+        const content = logEntry.details || logEntry.task.content || '';
+        
+        // Create fixed-width log line
+        const logLine = `${timestamp}${action}${status}${taskId}${startTime}${targetTime}${tags}\t${content}\n`;
+        
+        // Append to log file
+        await fs.appendFile(todayLogFile, logLine)
         return true
     } catch (error) {
         console.error('Failed to add log:', error)

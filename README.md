@@ -9,7 +9,8 @@ A compact desktop application for managing tasks with always-on-top functionalit
 - **Task Management**: Add, edit, complete, and delete tasks with ease
 - **Time Tracking**: Set start and target times for each task
 - **Status Indicators**: Visual status (Pending, Overdue, Done)
-- **Comprehensive Logging**: All actions are logged for history tracking
+- **Completion Counter**: Daily completion counter with celebration animations
+- **Comprehensive Logging**: All actions are logged in structured .log format
 - **Cross-Platform**: Works on Windows, Linux, and macOS
 - **Dual Mode**: Runs as Electron app (with always-on-top) or in browser
 
@@ -57,8 +58,9 @@ Simply open `tasktory-standalone.html` in your web browser for a version without
 
 ## Data Storage
 
-- **Electron Mode**: Data stored in JSON files in the app's data directory
+- **Electron Mode**: Tasks stored in JSON files, logs in structured .log format in the app's data directory
 - **Browser Mode**: Data stored in browser's localStorage with export/import functionality
+- **Log Format**: Daily log files with fixed-width columns for easy parsing and viewing
 
 ## Distribution Protection
 

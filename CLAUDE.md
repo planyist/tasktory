@@ -58,9 +58,11 @@ This is a complete Electron application with the following structure:
 - **Compact UI**: Table-based interface optimized for 600x400 window
 - **Modal forms**: Popup forms for adding/editing tasks
 - **IPC communication**: Secure file operations between main and renderer
-- **Task persistence**: JSON files for active tasks and logs
+- **Task persistence**: JSON files for active tasks, structured .log files for history
 - **Date/time handling**: Local datetime inputs with Korean timezone support
 - **Hybrid mode**: Works both in Electron (with always-on-top) and browser
+- **Completion tracking**: Daily completion counter with animations and confetti effects
+- **Structured logging**: Fixed-width column format for easy parsing and viewing
 
 ## Key Technologies
 
@@ -82,6 +84,8 @@ This is a complete Electron application with the following structure:
 - Modal dialogs for task creation/editing
 - Status indicators (Pending, Overdue, Done)
 - Action buttons (Edit, Done, Delete)
+- Daily completion counter with green highlighting
+- Celebration animations (text scaling and confetti effects)
 - Responsive design for small screens
 - Auto-closing date pickers
 
