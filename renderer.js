@@ -524,10 +524,12 @@ class TaskManager {
                 // Completion and deletion
                 'completeTask': 'Complete Task',
                 'deleteTask': 'Delete Task',
-                'completeDetails': 'Completion notes (optional):',
-                'deleteReason': 'Reason for deletion (optional):',
+                'completeDetails': 'Completion notes (optional)',
+                'deleteReason': 'Reason for deletion (optional)',
                 'confirmComplete': 'Confirm completion',
-                'confirmDelete': 'Confirm deletion'
+                'confirmDelete': 'Confirm deletion',
+                'tagsHelpText': 'You can add tag presets in Settings to make tagging easier.',
+                'tagsInlineHelp': '(Create presets in Settings for easier tagging)'
             },
             'ko': {
                 // Status
@@ -583,15 +585,35 @@ class TaskManager {
                 // Completion and deletion
                 'completeTask': '작업 완료',
                 'deleteTask': '작업 삭제',
-                'completeDetails': '완료 메모 (선택사항):',
-                'deleteReason': '삭제 사유 (선택사항):',
+                'completeDetails': '완료 메모 (선택사항)',
+                'deleteReason': '삭제 사유 (선택사항)',
                 'confirmComplete': '완료 확인',
-                'confirmDelete': '삭제 확인'
+                'confirmDelete': '삭제 확인',
+                'tagsHelpText': '설정에서 태그 프리셋을 추가하면 태그 작성이 더 쉬워집니다.',
+                'tagsInlineHelp': '(설정에서 프리셋 생성 가능)'
             }
         };
         
         const lang = this.locale.startsWith('ko') ? 'ko' : 'en';
         return texts[lang][key] || texts['en'][key] || key;
+    }
+
+    updateTagsHelpText() {
+        const helpTextDiv = document.getElementById('tagsHelpText');
+        const helpMessage = document.getElementById('tagsHelpMessage');
+        const inlineHelp = document.getElementById('tagsInlineHelp');
+        
+        // Check if there are any tag presets
+        const hasPresets = this.tagPresets && this.tagPresets.length > 0;
+        
+        if (!hasPresets) {
+            helpMessage.textContent = this.getLocalizedText('tagsHelpText');
+            helpTextDiv.style.display = 'flex';
+            inlineHelp.textContent = this.getLocalizedText('tagsInlineHelp');
+        } else {
+            helpTextDiv.style.display = 'none';
+            inlineHelp.textContent = '';
+        }
     }
 
     getTaskStatus(task) {
@@ -717,25 +739,44 @@ class TaskManager {
                 <td><span class="status ${taskStatus.status}">${taskStatus.text}</span></td>
                 <td class="action-buttons">
                     <button class="action-btn notification-btn" data-task-id="${task.id}" data-action="notification" title="${this.getLocalizedText('notification')}">
-                        <span>${task.notificationEnabled !== false ? '🔔' : '🔕'}</span>
+                        ${task.notificationEnabled !== false ? 
+                            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="m13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor"/></svg>' : 
+                            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="m13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor"/><line x1="1" y1="1" x2="23" y2="23" stroke="#dc3545" stroke-width="3"/></svg>'
+                        }
                     </button>
                     <button class="action-btn edit-btn" data-task-id="${task.id}" data-action="edit" title="${this.getLocalizedText('edit')}">
-                        <span>✏️</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                            <path d="m18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                        </svg>
                     </button>
                     <button class="action-btn complete-btn" data-task-id="${task.id}" data-action="complete" title="${this.getLocalizedText('complete')}">
-                        <span>✅</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="20,6 9,17 4,12"/>
+                        </svg>
                     </button>
                     <button class="action-btn delete-btn" data-task-id="${task.id}" data-action="delete" title="${this.getLocalizedText('delete')}">
-                        <span>🗑️</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3,6 5,6 21,6"/>
+                            <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
+                            <line x1="10" y1="11" x2="10" y2="17"/>
+                            <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
                     </button>
                     <button class="action-btn highlight-btn" data-task-id="${task.id}" data-action="highlight" title="${this.getLocalizedText('highlight')}">
-                        <span>🔶</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
+                        </svg>
                     </button>
                     <button class="action-btn up-btn" data-task-id="${task.id}" data-action="up" title="${this.getLocalizedText('moveUp')}">
-                        <span>⬆️</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="18,15 12,9 6,15"/>
+                        </svg>
                     </button>
                     <button class="action-btn down-btn" data-task-id="${task.id}" data-action="down" title="${this.getLocalizedText('moveDown')}">
-                        <span>⬇️</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="6,9 12,15 18,9"/>
+                        </svg>
                     </button>
                 </td>
             `;
@@ -818,13 +859,13 @@ class TaskManager {
             // Apply highlight styling if task is highlighted
             if (task.highlighted) {
                 if (this.darkMode) {
-                    li.style.backgroundColor = '#4a4a2a';
-                    li.style.color = '#ffc107';
-                    li.style.border = '2px solid #ffc107';
+                    li.style.backgroundColor = '#4a3a2a';
+                    li.style.color = '#fd7e14';
+                    li.style.border = '2px solid #fd7e14';
                 } else {
-                    li.style.backgroundColor = '#fff3cd';
-                    li.style.color = '#856404';
-                    li.style.border = '2px solid #ffc107';
+                    li.style.backgroundColor = '#fff2e6';
+                    li.style.color = '#e55100';
+                    li.style.border = '2px solid #fd7e14';
                 }
                 li.style.fontWeight = '600';
                 li.style.borderRadius = '3px';
@@ -955,7 +996,7 @@ class TaskManager {
         if (this.isCollapsed) {
             // Enter collapsed mode - 80px width ultra-minimal view
             container.classList.add('collapsed-mode');
-            collapseBtn.textContent = '↙️';
+            collapseBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
             collapseBtn.title = 'Expand to full view';
             tableElement.style.display = 'none';
             collapsedElement.style.display = 'none';
@@ -965,18 +1006,19 @@ class TaskManager {
             if (this.isElectron && window.electronAPI) {
                 // Calculate dynamic height based on task count
                 const activeTasks = this.tasks.filter(t => !t.completed);
-                const taskCount = Math.min(activeTasks.length, 20); // Max 20 tasks in mini view
-                const baseHeight = 80; // Header + completion counter
-                const taskHeight = 20; // Height per task
-                const dynamicHeight = Math.max(150, baseHeight + (taskCount * taskHeight));
+                const taskCount = activeTasks.length; // Show all tasks without limit
+                const baseHeight = 80; // Expand button + completion counter + padding
+                const taskHeight = 22; // Height per task item
+                const paddingHeight = 30; // Bottom padding
+                const dynamicHeight = Math.max(150, baseHeight + (taskCount * taskHeight) + paddingHeight);
                 
                 this.resizeAndPositionWindow(80, dynamicHeight, 'top-right-150');
             }
         } else {
             // Exit collapsed mode - return to normal view
             container.classList.remove('collapsed-mode');
-            collapseBtn.textContent = '↗️';
-            collapseBtn.title = 'Collapse to minimal view';
+            collapseBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="14,4 14,10 20,10"/><polyline points="10,20 10,14 4,14"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
+            collapseBtn.title = 'Collapse view';
             tableElement.style.display = 'table';
             collapsedElement.style.display = 'none';
             miniLayout.style.display = 'none';
@@ -1104,6 +1146,9 @@ class TaskManager {
         
         // Render tag presets in modal
         this.renderTagPresets();
+        
+        // Show/hide tags help text based on preset availability
+        this.updateTagsHelpText();
         
         modal.style.display = 'block';
         

@@ -5,12 +5,20 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tasktory</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="container">
         <div id="infoBar" class="info-bar" style="display: none;">
-            💡 Browser Mode: Data is stored in local storage. Use Electron mode for always-on-top functionality.
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; margin-right: 8px; vertical-align: top;">
+                <circle cx="12" cy="12" r="10"/>
+                <path d="M9,9h0a3,3,0,0,1,6,0c0,2-3,3-3,3"/>
+                <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
+            </svg>
+            Browser Mode: Data is stored in local storage. Use Electron mode for always-on-top functionality.
         </div>
         
         <header>
@@ -18,12 +26,48 @@
                 <h1>Tasktory</h1>
             </div>
             <div class="header-buttons">
-                <button id="exportBtn" class="btn icon-btn" title="">💾</button>
-                <button id="importBtn" class="btn icon-btn" title="">📂</button>
-                <button id="statisticsBtn" class="btn icon-btn" title="">📊</button>
-                <button id="settingsBtn" class="btn icon-btn" title="">⚙️</button>
-                <button id="aboutBtn" class="btn icon-btn" title="">ℹ️</button>
-                <button id="collapseBtn" class="btn icon-btn" title="Toggle ultra-compact mode (Ctrl+M)">↗️</button>
+                <button id="exportBtn" class="btn icon-btn" title="Export Data">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="6" x2="12" y2="18"/>
+                        <polyline points="7,13 12,18 17,13"/>
+                        <line x1="6" y1="21" x2="18" y2="21" stroke-width="1.5"/>
+                    </svg>
+                </button>
+                <button id="importBtn" class="btn icon-btn" title="Import Data">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <line x1="12" y1="6" x2="12" y2="18"/>
+                        <polyline points="7,11 12,6 17,11"/>
+                        <line x1="6" y1="21" x2="18" y2="21" stroke-width="1.5"/>
+                    </svg>
+                </button>
+                <button id="statisticsBtn" class="btn icon-btn" title="Statistics">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="18" y1="20" x2="18" y2="10"/>
+                        <line x1="12" y1="20" x2="12" y2="4"/>
+                        <line x1="6" y1="20" x2="6" y2="14"/>
+                    </svg>
+                </button>
+                <button id="settingsBtn" class="btn icon-btn" title="Settings">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                </button>
+                <button id="aboutBtn" class="btn icon-btn" title="About">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="10"/>
+                        <path d="M9,9h0a3,3,0,0,1,6,0c0,2-3,3-3,3"/>
+                        <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
+                    </svg>
+                </button>
+                <button id="collapseBtn" class="btn icon-btn" title="Collapse view (Ctrl+M)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="14,4 14,10 20,10"/>
+                        <polyline points="10,20 10,14 4,14"/>
+                        <line x1="21" y1="3" x2="14" y2="10"/>
+                        <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                </button>
             </div>
         </header>
         
@@ -37,9 +81,19 @@
                 <div class="controls-right">
                     <div class="search-container">
                         <input type="text" id="searchInput" placeholder="" class="search-input">
-                        <button id="clearSearchBtn" class="btn clear-search-btn" title="Clear search">✕</button>
+                        <button id="clearSearchBtn" class="btn clear-search-btn" title="Clear search">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="6" x2="6" y2="18"/>
+                                <line x1="6" y1="6" x2="18" y2="18"/>
+                            </svg>
+                        </button>
                     </div>
-                    <button id="addTaskBtn" class="btn icon-btn add-btn" title="">✚</button>
+                    <button id="addTaskBtn" class="btn icon-btn add-btn" title="Add Task">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="table-container">
@@ -70,16 +124,31 @@
                 <!-- Pagination -->
                 <div id="paginationContainer" class="pagination-container">
                     <div class="pagination">
-                        <button id="prevPageBtn" class="pagination-btn">‹</button>
+                        <button id="prevPageBtn" class="pagination-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="15,18 9,12 15,6"/>
+                            </svg>
+                        </button>
                         <div id="pageNumbers" class="page-numbers"></div>
-                        <button id="nextPageBtn" class="pagination-btn">›</button>
+                        <button id="nextPageBtn" class="pagination-btn">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="9,18 15,12 9,6"/>
+                            </svg>
+                        </button>
                     </div>
                 </div>
             </div>
             
             <!-- Collapsed Mini Layout (100px width) -->
             <div id="collapsedMiniLayout" class="collapsed-mini-layout">
-                <button id="collapsedExpandBtn" class="collapsed-expand-btn" title="Expand">↙️</button>
+                <button id="collapsedExpandBtn" class="collapsed-expand-btn" title="Expand">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polyline points="15,3 21,3 21,9"/>
+                        <polyline points="9,21 3,21 3,15"/>
+                        <line x1="21" y1="3" x2="14" y2="10"/>
+                        <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                </button>
                 <div id="collapsedCompletionCounter" class="collapsed-completion-counter">0</div>
                 <div class="collapsed-task-list">
                     <ul id="collapsedMiniTasksBody">
@@ -97,26 +166,37 @@
             <h2 id="modalTitle"></h2>
             <form id="taskForm">
                 <div class="form-group">
-                    <label for="taskPosition" id="labelPosition">Position:</label>
+                    <label for="taskPosition" id="labelPosition">Position</label>
                     <input type="number" id="taskPosition" min="1" placeholder="Position in list">
                 </div>
                 <div class="form-group">
-                    <label for="startDateTime" id="labelStartTime">Start Time:</label>
+                    <label for="startDateTime" id="labelStartTime">Start Time</label>
                     <input type="datetime-local" id="startDateTime" required>
                 </div>
                 <div class="form-group">
-                    <label for="targetDateTime" id="labelTargetTime">Target Time:</label>
+                    <label for="targetDateTime" id="labelTargetTime">Target Time</label>
                     <input type="datetime-local" id="targetDateTime" required>
                 </div>
                 <div class="form-group">
-                    <label for="taskTags" id="labelTags">Tags:</label>
+                    <div class="label-with-help">
+                        <label for="taskTags" id="labelTags">Tags</label>
+                        <span class="tags-inline-help" id="tagsInlineHelp"></span>
+                    </div>
                     <div class="tags-input-container">
                         <div id="tagPresets" class="tag-presets"></div>
                         <input type="text" id="taskTags" placeholder="">
+                        <div id="tagsHelpText" class="tags-help-text" style="display: none;">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right: 4px; vertical-align: text-top;">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M9,9h0a3,3,0,0,1,6,0c0,2-3,3-3,3"/>
+                                <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
+                            </svg>
+                            <span id="tagsHelpMessage"></span>
+                        </div>
                     </div>
                 </div>
                 <div class="form-group">
-                    <label for="taskContent" id="labelTaskContent">Task Content:</label>
+                    <label for="taskContent" id="labelTaskContent">Task Content</label>
                     <textarea id="taskContent" rows="3" required placeholder=""></textarea>
                 </div>
                 <div class="form-actions">
@@ -136,16 +216,43 @@
             <div class="settings-group">
                 <label>Theme Mode</label>
                 <div class="theme-toggle">
-                    <button id="lightModeBtn" class="theme-btn active" title="Light Mode">☀️</button>
-                    <button id="darkModeBtn" class="theme-btn" title="Dark Mode">🌙</button>
+                    <button id="lightModeBtn" class="theme-btn active" title="Light Mode">
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffc107" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="5" fill="#ffc107"/>
+                            <path d="m12 2v2"/>
+                            <path d="m12 20v2"/>
+                            <path d="m4.93 4.93l1.41 1.41"/>
+                            <path d="m17.66 17.66l1.41 1.41"/>
+                            <path d="m2 12h2"/>
+                            <path d="m20 12h2"/>
+                            <path d="m6.34 17.66l-1.41 1.41"/>
+                            <path d="m19.07 4.93l-1.41 1.41"/>
+                        </svg>
+                    </button>
+                    <button id="darkModeBtn" class="theme-btn" title="Dark Mode">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="#374151" stroke="currentColor" stroke-width="2">
+                            <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" fill="#374151"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
             <div class="settings-group">
                 <label>Default Notification</label>
                 <div class="notification-toggle">
-                    <button id="notificationOnBtn" class="notification-btn active" title="Notifications On">🔔</button>
-                    <button id="notificationOffBtn" class="notification-btn" title="Notifications Off">🔕</button>
+                    <button id="notificationOnBtn" class="notification-btn active" title="Notifications On">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="transparent" stroke="#ffc107" stroke-width="2">
+                            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                            <path d="m13.73 21a2 2 0 0 1-3.46 0"/>
+                        </svg>
+                    </button>
+                    <button id="notificationOffBtn" class="notification-btn" title="Notifications Off">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="transparent" stroke="#ffc107" stroke-width="2">
+                            <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                            <path d="m13.73 21a2 2 0 0 1-3.46 0"/>
+                            <line x1="1" y1="1" x2="23" y2="23" stroke="#dc3545" stroke-width="3"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
             
@@ -178,30 +285,30 @@
         <div class="modal-content">
             <span class="close" data-modal="about">&times;</span>
             <h2>About Tasktory</h2>
-            <p><strong>Version:</strong> 0.1.2</p>
+            <p><strong>Version:</strong> 0.2.0</p>
             <p><strong>Log Location:</strong> <span id="aboutLogPath">Loading...</span></p>
             <p><strong>License:</strong> MIT</p>
             <p><strong>Author:</strong> Jeonghwan Yoo &lt;planyist@gmail.com&gt;</p>
             
             <h3>How to Use</h3>
             <ul>
-                <li><strong>Add Task:</strong> Click ✚ or press Ctrl+N</li>
-                <li><strong>Edit:</strong> Click ✏️ icon in Actions column</li>
-                <li><strong>Complete:</strong> Click ✅ icon to mark as done</li>
-                <li><strong>Delete:</strong> Click 🗑️ icon to remove task</li>
-                <li><strong>Highlight:</strong> Click 🔶 to highlight important tasks</li>
-                <li><strong>Reorder:</strong> Use ⬆️⬇️ arrows to change task order</li>
-                <li><strong>Export/Import:</strong> Use 💾📂 to backup/restore data</li>
+                <li><strong>Add Task:</strong> Click <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg> icon or press Ctrl+N</li>
+                <li><strong>Edit:</strong> Click <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="m18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> icon in Actions column</li>
+                <li><strong>Complete:</strong> Click <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><polyline points="20,6 9,17 4,12"/></svg> icon to mark as done</li>
+                <li><strong>Delete:</strong> Click <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><polyline points="3,6 5,6 21,6"/><path d="m19,6v14a2,2 0 0,1-2,2H7a2,2 0 0,1-2-2V6m3,0V4a2,2 0 0,1,2-2h4a2,2 0 0,1,2,2v2"/></svg> icon to remove task</li>
+                <li><strong>Highlight:</strong> Click <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/></svg> icon to highlight important tasks</li>
+                <li><strong>Reorder:</strong> Use <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><polyline points="18,15 12,9 6,15"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><polyline points="6,9 12,15 18,9"/></svg> arrows to change task order</li>
+                <li><strong>Export/Import:</strong> Use <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><line x1="12" y1="6" x2="12" y2="18"/><polyline points="7,13 12,18 17,13"/></svg><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><line x1="12" y1="6" x2="12" y2="18"/><polyline points="7,11 12,6 17,11"/></svg> arrows to backup/restore data</li>
                 <li><strong>Tags:</strong> Use #hashtags separated by spaces (e.g., #work #urgent)</li>
-                <li><strong>Notifications:</strong> Click 🔔/🔕 to toggle task notifications</li>
+                <li><strong>Notifications:</strong> Click <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="m13.73 21a2 2 0 0 1-3.46 0"/></svg> icon to toggle task notifications</li>
             </ul>
             
             <h3>Notifications</h3>
             <ul>
                 <li><strong>Auto Alerts:</strong> 1 hour and 15 minutes before deadline</li>
                 <li><strong>Overdue Alert:</strong> When task passes target time</li>
-                <li><strong>Toggle Per Task:</strong> Use 🔔/🔕 button in task row</li>
-                <li><strong>Default Setting:</strong> Configure in Settings ⚙️</li>
+                <li><strong>Toggle Per Task:</strong> Use bell button in task row</li>
+                <li><strong>Default Setting:</strong> Configure in Settings <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> icon</li>
             </ul>
             
             <h3>Task Status</h3>
@@ -216,7 +323,7 @@
             <h3>Keyboard Shortcuts</h3>
             <ul>
                 <li><strong>Ctrl+N:</strong> Add new task</li>
-                <li><strong>Ctrl+M:</strong> Toggle ultra-compact mode (80px width)</li>
+                <li><strong>Ctrl+M:</strong> Collapse view (80px width)</li>
                 <li><strong>ESC:</strong> Close modal or date picker</li>
             </ul>
         </div>
