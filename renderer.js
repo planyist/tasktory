@@ -1767,11 +1767,16 @@ class TaskManager {
             const parsed = this.parseTagWithColor(fullTag);
             
             tagText.textContent = parsed.content;
+            tagText.style.cursor = 'pointer';
+            tagText.title = 'Click to add to tags input';
             
             // Apply colors to the item itself, overriding CSS
             item.style.backgroundColor = parsed.color.bg;
             item.style.borderColor = parsed.color.border;
             item.style.color = parsed.color.text;
+            
+            // Add click event to add tag to input
+            tagText.onclick = () => this.addPresetTag(preset);
             
             const removeBtn = document.createElement('button');
             removeBtn.className = 'tag-preset-remove';
@@ -1856,7 +1861,7 @@ class TaskManager {
             const colors = this.getGitHubColors();
             if (colors[color]) {
                 return {
-                    content: content,
+                    content: '#' + content,
                     color: colors[color],
                     hasColor: true
                 };
@@ -1864,7 +1869,7 @@ class TaskManager {
         }
         // Default tag without color
         return {
-            content: tag.substring(1), // Remove #
+            content: tag, // Keep #
             color: { bg: '#e3f2fd', border: '#bbdefb', text: '#1565c0' },
             hasColor: false
         };

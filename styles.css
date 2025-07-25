@@ -1372,6 +1372,71 @@ body.dark-mode .search-input::placeholder {
     color: #999;
 }
 
+/* Dark mode form inputs */
+body.dark-mode input[type="text"],
+body.dark-mode input[type="number"],
+body.dark-mode input[type="datetime-local"],
+body.dark-mode textarea,
+body.dark-mode select {
+    background-color: #3d3d3d;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+body.dark-mode input[type="text"]:focus,
+body.dark-mode input[type="number"]:focus,
+body.dark-mode input[type="datetime-local"]:focus,
+body.dark-mode textarea:focus,
+body.dark-mode select:focus {
+    border-color: #007acc;
+    background-color: #4d4d4d;
+}
+
+body.dark-mode input[type="text"]::placeholder,
+body.dark-mode textarea::placeholder {
+    color: #999;
+}
+
+/* Dark mode buttons */
+body.dark-mode .btn {
+    background-color: #2d2d2d;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+body.dark-mode .btn:hover:not(:disabled) {
+    background-color: #3d3d3d;
+    border-color: #666;
+}
+
+body.dark-mode .btn:disabled {
+    background-color: #1a1a1a;
+    color: #666;
+    border-color: #333;
+}
+
+/* Dark mode pagination buttons */
+body.dark-mode .pagination-btn {
+    background-color: #2d2d2d;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+body.dark-mode .pagination-btn:hover:not(:disabled) {
+    background-color: #3d3d3d;
+}
+
+body.dark-mode .page-number {
+    background-color: #2d2d2d;
+    color: #f0f0f0;
+    border-color: #555;
+}
+
+body.dark-mode .page-number.active {
+    background-color: #007acc;
+    border-color: #007acc;
+}
+
 body.dark-mode tbody tr.highlighted .task-content {
     background-color: #4a4a2a !important;
     color: #ffc107 !important;
