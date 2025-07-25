@@ -11,7 +11,7 @@ class TaskManager {
         this.completionCount = 0; // Will be set in init()
         this.isCollapsed = false;
         this.currentPage = 1;
-        this.tasksPerPage = 5;
+        this.tasksPerPage = 10;
         this.defaultNotificationEnabled = localStorage.getItem('defaultNotificationEnabled') !== 'false';
         this.tagPresets = this.loadTagPresets();
         this.init();
@@ -851,8 +851,6 @@ class TaskManager {
         const prevBtn = document.getElementById('prevPageBtn');
         const nextBtn = document.getElementById('nextPageBtn');
 
-        // Debug log for pagination
-        console.log(`renderPagination called with totalPages: ${totalPages}, currentPage: ${this.currentPage}, tasksPerPage: ${this.tasksPerPage}`);
         
         if (totalPages <= 1) {
             paginationContainer.style.display = 'none';
@@ -880,33 +878,23 @@ class TaskManager {
             }
         };
 
-        // Page numbers with ellipsis logic
-        const maxVisiblePages = 5;
-        let startPage = Math.max(1, this.currentPage - Math.floor(maxVisiblePages / 2));
-        let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
-
-        // Adjust start if end is at maximum
-        if (endPage === totalPages) {
-            startPage = Math.max(1, endPage - maxVisiblePages + 1);
-        }
-
-        // First page
-        if (startPage > 1) {
+        // Smart pagination display logic
+        if (totalPages <= 5) {
+            // Show all pages when 5 or fewer pages
+            for (let i = 1; i <= totalPages; i++) {
+                this.createPageButton(i, pageNumbers);
+            }
+        } else {
+            // Show 1, 2, ..., last-1, last format for 6+ pages
             this.createPageButton(1, pageNumbers);
-            if (startPage > 2) {
+            this.createPageButton(2, pageNumbers);
+            
+            if (totalPages > 4) {
                 this.createEllipsis(pageNumbers);
             }
-        }
-
-        // Visible pages
-        for (let i = startPage; i <= endPage; i++) {
-            this.createPageButton(i, pageNumbers);
-        }
-
-        // Last page
-        if (endPage < totalPages) {
-            if (endPage < totalPages - 1) {
-                this.createEllipsis(pageNumbers);
+            
+            if (totalPages > 3) {
+                this.createPageButton(totalPages - 1, pageNumbers);
             }
             this.createPageButton(totalPages, pageNumbers);
         }
