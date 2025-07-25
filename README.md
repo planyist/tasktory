@@ -4,15 +4,30 @@ A compact desktop application for managing tasks with always-on-top functionalit
 
 ## Features
 
+### Core Features
 - **Always-on-Top**: Stays visible above all other windows like a sticky note
 - **Compact Design**: Optimized for corner placement (600x400 window)
-- **Task Management**: Add, edit, complete, and delete tasks with ease
-- **Time Tracking**: Set start and target times for each task
-- **Status Indicators**: Visual status (Pending, In Progress, Due Soon, Overdue, Done)
-- **Completion Counter**: Daily completion counter with celebration animations
-- **Comprehensive Logging**: All actions are logged in structured .log format
-- **Cross-Platform**: Works on Windows, Linux, and macOS
+- **Ultra-Compact Mode**: Toggle to 80px width for minimal screen space usage
+- **Task Management**: Add, edit, complete, delete, highlight, and reorder tasks
+- **Time Tracking**: Set start and target times with intelligent status updates
+- **Tag System**: Organize tasks with colored tags using GitHub-style color schemes
+- **Search & Filter**: Real-time task filtering with pagination support
+
+### UI/UX (v0.2.x)
+- **SVG Icon System**: Professional vector icons throughout the interface
+- **Dark Mode**: Complete dark theme with automatic system detection
+- **Smart Status Indicators**: Pending, In Progress, Due Soon, Overdue, Completed
+- **Notification System**: Per-task notification settings with system alerts  
+- **Statistics Dashboard**: Visual completion trends over 30 days
+- **Completion Celebrations**: Animated counter with confetti effects
+- **Internationalization**: Support for English, Korean, Chinese, Japanese, Spanish
+
+### Technical Features
+- **Comprehensive Logging**: All actions logged in structured .log format
+- **Cross-Platform**: Works on Windows, Linux, and macOS  
 - **Dual Mode**: Runs as Electron app (with always-on-top) or in browser
+- **Export/Import**: JSON backup and restore functionality
+- **Security**: Content Security Policy and IPC isolation
 
 ## Installation
 
@@ -45,15 +60,36 @@ Simply open `tasktory-standalone.html` in your web browser for a version without
 
 ## Usage
 
-1. **Adding Tasks**: Click the "+ Add Task" button to create new tasks
-2. **Editing Tasks**: Click the "Edit" button next to any task to modify it
-3. **Completing Tasks**: Click "Done" to mark tasks as completed (removes from list)
-4. **Deleting Tasks**: Click "Delete" to remove tasks without completing them
-5. **Status Tracking**: Tasks automatically show status based on timing:
-   - **Pending**: Before start time
-   - **In Progress**: Between start and target time
-   - **Due Soon**: Less than 1 hour remaining
-   - **Overdue**: Past target time
+### Basic Operations
+1. **Adding Tasks**: Click the "+" button or press `Ctrl+N` to create new tasks
+2. **Editing Tasks**: Click the edit icon (✏️) next to any task to modify it
+3. **Completing Tasks**: Click the checkmark (✓) to mark tasks as completed
+4. **Deleting Tasks**: Click the delete icon (🗑️) to remove tasks without completing
+5. **Highlighting**: Click the lightning bolt (⚡) to highlight important tasks
+6. **Reordering**: Use up/down arrows (↑↓) to change task order
+7. **Notifications**: Click the bell icon (🔔) to toggle task notifications
+
+### Advanced Features
+- **Tag Presets**: Create colored tag presets in Settings for quick tagging
+- **Search**: Use the search box to filter tasks by content, tags, or status
+- **Statistics**: View completion trends and productivity patterns
+- **Dark Mode**: Toggle between light and dark themes in Settings
+- **Collapse Mode**: Switch to ultra-compact 80px width for minimal footprint
+- **Export/Import**: Backup and restore your tasks via JSON files
+
+### Status System
+Tasks automatically show status based on timing:
+- **Pending**: Before start time
+- **In Progress**: Between start and target time  
+- **Due Soon**: Less than 1 hour remaining
+- **Overdue**: Past target time
+- **Completed**: Task marked as done
+
+### Tag System
+Use hashtags with optional colors:
+- Basic tags: `#meeting #urgent`
+- Colored tags: `#[RED]urgent #[GREEN]completed #[BLUE]research`
+- Available colors: RED, GREEN, BLUE, YELLOW, PURPLE, ORANGE, GRAY, PINK
 
 ## Keyboard Shortcuts
 

@@ -72,11 +72,11 @@ class TaskManager {
         document.getElementById('thActions').textContent = this.getLocalizedText('actions');
         
         // Modal form labels
-        document.getElementById('labelStartTime').textContent = this.getLocalizedText('startTime') + ':';
-        document.getElementById('labelTargetTime').textContent = this.getLocalizedText('targetTime') + ':';
-        document.getElementById('labelTags').textContent = this.getLocalizedText('tags') + ':';
-        document.getElementById('labelTaskContent').textContent = this.getLocalizedText('taskContent') + ':';
-        document.getElementById('labelPosition').textContent = this.getLocalizedText('position') + ':';
+        document.getElementById('labelStartTime').textContent = this.getLocalizedText('startTime');
+        document.getElementById('labelTargetTime').textContent = this.getLocalizedText('targetTime');
+        document.getElementById('labelTags').textContent = this.getLocalizedText('tags');
+        document.getElementById('labelTaskContent').textContent = this.getLocalizedText('taskContent');
+        document.getElementById('labelPosition').textContent = this.getLocalizedText('position');
         
         // Modal form placeholders
         document.getElementById('taskTags').placeholder = this.getLocalizedText('tagsPlaceholder');
@@ -591,10 +591,204 @@ class TaskManager {
                 'confirmDelete': '삭제 확인',
                 'tagsHelpText': '설정에서 태그 프리셋을 추가하면 태그 작성이 더 쉬워집니다.',
                 'tagsInlineHelp': '(설정에서 프리셋 생성 가능)'
+            },
+            'zh': {
+                // Status
+                'done': '完成',
+                'pending': '待处理',
+                'inprogress': '进行中',
+                'overdue': '逾期',
+                'urgent': '即将到期',
+                // Table headers
+                'number': '#',
+                'startTime': '开始时间',
+                'targetTime': '目标时间',
+                'tags': '标签',
+                'taskContent': '任务内容',
+                'status': '状态',
+                'actions': '操作',
+                // Tooltips
+                'addTask': '添加任务',
+                'edit': '编辑',
+                'complete': '完成',
+                'delete': '删除',
+                'highlight': '高亮',
+                'moveUp': '上移',
+                'moveDown': '下移',
+                'downloadExport': '下载/导出',
+                'uploadImport': '上传/导入',
+                'settings': '设置',
+                'about': '关于',
+                'search': '搜索...',
+                'completed': '已完成',
+                'completionCounter': '已完成',
+                'position': '位置',
+                'notification': '切换通知',
+                // Messages
+                'noTasks': '没有注册的任务。点击"+ 添加任务"按钮来添加任务。',
+                'allCompleted': '所有任务已完成！添加新任务。',
+                'noSearchResults': '没有找到匹配的任务。',
+                'deleteConfirm': '确定要删除这个任务吗？',
+                'fillAllFields': '请填写所有字段。',
+                'targetAfterStart': '目标时间必须晚于开始时间。',
+                'dataImportSuccess': '数据导入成功。',
+                'invalidFile': '无效的文件格式。',
+                'fileReadError': '读取文件时出错。',
+                'replaceDataConfirm': '所有当前数据将被替换。继续吗？',
+                'saveDataFailed': '保存数据失败。请检查您的浏览器存储。',
+                // Form placeholders and buttons
+                'tagsPlaceholder': '例如：#会议 #紧急 #开发',
+                'taskContentPlaceholder': '输入任务内容...',
+                'cancel': '取消',
+                'save': '保存',
+                'addNewTask': '添加新任务',
+                'editTask': '编辑任务',
+                // Completion and deletion
+                'completeTask': '完成任务',
+                'deleteTask': '删除任务',
+                'completeDetails': '完成备注（可选）',
+                'deleteReason': '删除原因（可选）',
+                'confirmComplete': '确认完成',
+                'confirmDelete': '确认删除',
+                'tagsHelpText': '您可以在设置中添加标签预设以便于标记。',
+                'tagsInlineHelp': '（在设置中创建预设以便于标记）'
+            },
+            'ja': {
+                // Status
+                'done': '完了',
+                'pending': '保留中',
+                'inprogress': '進行中',
+                'overdue': '期限切れ',
+                'urgent': '期限間近',
+                // Table headers
+                'number': '#',
+                'startTime': '開始時刻',
+                'targetTime': '目標時刻',
+                'tags': 'タグ',
+                'taskContent': 'タスク内容',
+                'status': 'ステータス',
+                'actions': 'アクション',
+                // Tooltips
+                'addTask': 'タスク追加',
+                'edit': '編集',
+                'complete': '完了',
+                'delete': '削除',
+                'highlight': 'ハイライト',
+                'moveUp': '上に移動',
+                'moveDown': '下に移動',
+                'downloadExport': 'ダウンロード/エクスポート',
+                'uploadImport': 'アップロード/インポート',
+                'settings': '設定',
+                'about': 'について',
+                'search': '検索...',
+                'completed': '完了済み',
+                'completionCounter': '完了済み',
+                'position': '位置',
+                'notification': '通知切り替え',
+                // Messages
+                'noTasks': 'タスクが登録されていません。「+ タスク追加」ボタンをクリックしてタスクを追加してください。',
+                'allCompleted': 'すべてのタスクが完了しました！新しいタスクを追加してください。',
+                'noSearchResults': '検索条件に一致するタスクが見つかりません。',
+                'deleteConfirm': 'このタスクを削除してもよろしいですか？',
+                'fillAllFields': 'すべてのフィールドを入力してください。',
+                'targetAfterStart': '目標時刻は開始時刻より後である必要があります。',
+                'dataImportSuccess': 'データのインポートに成功しました。',
+                'invalidFile': '無効なファイル形式です。',
+                'fileReadError': 'ファイルの読み取り中にエラーが発生しました。',
+                'replaceDataConfirm': '現在のデータがすべて置き換えられます。続行しますか？',
+                'saveDataFailed': 'データの保存に失敗しました。ブラウザのストレージを確認してください。',
+                // Form placeholders and buttons
+                'tagsPlaceholder': '例：#会議 #緊急 #開発',
+                'taskContentPlaceholder': 'タスク内容を入力...',
+                'cancel': 'キャンセル',
+                'save': '保存',
+                'addNewTask': '新しいタスクを追加',
+                'editTask': 'タスクを編集',
+                // Completion and deletion
+                'completeTask': 'タスク完了',
+                'deleteTask': 'タスク削除',
+                'completeDetails': '完了メモ（オプション）',
+                'deleteReason': '削除理由（オプション）',
+                'confirmComplete': '完了確認',
+                'confirmDelete': '削除確認',
+                'tagsHelpText': 'タグ付けを簡単にするために、設定でタグプリセットを追加できます。',
+                'tagsInlineHelp': '（簡単なタグ付けのために設定でプリセットを作成）'
+            },
+            'es': {
+                // Status
+                'done': 'Hecho',
+                'pending': 'Pendiente',
+                'inprogress': 'En Progreso',
+                'overdue': 'Vencido',
+                'urgent': 'Próximo a Vencer',
+                // Table headers
+                'number': '#',
+                'startTime': 'Hora de Inicio',
+                'targetTime': 'Hora Objetivo',
+                'tags': 'Etiquetas',
+                'taskContent': 'Contenido de Tarea',
+                'status': 'Estado',
+                'actions': 'Acciones',
+                // Tooltips
+                'addTask': 'Añadir Tarea',
+                'edit': 'Editar',
+                'complete': 'Completar',
+                'delete': 'Eliminar',
+                'highlight': 'Resaltar',
+                'moveUp': 'Mover Arriba',
+                'moveDown': 'Mover Abajo',
+                'downloadExport': 'Descargar/Exportar',
+                'uploadImport': 'Subir/Importar',
+                'settings': 'Configuración',
+                'about': 'Acerca de',
+                'search': 'Buscar...',
+                'completed': 'Completado',
+                'completionCounter': 'Completado',
+                'position': 'Posición',
+                'notification': 'Alternar Notificación',
+                // Messages
+                'noTasks': 'No hay tareas registradas. Haga clic en el botón \'+ Añadir Tarea\' para añadir una tarea.',
+                'allCompleted': '¡Todas las tareas completadas! Añadir nueva tarea.',
+                'noSearchResults': 'No se encontraron tareas que coincidan con su búsqueda.',
+                'deleteConfirm': '¿Está seguro de que desea eliminar esta tarea?',
+                'fillAllFields': 'Por favor complete todos los campos.',
+                'targetAfterStart': 'La hora objetivo debe ser posterior a la hora de inicio.',
+                'dataImportSuccess': 'Datos importados con éxito.',
+                'invalidFile': 'Formato de archivo inválido.',
+                'fileReadError': 'Error al leer el archivo.',
+                'replaceDataConfirm': 'Todos los datos actuales serán reemplazados. ¿Continuar?',
+                'saveDataFailed': 'Error al guardar los datos. Por favor verifique el almacenamiento de su navegador.',
+                // Form placeholders and buttons
+                'tagsPlaceholder': 'ej., #reunión #urgente #desarrollo',
+                'taskContentPlaceholder': 'Ingrese el contenido de la tarea...',
+                'cancel': 'Cancelar',
+                'save': 'Guardar',
+                'addNewTask': 'Añadir Nueva Tarea',
+                'editTask': 'Editar Tarea',
+                // Completion and deletion
+                'completeTask': 'Completar Tarea',
+                'deleteTask': 'Eliminar Tarea',
+                'completeDetails': 'Notas de finalización (opcional)',
+                'deleteReason': 'Razón para la eliminación (opcional)',
+                'confirmComplete': 'Confirmar finalización',
+                'confirmDelete': 'Confirmar eliminación',
+                'tagsHelpText': 'Puede añadir preajustes de etiquetas en Configuración para facilitar el etiquetado.',
+                'tagsInlineHelp': '(Crear preajustes en Configuración para etiquetado más fácil)'
             }
         };
         
-        const lang = this.locale.startsWith('ko') ? 'ko' : 'en';
+        // Determine language based on locale
+        let lang = 'en'; // default
+        if (this.locale.startsWith('ko')) {
+            lang = 'ko';
+        } else if (this.locale.startsWith('zh')) {
+            lang = 'zh';
+        } else if (this.locale.startsWith('ja')) {
+            lang = 'ja';
+        } else if (this.locale.startsWith('es')) {
+            lang = 'es';
+        }
+        
         return texts[lang][key] || texts['en'][key] || key;
     }
 
@@ -606,13 +800,14 @@ class TaskManager {
         // Check if there are any tag presets
         const hasPresets = this.tagPresets && this.tagPresets.length > 0;
         
+        // Always show inline help text
+        inlineHelp.textContent = this.getLocalizedText('tagsInlineHelp');
+        
         if (!hasPresets) {
             helpMessage.textContent = this.getLocalizedText('tagsHelpText');
             helpTextDiv.style.display = 'flex';
-            inlineHelp.textContent = this.getLocalizedText('tagsInlineHelp');
         } else {
             helpTextDiv.style.display = 'none';
-            inlineHelp.textContent = '';
         }
     }
 

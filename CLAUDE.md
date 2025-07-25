@@ -80,18 +80,27 @@ This is a complete Electron application with the following structure:
 - Complete CRUD operations for tasks
 - Comprehensive logging system
 
-### UI/UX Features
-- Modal dialogs for task creation/editing
-- Status indicators (Pending, Overdue, Done)
-- Action buttons (Edit, Done, Delete)
-- Daily completion counter with green highlighting
-- Celebration animations (text scaling and confetti effects)
-- Responsive design for small screens
-- Auto-closing date pickers
+### UI/UX Features (v0.2.x)
+- **SVG Icon System**: Consistent vector icons replacing emojis for professional appearance
+- **Dark Mode Support**: Comprehensive dark theme with proper color variables
+- **Modal dialogs**: Task creation/editing with inline help text
+- **Status indicators**: Pending, In Progress, Due Soon, Overdue, Completed
+- **Action buttons**: Edit, Complete, Delete, Highlight, Move Up/Down, Notifications
+- **Collapse Mode**: Ultra-compact 80px width view with dynamic height
+- **Tag System**: Colored tag presets with GitHub-style color schemes
+- **Daily completion counter**: Animated counter with confetti celebrations
+- **Internationalization**: Support for English, Korean, Chinese, Japanese, Spanish
+- **Search functionality**: Real-time task filtering
+- **Pagination**: Smart pagination for large task lists
 
 ### Technical Implementation
-- Event delegation for dynamically generated buttons
-- Local storage fallback for browser mode
-- Export/import functionality in browser mode
-- Proper error handling and user feedback
-- CSP configured for security
+- **SVG Icons**: Scalable vector graphics with currentColor for theme compatibility
+- **CSS Variables**: Centralized color management for light/dark themes
+- **Event delegation**: Efficient handling of dynamically generated buttons  
+- **IPC Security**: Secure communication between main and renderer processes
+- **Local storage fallback**: Browser mode compatibility with export/import
+- **Internationalization**: Auto-detection of system locale with fallback
+- **Tag Color System**: #[COLOR]content format for colored tags
+- **Notification System**: Per-task notification settings with system alerts
+- **Statistics**: Visual charts showing completion trends over 30 days
+- **CSP Security**: Content Security Policy configured for secure execution
