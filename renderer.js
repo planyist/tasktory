@@ -662,6 +662,14 @@ class TaskManager {
 
         // Pagination logic
         const totalPages = Math.ceil(activeTasks.length / this.tasksPerPage);
+        
+        // Auto-adjust current page if it's beyond available pages
+        if (this.currentPage > totalPages && totalPages > 0) {
+            this.currentPage = totalPages;
+        } else if (this.currentPage < 1) {
+            this.currentPage = 1;
+        }
+        
         const startIndex = (this.currentPage - 1) * this.tasksPerPage;
         const endIndex = startIndex + this.tasksPerPage;
         const tasksToShow = activeTasks.slice(startIndex, endIndex);

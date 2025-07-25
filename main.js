@@ -295,13 +295,16 @@ ipcMain.handle('resize-window', async (event, width, height) => {
         if (width === 80) {
             // Store original bounds before collapsing
             originalWindowBounds = mainWindow.getBounds();
+            // Temporarily remove minimum size constraints for collapse
+            mainWindow.setMinimumSize(80, 400);
         }
         
         mainWindow.setSize(width, height);
         
         if (width !== 80 && originalWindowBounds) {
-            // Restore original position when expanding
+            // Restore original position and minimum size when expanding
             mainWindow.setPosition(originalWindowBounds.x, originalWindowBounds.y);
+            mainWindow.setMinimumSize(900, 400);
             originalWindowBounds = null;
         }
         
