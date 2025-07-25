@@ -1437,6 +1437,118 @@ body.dark-mode .page-number.active {
     border-color: #007acc;
 }
 
+/* Color example buttons */
+.color-example {
+    cursor: pointer;
+    padding: 2px 4px;
+    border-radius: 3px;
+    display: inline-block;
+    margin: 0 2px;
+    font-weight: bold;
+    transition: opacity 0.2s ease;
+}
+
+.color-example:hover {
+    opacity: 0.8;
+}
+
+.color-example.red {
+    background-color: #ffebee;
+    color: #c62828;
+    border: 1px solid #ffcdd2;
+}
+
+.color-example.green {
+    background-color: #e8f5e8;
+    color: #2e7d32;
+    border: 1px solid #c8e6c9;
+}
+
+.color-example.blue {
+    background-color: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #bbdefb;
+}
+
+.color-example.yellow {
+    background-color: #fffde7;
+    color: #f57f17;
+    border: 1px solid #fff9c4;
+}
+
+.color-example.purple {
+    background-color: #f3e5f5;
+    color: #7b1fa2;
+    border: 1px solid #e1bee7;
+}
+
+.color-example.orange {
+    background-color: #fff3e0;
+    color: #ef6c00;
+    border: 1px solid #ffcc80;
+}
+
+.color-example.gray {
+    background-color: #f5f5f5;
+    color: #424242;
+    border: 1px solid #e0e0e0;
+}
+
+.color-example.pink {
+    background-color: #fce4ec;
+    color: #c2185b;
+    border: 1px solid #f8bbd9;
+}
+
+/* Dark mode color examples */
+body.dark-mode .color-example.red {
+    background-color: #4a2a2a;
+    color: #ff5722;
+    border-color: #6a3a3a;
+}
+
+body.dark-mode .color-example.green {
+    background-color: #2a4a2a;
+    color: #66bb6a;
+    border-color: #3a5a3a;
+}
+
+body.dark-mode .color-example.blue {
+    background-color: #1a3a4a;
+    color: #64b5f6;
+    border-color: #2a4a5a;
+}
+
+body.dark-mode .color-example.yellow {
+    background-color: #4a4a1a;
+    color: #ffeb3b;
+    border-color: #5a5a2a;
+}
+
+body.dark-mode .color-example.purple {
+    background-color: #3a2a4a;
+    color: #ab47bc;
+    border-color: #4a3a5a;
+}
+
+body.dark-mode .color-example.orange {
+    background-color: #4a3a1a;
+    color: #ff9800;
+    border-color: #5a4a2a;
+}
+
+body.dark-mode .color-example.gray {
+    background-color: #3a3a3a;
+    color: #bdbdbd;
+    border-color: #4a4a4a;
+}
+
+body.dark-mode .color-example.pink {
+    background-color: #4a2a3a;
+    color: #e91e63;
+    border-color: #5a3a4a;
+}
+
 body.dark-mode tbody tr.highlighted .task-content {
     background-color: #4a4a2a !important;
     color: #ffc107 !important;

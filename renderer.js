@@ -337,6 +337,13 @@ class TaskManager {
             });
         }
 
+        // Color example buttons in settings
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('color-example')) {
+                this.addColorToTagInput(e.target.textContent);
+            }
+        });
+
         // Tag preset input enter key
         const newTagPresetInput = document.getElementById('newTagPreset');
         if (newTagPresetInput) {
@@ -1093,6 +1100,9 @@ class TaskManager {
             this.editingTaskId = null;
         }
         
+        // Render tag presets in modal
+        this.renderTagPresets();
+        
         modal.style.display = 'block';
         
         // 첫 번째 입력 필드에 포커스
@@ -1845,6 +1855,31 @@ class TaskManager {
         } else {
             tagsInput.value = tagToAdd;
         }
+    }
+
+    addColorToTagInput(colorCode) {
+        // Find the currently active tag input
+        let tagsInput = document.getElementById('taskTags'); // Task modal
+        if (!tagsInput || tagsInput.offsetParent === null) {
+            tagsInput = document.getElementById('newTagPreset'); // Settings modal
+        }
+        
+        if (!tagsInput) return;
+        
+        const currentValue = tagsInput.value;
+        const cursorPosition = tagsInput.selectionStart;
+        
+        // Insert color code at cursor position
+        const beforeCursor = currentValue.substring(0, cursorPosition);
+        const afterCursor = currentValue.substring(cursorPosition);
+        const newValue = beforeCursor + colorCode + afterCursor;
+        
+        tagsInput.value = newValue;
+        
+        // Position cursor after the color code, ready to type tag name
+        const newCursorPosition = cursorPosition + colorCode.length;
+        tagsInput.setSelectionRange(newCursorPosition, newCursorPosition);
+        tagsInput.focus();
     }
 
     parseTagsFromInput(input) {
