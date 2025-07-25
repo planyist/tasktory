@@ -8,7 +8,7 @@ A compact desktop application for managing tasks with always-on-top functionalit
 - **Compact Design**: Optimized for corner placement (600x400 window)
 - **Task Management**: Add, edit, complete, and delete tasks with ease
 - **Time Tracking**: Set start and target times for each task
-- **Status Indicators**: Visual status (Pending, Overdue, Done)
+- **Status Indicators**: Visual status (Pending, In Progress, Due Soon, Overdue, Done)
 - **Completion Counter**: Daily completion counter with celebration animations
 - **Comprehensive Logging**: All actions are logged in structured .log format
 - **Cross-Platform**: Works on Windows, Linux, and macOS
@@ -49,11 +49,16 @@ Simply open `tasktory-standalone.html` in your web browser for a version without
 2. **Editing Tasks**: Click the "Edit" button next to any task to modify it
 3. **Completing Tasks**: Click "Done" to mark tasks as completed (removes from list)
 4. **Deleting Tasks**: Click "Delete" to remove tasks without completing them
-5. **Status Tracking**: Tasks automatically show as Pending or Overdue based on target time
+5. **Status Tracking**: Tasks automatically show status based on timing:
+   - **Pending**: Before start time
+   - **In Progress**: Between start and target time
+   - **Due Soon**: Less than 1 hour remaining
+   - **Overdue**: Past target time
 
 ## Keyboard Shortcuts
 
 - `Ctrl/Cmd + N`: Add new task
+- `Ctrl/Cmd + M`: Toggle ultra-compact mode (80px width)
 - `ESC`: Close modal or date picker
 
 ## Data Storage

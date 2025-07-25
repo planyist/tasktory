@@ -278,7 +278,7 @@ h1 {
     margin-bottom: 1px;
     cursor: pointer;
     transition: background-color 0.2s;
-    font-size: 9px;
+    font-size: 11px;
     background: #f8f9fa;
     border-radius: 2px;
     word-wrap: break-word;
@@ -727,9 +727,9 @@ tbody tr:nth-child(even):hover {
 }
 
 tbody tr.highlighted .task-content {
-    background-color: #fff3cd !important;
-    color: #856404 !important;
-    border: 2px solid #ffc107 !important;
+    background-color: #fff2e6 !important;
+    color: #bf6900 !important;
+    border: 2px solid #fd7e14 !important;
     border-radius: 4px !important;
     padding: 8px !important;
     font-weight: 600 !important;
@@ -1550,9 +1550,9 @@ body.dark-mode .color-example.pink {
 }
 
 body.dark-mode tbody tr.highlighted .task-content {
-    background-color: #4a4a2a !important;
-    color: #ffc107 !important;
-    border: 2px solid #ffc107 !important;
+    background-color: #4a3a2a !important;
+    color: #fd7e14 !important;
+    border: 2px solid #fd7e14 !important;
     border-radius: 4px !important;
     padding: 8px !important;
     font-weight: 600 !important;
