@@ -474,9 +474,12 @@ class TaskManager {
                 timestamp: new Date().toISOString()
             };
 
+            console.log('Adding log entry:', action, 'for task:', task.id, 'details:', details);
+
             if (this.isElectron) {
                 // Electron mode: use IPC
-                await window.electronAPI.addLog(logEntry);
+                const result = await window.electronAPI.addLog(logEntry);
+                console.log('Log write result:', result);
             } else {
                 // Browser mode: add to local array
                 this.logs.push(logEntry);
@@ -1441,18 +1444,10 @@ class TaskManager {
         const modal = document.getElementById('aboutModal');
         const openFolderBtn = document.getElementById('openLogFolderBtn');
         
-        // Update log path in about modal
+        // Show folder button only in Electron mode
         if (this.isElectron) {
-            try {
-                const logPath = await window.electronAPI.getLogPath();
-                document.getElementById('aboutLogPath').textContent = logPath;
-                openFolderBtn.style.display = 'inline-flex';
-            } catch (error) {
-                document.getElementById('aboutLogPath').textContent = 'Error loading path';
-                openFolderBtn.style.display = 'none';
-            }
+            openFolderBtn.style.display = 'inline-flex';
         } else {
-            document.getElementById('aboutLogPath').textContent = 'Browser localStorage';
             openFolderBtn.style.display = 'none';
         }
         

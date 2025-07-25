@@ -82,7 +82,9 @@ const ensureDataDir = async () => {
 // 오늘 날짜의 로그 파일 경로 생성
 const getTodayLogFile = () => {
     const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD 형식
-    return path.join(logsDir, `${today}.log`)
+    const logFile = path.join(logsDir, `${today}.log`)
+    console.log('IPC: Today log file:', logFile, 'for date:', today);
+    return logFile
 }
 
 // 태스크 로드
@@ -111,15 +113,19 @@ ipcMain.handle('save-tasks', async (event, tasks) => {
 // 로그 추가 (날짜별 파일로 저장)
 ipcMain.handle('add-log', async (event, logEntry) => {
     try {
+        console.log('IPC: Adding log entry:', logEntry.action, 'for task:', logEntry.task.id);
         await ensureDataDir()
         const todayLogFile = getTodayLogFile()
+        console.log('IPC: Log file path:', todayLogFile);
         
         // Check if file exists and add header if it's a new file
         let fileExists = false;
         try {
             await fs.access(todayLogFile);
             fileExists = true;
+            console.log('IPC: Log file exists');
         } catch (error) {
+            console.log('IPC: Log file does not exist, will create with header');
             // File doesn't exist, we'll create it with header
         }
         
@@ -181,11 +187,14 @@ ipcMain.handle('add-log', async (event, logEntry) => {
         // Create fixed-width log line
         const logLine = `${timestamp}${action}${status}${taskId}${startTime}${targetTime}${tags}\t${content}\n`;
         
+        console.log('IPC: Writing log line:', logLine.substring(0, 100) + '...');
+        
         // Append to log file
         await fs.appendFile(todayLogFile, logLine)
+        console.log('IPC: Log file written successfully');
         return true
     } catch (error) {
-        console.error('Failed to add log:', error)
+        console.error('IPC: Failed to add log:', error)
         return false
     }
 })
