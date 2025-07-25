@@ -214,6 +214,17 @@
             <h2>Settings</h2>
             
             <div class="settings-group">
+                <label>Language</label>
+                <div class="language-toggle">
+                    <button id="langEnBtn" class="lang-btn active" data-lang="en" title="English">EN</button>
+                    <button id="langKoBtn" class="lang-btn" data-lang="ko" title="한국어">한국어</button>
+                    <button id="langZhBtn" class="lang-btn" data-lang="zh" title="中文">中文</button>
+                    <button id="langJaBtn" class="lang-btn" data-lang="ja" title="日本語">日本語</button>
+                    <button id="langEsBtn" class="lang-btn" data-lang="es" title="Español">ES</button>
+                </div>
+            </div>
+            
+            <div class="settings-group">
                 <label>Theme Mode</label>
                 <div class="theme-toggle">
                     <button id="lightModeBtn" class="theme-btn active" title="Light Mode">
@@ -285,7 +296,7 @@
         <div class="modal-content">
             <span class="close" data-modal="about">&times;</span>
             <h2>About Tasktory</h2>
-            <p><strong>Version:</strong> 0.2.1</p>
+            <p><strong>Version:</strong> 0.2.2</p>
             <p><strong>Log Location:</strong> <span id="aboutLogPath">Loading...</span></p>
             <p><strong>License:</strong> MIT</p>
             <p><strong>Author:</strong> Jeonghwan Yoo &lt;planyist@gmail.com&gt;</p>

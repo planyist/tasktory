@@ -4,7 +4,7 @@ class TaskManager {
         this.logs = [];
         this.editingTaskId = null;
         this.isElectron = typeof window.electronAPI !== 'undefined';
-        this.locale = this.getSystemLocale();
+        this.locale = this.getSelectedLanguage();
         this.darkMode = localStorage.getItem('darkMode') === 'true';
         this.searchQuery = '';
         this.notifiedTasks = new Set(); // 이미 알림을 보낸 태스크들
@@ -21,12 +21,33 @@ class TaskManager {
         return navigator.language || navigator.userLanguage || 'en-US';
     }
 
+    getSelectedLanguage() {
+        const savedLanguage = localStorage.getItem('selectedLanguage');
+        if (savedLanguage) {
+            return savedLanguage;
+        }
+        
+        // Auto-detect based on system locale as fallback
+        const systemLocale = this.getSystemLocale();
+        if (systemLocale.startsWith('ko')) {
+            return 'ko';
+        } else if (systemLocale.startsWith('zh')) {
+            return 'zh';
+        } else if (systemLocale.startsWith('ja')) {
+            return 'ja';
+        } else if (systemLocale.startsWith('es')) {
+            return 'es';
+        }
+        return 'en'; // Default fallback
+    }
+
     async init() {
         this.completionCount = await this.getTodayCompletionCount();
         this.setupEventListeners();
         this.setupUI();
         this.updateUIText();
         this.applyTheme();
+        this.applyLanguageTheme();
         await this.loadTasks();
         this.renderTasks();
         this.updateCompletionCounter();
@@ -103,10 +124,34 @@ class TaskManager {
         }
     }
 
+    applyLanguageTheme() {
+        // Remove active class from all language buttons
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+        
+        // Add active class to current language button
+        const currentLangBtn = document.querySelector(`[data-lang="${this.locale}"]`);
+        if (currentLangBtn) {
+            currentLangBtn.classList.add('active');
+        }
+    }
+
     toggleTheme(isDark) {
         this.darkMode = isDark;
         localStorage.setItem('darkMode', isDark.toString());
         this.applyTheme();
+    }
+
+    changeLanguage(languageCode) {
+        this.locale = languageCode;
+        localStorage.setItem('selectedLanguage', languageCode);
+        this.applyLanguageTheme();
+        this.updateUIText();
+        
+        // Re-render tasks to update localized content
+        this.renderTasks();
+        
+        // Update tags help text with new language
+        this.updateTagsHelpText();
     }
 
     toggleDefaultNotification(enabled) {
@@ -303,6 +348,14 @@ class TaskManager {
                 window.electronAPI.setUnfocusedOpacity(opacity);
             });
         }
+
+        // Language toggle buttons
+        document.querySelectorAll('.lang-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const languageCode = btn.getAttribute('data-lang');
+                this.changeLanguage(languageCode);
+            });
+        });
 
         // Theme toggle buttons
         document.getElementById('lightModeBtn').addEventListener('click', () => {
