@@ -199,6 +199,17 @@ class TaskManager {
             this.showAboutModal();
         });
 
+        // Open log folder button
+        document.getElementById('openLogFolderBtn').addEventListener('click', async () => {
+            if (this.isElectron && window.electronAPI.openLogFolder) {
+                try {
+                    await window.electronAPI.openLogFolder();
+                } catch (error) {
+                    console.error('Failed to open log folder:', error);
+                }
+            }
+        });
+
         // Statistics button
         document.getElementById('statisticsBtn').addEventListener('click', () => {
             this.showStatisticsModal();
@@ -1428,17 +1439,21 @@ class TaskManager {
 
     async showAboutModal() {
         const modal = document.getElementById('aboutModal');
+        const openFolderBtn = document.getElementById('openLogFolderBtn');
         
         // Update log path in about modal
         if (this.isElectron) {
             try {
                 const logPath = await window.electronAPI.getLogPath();
                 document.getElementById('aboutLogPath').textContent = logPath;
+                openFolderBtn.style.display = 'inline-flex';
             } catch (error) {
                 document.getElementById('aboutLogPath').textContent = 'Error loading path';
+                openFolderBtn.style.display = 'none';
             }
         } else {
             document.getElementById('aboutLogPath').textContent = 'Browser localStorage';
+            openFolderBtn.style.display = 'none';
         }
         
         modal.style.display = 'block';
@@ -1756,8 +1771,7 @@ class TaskManager {
             task.completed = true;
             task.completedAt = new Date().toISOString();
             
-            const prefix = this.language === 'ko' ? '완료' : 'completed';
-            const logDetails = details ? `(${prefix}) ${details}` : task.content;
+            const logDetails = details ? `(completed) ${details}` : task.content;
             await this.addLog('COMPLETE', task, logDetails);
             await this.saveTasks();
             this.renderTasks();
@@ -1778,8 +1792,7 @@ class TaskManager {
             const task = this.tasks[taskIndex];
             this.tasks.splice(taskIndex, 1);
             
-            const prefix = this.language === 'ko' ? '삭제' : 'deleted';
-            const logDetails = details ? `(${prefix}) ${details}` : task.content;
+            const logDetails = details ? `(deleted) ${details}` : task.content;
             await this.addLog('DELETE', task, logDetails);
             await this.saveTasks();
             this.renderTasks();
@@ -2427,14 +2440,10 @@ class TaskManager {
                     task.status = currentStatus.status;
                     statusChanged = true;
                     
-                    // Log status change
-                    const statusText = this.language === 'ko' ? 
-                        (currentStatus.status === 'overdue' ? '연체' : 
-                         currentStatus.status === 'urgent' ? '긴급' : 
-                         currentStatus.status === 'inprogress' ? '진행중' : '대기') :
-                        (currentStatus.status === 'overdue' ? 'overdue' : 
-                         currentStatus.status === 'urgent' ? 'urgent' : 
-                         currentStatus.status === 'inprogress' ? 'inprogress' : 'pending');
+                    // Log status change (always in English for consistent formatting)
+                    const statusText = currentStatus.status === 'overdue' ? 'overdue' : 
+                                      currentStatus.status === 'urgent' ? 'urgent' : 
+                                      currentStatus.status === 'inprogress' ? 'inprogress' : 'pending';
                     
                     await this.addLog('STATUS_CHANGE', task, `Status changed to ${statusText}`);
                 } else if (!previousStatus) {

@@ -1064,6 +1064,26 @@ td:nth-child(6) {
     font-size: 14px;
 }
 
+.folder-open-btn {
+    background: transparent;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 4px 6px;
+    margin-left: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    vertical-align: middle;
+}
+
+.folder-open-btn:hover {
+    background-color: #f8f9fa;
+    border-color: #007bff;
+    transform: scale(1.1);
+}
+
 .modal-content ul {
     margin-left: 20px;
     font-size: 12px;
@@ -1680,6 +1700,16 @@ body.dark-mode .theme-btn.active {
 
 body.dark-mode .settings-group label {
     color: #e0e0e0;
+}
+
+body.dark-mode .folder-open-btn {
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+body.dark-mode .folder-open-btn:hover {
+    background-color: #2d2d2d;
+    border-color: #007bff;
 }
 
 body.dark-mode .modal-content h3 {

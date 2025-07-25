@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     exportData: () => ipcRenderer.invoke('export-data'),
     importData: (data) => ipcRenderer.invoke('import-data', data),
     getLogPath: () => ipcRenderer.invoke('get-log-path'),
+    openLogFolder: () => ipcRenderer.invoke('open-log-folder'),
     setUnfocusedOpacity: (opacity) => ipcRenderer.invoke('set-unfocused-opacity', opacity),
     showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body),
     getCompletedTasksCount: (dateStr) => ipcRenderer.invoke('get-completed-tasks-count', dateStr),

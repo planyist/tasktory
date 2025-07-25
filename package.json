@@ -1,6 +1,6 @@
 {
   "name": "tasktory",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A compact desktop application for managing tasks with always-on-top functionality. Track your tasks efficiently without losing focus.",
   "main": "main.js",
   "scripts": {

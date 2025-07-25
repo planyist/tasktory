@@ -226,6 +226,19 @@ ipcMain.handle('get-log-path', async () => {
     return logsDir
 })
 
+// 로그 폴더 열기
+ipcMain.handle('open-log-folder', async () => {
+    try {
+        const { shell } = require('electron')
+        await ensureDataDir()
+        shell.openPath(logsDir)
+        return true
+    } catch (error) {
+        console.error('Failed to open log folder:', error)
+        return false
+    }
+})
+
 // Opacity 설정
 ipcMain.handle('set-unfocused-opacity', async (event, opacity) => {
     unfocusedOpacity = opacity
