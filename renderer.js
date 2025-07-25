@@ -11,7 +11,7 @@ class TaskManager {
         this.completionCount = 0; // Will be set in init()
         this.isCollapsed = false;
         this.currentPage = 1;
-        this.tasksPerPage = 10;
+        this.tasksPerPage = 5;
         this.defaultNotificationEnabled = localStorage.getItem('defaultNotificationEnabled') !== 'false';
         this.tagPresets = this.loadTagPresets();
         this.init();
@@ -758,6 +758,11 @@ class TaskManager {
             li.setAttribute('data-task-id', task.id);
             li.innerHTML = `${originalIndex + 1}. ${task.content}`;
             
+            // Apply highlight style if task is highlighted
+            if (task.highlighted) {
+                li.classList.add('highlighted');
+            }
+            
             // Add click handler for collapsed items
             li.addEventListener('click', () => {
                 this.editTask(task.id);
@@ -846,6 +851,9 @@ class TaskManager {
         const prevBtn = document.getElementById('prevPageBtn');
         const nextBtn = document.getElementById('nextPageBtn');
 
+        // Debug log for pagination
+        console.log(`renderPagination called with totalPages: ${totalPages}, currentPage: ${this.currentPage}, tasksPerPage: ${this.tasksPerPage}`);
+        
         if (totalPages <= 1) {
             paginationContainer.style.display = 'none';
             return;
@@ -1016,7 +1024,7 @@ class TaskManager {
             const targetIndex = this.tasks.findIndex(t => t.id === activeTasks[activeIndex + 1].id);
             
             this.tasks.splice(taskIndex, 1);
-            this.tasks.splice(targetIndex + 1, 0, currentTask);
+            this.tasks.splice(targetIndex, 0, currentTask);
             
             await this.addLog('MOVE_DOWN', currentTask, `Moved task down from position ${activeIndex + 1} to ${activeIndex + 2}`);
         }
