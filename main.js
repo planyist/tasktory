@@ -4,6 +4,7 @@ const path = require('path')
 
 let mainWindow
 let unfocusedOpacity = 1.0
+let originalWindowBounds = null
 
 const createWindow = () => {
     mainWindow = new BrowserWindow({
@@ -40,6 +41,9 @@ const createWindow = () => {
         mainWindow.webContents.openDevTools()
     }
 }
+
+// GPU 가속 비활성화 (호환성 문제 해결)
+app.disableHardwareAcceleration()
 
 // 앱 준비 완료 시 창 생성
 app.whenReady().then(() => {
@@ -110,6 +114,21 @@ ipcMain.handle('add-log', async (event, logEntry) => {
         await ensureDataDir()
         const todayLogFile = getTodayLogFile()
         
+        // Check if file exists and add header if it's a new file
+        let fileExists = false;
+        try {
+            await fs.access(todayLogFile);
+            fileExists = true;
+        } catch (error) {
+            // File doesn't exist, we'll create it with header
+        }
+        
+        // Add header if file is new
+        if (!fileExists) {
+            const header = `${'TIMESTAMP'.padEnd(25)}${'ACTION'.padEnd(15)}${'STATUS'.padEnd(10)}${'TASK-ID'.padEnd(45)}${'START-TIME'.padEnd(20)}${'TARGET-TIME'.padEnd(20)}TAGS\tCONTENT\n`;
+            await fs.writeFile(todayLogFile, header);
+        }
+        
         // Format timestamp to fixed 25 characters
         const timestamp = new Date().toISOString().padEnd(25);
         
@@ -120,30 +139,43 @@ ipcMain.handle('add-log', async (event, logEntry) => {
             'COMPLETE': 'COMPLETE',
             'DELETE': 'DELETE',
             'MOVE_UP': 'MOVE_UP',
-            'MOVE_DOWN': 'MOVE_DOWN'
+            'MOVE_DOWN': 'MOVE_DOWN',
+            'HIGHLIGHT': 'HIGHLIGHT',
+            'UNHIGHLIGHT': 'UNHIGHLIGHT',
+            'NOTI_ON': 'NOTI_ON',
+            'NOTI_OFF': 'NOTI_OFF',
+            'STATUS_CHANGE': 'STATUS_CHANGE'
         };
         const action = (actionMap[logEntry.action] || logEntry.action).padEnd(15);
         
         // Convert status to English and pad to 10 characters  
         const statusMap = {
             'completed': 'COMPLETED',
-            'active': 'ACTIVE',
             'pending': 'PENDING',
+            'urgent': 'URGENT',
             'overdue': 'OVERDUE'
         };
-        const taskStatus = logEntry.task.completed ? 'COMPLETED' : 'ACTIVE';
-        const status = (statusMap[taskStatus] || taskStatus).padEnd(10);
+        // Use actual task status from the task object, or determine from completion state
+        const taskStatus = logEntry.task.status || (logEntry.task.completed ? 'completed' : 'pending');
+        const status = (statusMap[taskStatus] || taskStatus.toUpperCase()).padEnd(10);
         
-        // Task ID padded to 25 characters
-        const taskId = (logEntry.task.id || logEntry.task.taskId || '').padEnd(25);
+        // Task ID padded to 45 characters
+        const taskId = (logEntry.task.id || logEntry.task.taskId || '').padEnd(45);
         
-        // Start and target times padded to 25 characters each
-        const startTime = (logEntry.task.startDateTime || '').padEnd(25);
-        const targetTime = (logEntry.task.targetDateTime || '').padEnd(25);
+        // Start and target times padded to 20 characters each
+        const startTime = (logEntry.task.startDateTime || '').padEnd(20);
+        const targetTime = (logEntry.task.targetDateTime || '').padEnd(20);
         
         // Tags and content (no padding needed - variable length)
         const tags = logEntry.task.tags || '';
-        const content = logEntry.details || logEntry.task.content || '';
+        
+        // For content: always use actual task content when available
+        let content = logEntry.task.content || logEntry.details || '';
+        
+        // Add action-specific context if needed
+        if (logEntry.action === 'COMPLETE' && logEntry.details) {
+            content = logEntry.details; // Use completion details if provided
+        }
         
         // Create fixed-width log line
         const logLine = `${timestamp}${action}${status}${taskId}${startTime}${targetTime}${tags}\t${content}\n`;
@@ -225,4 +257,55 @@ ipcMain.handle('show-notification', async (event, title, body) => {
         return true
     }
     return false
+})
+
+// Get completed tasks count for a specific date from log file
+ipcMain.handle('get-completed-tasks-count', async (event, dateStr) => {
+    try {
+        const logFile = path.join(logsDir, `${dateStr}.log`);
+        const logData = await fs.readFile(logFile, 'utf8');
+        
+        // Count COMPLETE actions in the log file
+        const lines = logData.split('\n').filter(line => line.trim());
+        let completedCount = 0;
+        
+        for (const line of lines) {
+            // Skip header line
+            if (line.startsWith('TIMESTAMP')) continue;
+            
+            // Check if the line contains COMPLETE action (at position 25, length 15)
+            if (line.length >= 40) {
+                const action = line.substring(25, 40).trim();
+                if (action === 'COMPLETE') {
+                    completedCount++;
+                }
+            }
+        }
+        
+        return completedCount;
+    } catch (error) {
+        // File doesn't exist or other error - return 0
+        return 0;
+    }
+})
+
+// Resize window for collapsed mode
+ipcMain.handle('resize-window', async (event, width, height) => {
+    if (mainWindow) {
+        if (width === 80) {
+            // Store original bounds before collapsing
+            originalWindowBounds = mainWindow.getBounds();
+        }
+        
+        mainWindow.setSize(width, height);
+        
+        if (width !== 80 && originalWindowBounds) {
+            // Restore original position when expanding
+            mainWindow.setPosition(originalWindowBounds.x, originalWindowBounds.y);
+            originalWindowBounds = null;
+        }
+        
+        return true;
+    }
+    return false;
 })

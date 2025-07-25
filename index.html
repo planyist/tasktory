@@ -18,22 +18,27 @@
                 <h1>Tasktory</h1>
             </div>
             <div class="header-buttons">
-                <button id="exportBtn" class="btn icon-btn" style="display: none;" title="">💾</button>
-                <button id="importBtn" class="btn icon-btn" style="display: none;" title="">📂</button>
+                <button id="exportBtn" class="btn icon-btn" title="">💾</button>
+                <button id="importBtn" class="btn icon-btn" title="">📂</button>
+                <button id="statisticsBtn" class="btn icon-btn" title="">📊</button>
                 <button id="settingsBtn" class="btn icon-btn" title="">⚙️</button>
                 <button id="aboutBtn" class="btn icon-btn" title="">ℹ️</button>
+                <button id="collapseBtn" class="btn icon-btn" title="Toggle ultra-compact mode (Ctrl+M)">↗️</button>
             </div>
         </header>
         
         <main>
             <div class="completion-counter-container">
                 <div id="completionCounter" class="completion-counter">
-                    완료 <span id="completionCount" class="completion-count">0</span>건
+                    <span id="completionCounterText">Completed</span> <span id="completionCount" class="completion-count">0</span>
                 </div>
             </div>
             <div class="table-controls">
                 <div class="controls-right">
-                    <input type="text" id="searchInput" placeholder="" class="search-input">
+                    <div class="search-container">
+                        <input type="text" id="searchInput" placeholder="" class="search-input">
+                        <button id="clearSearchBtn" class="btn clear-search-btn" title="Clear search">✕</button>
+                    </div>
                     <button id="addTaskBtn" class="btn icon-btn add-btn" title="">✚</button>
                 </div>
             </div>
@@ -54,6 +59,33 @@
                         <!-- Dynamically generated task list -->
                     </tbody>
                 </table>
+                
+                <!-- Collapsed view -->
+                <div id="collapsedTaskList" class="collapsed-task-list" style="display: none;">
+                    <ul id="collapsedTasksBody">
+                        <!-- Collapsed task items -->
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Collapsed Mini Layout (100px width) -->
+            <div id="collapsedMiniLayout" class="collapsed-mini-layout">
+                <button id="collapsedExpandBtn" class="collapsed-expand-btn" title="Expand">↙️</button>
+                <div id="collapsedCompletionCounter" class="collapsed-completion-counter">0</div>
+                <div class="collapsed-task-list">
+                    <ul id="collapsedMiniTasksBody">
+                        <!-- Mini collapsed task items -->
+                    </ul>
+                </div>
+            </div>
+            
+            <!-- Pagination -->
+            <div id="paginationContainer" class="pagination-container">
+                <div class="pagination">
+                    <button id="prevPageBtn" class="pagination-btn">‹</button>
+                    <div id="pageNumbers" class="page-numbers"></div>
+                    <button id="nextPageBtn" class="pagination-btn">›</button>
+                </div>
             </div>
         </main>
     </div>
@@ -65,6 +97,10 @@
             <h2 id="modalTitle"></h2>
             <form id="taskForm">
                 <div class="form-group">
+                    <label for="taskPosition" id="labelPosition">Position:</label>
+                    <input type="number" id="taskPosition" min="1" placeholder="Position in list">
+                </div>
+                <div class="form-group">
                     <label for="startDateTime" id="labelStartTime">Start Time:</label>
                     <input type="datetime-local" id="startDateTime" required>
                 </div>
@@ -74,7 +110,10 @@
                 </div>
                 <div class="form-group">
                     <label for="taskTags" id="labelTags">Tags:</label>
-                    <input type="text" id="taskTags" placeholder="">
+                    <div class="tags-input-container">
+                        <div id="tagPresets" class="tag-presets"></div>
+                        <input type="text" id="taskTags" placeholder="">
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="taskContent" id="labelTaskContent">Task Content:</label>
@@ -95,7 +134,7 @@
             <h2>Settings</h2>
             
             <div class="settings-group">
-                <label>Theme Mode:</label>
+                <label>Theme Mode</label>
                 <div class="theme-toggle">
                     <button id="lightModeBtn" class="theme-btn active" title="Light Mode">☀️</button>
                     <button id="darkModeBtn" class="theme-btn" title="Dark Mode">🌙</button>
@@ -103,9 +142,33 @@
             </div>
             
             <div class="settings-group">
-                <label for="settingsOpacitySlider">Unfocused Opacity:</label>
+                <label>Default Notification</label>
+                <div class="notification-toggle">
+                    <button id="notificationOnBtn" class="notification-btn active" title="Notifications On">🔔</button>
+                    <button id="notificationOffBtn" class="notification-btn" title="Notifications Off">🔕</button>
+                </div>
+            </div>
+            
+            <div class="settings-group">
+                <label for="settingsOpacitySlider">Unfocused Opacity</label>
                 <input type="range" id="settingsOpacitySlider" min="0.3" max="1" step="0.1" value="1">
                 <span id="opacityValue">1</span>
+            </div>
+            
+            <div class="settings-group">
+                <label>Tag Presets</label>
+                <div class="tag-color-examples">
+                    <small>Use colors: <span class="color-example red">#[RED]</span> <span class="color-example green">#[GREEN]</span> <span class="color-example blue">#[BLUE]</span> <span class="color-example yellow">#[YELLOW]</span> <span class="color-example purple">#[PURPLE]</span> <span class="color-example orange">#[ORANGE]</span> <span class="color-example gray">#[GRAY]</span> <span class="color-example pink">#[PINK]</span></small>
+                </div>
+                <div class="tag-presets-manager">
+                    <div class="tag-preset-add">
+                        <input type="text" id="newTagPreset" placeholder="e.g., #[RED]urgent or #meeting" maxlength="30">
+                        <button type="button" id="addTagPresetBtn" class="btn">Add</button>
+                    </div>
+                    <div id="tagPresetsList" class="tag-presets-list">
+                        <!-- Dynamic tag presets will be inserted here -->
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -115,10 +178,10 @@
         <div class="modal-content">
             <span class="close" data-modal="about">&times;</span>
             <h2>About Tasktory</h2>
-            <p><strong>Version:</strong> 0.1.0</p>
+            <p><strong>Version:</strong> 0.1.2</p>
             <p><strong>Log Location:</strong> <span id="aboutLogPath">Loading...</span></p>
             <p><strong>License:</strong> MIT</p>
-            <p><strong>Author:</strong> Jeonghwan Yoo &lt;your-email@gmail.com&gt;</p>
+            <p><strong>Author:</strong> Jeonghwan Yoo &lt;planyist@gmail.com&gt;</p>
             
             <h3>How to Use</h3>
             <ul>
@@ -129,12 +192,30 @@
                 <li><strong>Highlight:</strong> Click 🔶 to highlight important tasks</li>
                 <li><strong>Reorder:</strong> Use ⬆️⬇️ arrows to change task order</li>
                 <li><strong>Export/Import:</strong> Use 💾📂 to backup/restore data</li>
-                <li><strong>Tags:</strong> Use #hashtags in Tags field for categorization</li>
+                <li><strong>Tags:</strong> Use #hashtags separated by spaces (e.g., #work #urgent)</li>
+                <li><strong>Notifications:</strong> Click 🔔/🔕 to toggle task notifications</li>
+            </ul>
+            
+            <h3>Notifications</h3>
+            <ul>
+                <li><strong>Auto Alerts:</strong> 1 hour and 15 minutes before deadline</li>
+                <li><strong>Overdue Alert:</strong> When task passes target time</li>
+                <li><strong>Toggle Per Task:</strong> Use 🔔/🔕 button in task row</li>
+                <li><strong>Default Setting:</strong> Configure in Settings ⚙️</li>
+            </ul>
+            
+            <h3>Task Status</h3>
+            <ul>
+                <li><strong><span style="color: #664d03; background: #fff3cd; padding: 2px 6px; border-radius: 8px;">Pending</span>:</strong> Task is waiting to be started</li>
+                <li><strong><span style="color: #003d6b; background: #cce5ff; padding: 2px 6px; border-radius: 8px;">Due Soon</span>:</strong> Less than 1 hour remaining</li>
+                <li><strong><span style="color: #58151c; background: #f8d7da; padding: 2px 6px; border-radius: 8px;">Overdue</span>:</strong> Task has passed target time</li>
+                <li><strong><span style="color: #0f5132; background: #d4edda; padding: 2px 6px; border-radius: 8px;">Completed</span>:</strong> Task has been finished</li>
             </ul>
             
             <h3>Keyboard Shortcuts</h3>
             <ul>
                 <li><strong>Ctrl+N:</strong> Add new task</li>
+                <li><strong>Ctrl+M:</strong> Toggle ultra-compact mode (80px width)</li>
                 <li><strong>ESC:</strong> Close modal or date picker</li>
             </ul>
         </div>
@@ -155,6 +236,17 @@
                     <button type="submit" id="confirmActionBtn"></button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    <!-- Statistics Modal -->
+    <div id="statisticsModal" class="modal">
+        <div class="modal-content">
+            <span class="close" data-modal="statistics">&times;</span>
+            <h2>Statistics (Last 30 Days)</h2>
+            <div id="statisticsChart" class="statistics-chart">
+                <canvas id="chartCanvas" width="850" height="300"></canvas>
+            </div>
         </div>
     </div>
 

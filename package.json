@@ -1,6 +1,6 @@
 {
   "name": "tasktory",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "A compact desktop application for managing tasks with always-on-top functionality. Track your tasks efficiently without losing focus.",
   "main": "main.js",
   "scripts": {
@@ -27,7 +27,7 @@
   ],
   "author": {
     "name": "Jeonghwan Yoo",
-    "email": "your-email@example.com"
+    "email": "planyist@gmail.com"
   },
   "license": "MIT",
   "bugs": {
