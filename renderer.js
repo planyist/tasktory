@@ -340,6 +340,8 @@ class TaskManager {
         // Color example buttons in settings
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('color-example')) {
+                e.preventDefault();
+                e.stopPropagation();
                 this.addColorToTagInput(e.target.textContent);
             }
         });
@@ -1799,7 +1801,11 @@ class TaskManager {
             item.style.color = parsed.color.text;
             
             // Add click event to add tag to input
-            tagText.onclick = () => this.addPresetTag(preset);
+            tagText.onclick = (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                this.addPresetTag(preset);
+            };
             
             const removeBtn = document.createElement('button');
             removeBtn.className = 'tag-preset-remove';
@@ -1832,7 +1838,11 @@ class TaskManager {
                 button.style.borderColor = parsed.color.border;
                 button.style.color = parsed.color.text;
                 
-                button.onclick = () => this.addPresetTag(preset);
+                button.onclick = (e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    this.addPresetTag(preset);
+                };
                 container.appendChild(button);
             }
         });
