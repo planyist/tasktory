@@ -954,7 +954,14 @@ class TaskManager {
             
             // Resize window if in Electron mode
             if (this.isElectron && window.electronAPI) {
-                this.resizeWindow(80, 600);
+                // Calculate dynamic height based on task count
+                const activeTasks = this.tasks.filter(t => !t.completed);
+                const taskCount = Math.min(activeTasks.length, 20); // Max 20 tasks in mini view
+                const baseHeight = 80; // Header + completion counter
+                const taskHeight = 20; // Height per task
+                const dynamicHeight = Math.max(150, baseHeight + (taskCount * taskHeight));
+                
+                this.resizeAndPositionWindow(80, dynamicHeight, 'top-right-150');
             }
         } else {
             // Exit collapsed mode - return to normal view
@@ -967,7 +974,7 @@ class TaskManager {
             
             // Resize window back to normal if in Electron mode
             if (this.isElectron && window.electronAPI) {
-                this.resizeWindow(900, 500);
+                this.resizeAndPositionWindow(900, 500, 'center');
             }
         }
 
@@ -978,6 +985,12 @@ class TaskManager {
         // This would need to be implemented in main.js as an IPC handler
         if (this.isElectron && window.electronAPI && window.electronAPI.resizeWindow) {
             window.electronAPI.resizeWindow(width, height);
+        }
+    }
+
+    resizeAndPositionWindow(width, height, position) {
+        if (this.isElectron && window.electronAPI && window.electronAPI.resizeAndPositionWindow) {
+            window.electronAPI.resizeAndPositionWindow(width, height, position);
         }
     }
 

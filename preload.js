@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setUnfocusedOpacity: (opacity) => ipcRenderer.invoke('set-unfocused-opacity', opacity),
     showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body),
     getCompletedTasksCount: (dateStr) => ipcRenderer.invoke('get-completed-tasks-count', dateStr),
-    resizeWindow: (width, height) => ipcRenderer.invoke('resize-window', width, height)
+    resizeWindow: (width, height) => ipcRenderer.invoke('resize-window', width, height),
+    resizeAndPositionWindow: (width, height, position) => ipcRenderer.invoke('resize-and-position-window', width, height, position)
 })

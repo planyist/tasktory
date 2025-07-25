@@ -313,3 +313,43 @@ ipcMain.handle('resize-window', async (event, width, height) => {
     }
     return false;
 })
+
+// Resize and position window with specific positioning
+ipcMain.handle('resize-and-position-window', async (event, width, height, position) => {
+    if (mainWindow) {
+        const { screen } = require('electron');
+        const primaryDisplay = screen.getPrimaryDisplay();
+        const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
+        
+        if (width === 80) {
+            // Store original bounds before collapsing
+            originalWindowBounds = mainWindow.getBounds();
+            // Temporarily remove minimum size constraints for collapse
+            mainWindow.setMinimumSize(80, height);
+        }
+        
+        mainWindow.setSize(width, height);
+        
+        // Calculate position based on position parameter
+        let x, y;
+        if (position === 'top-right-150') {
+            // Position at top-right, 150px down from top
+            x = screenWidth - width - 20; // 20px padding from right edge
+            y = 150;
+        } else if (position === 'center') {
+            // Center the window
+            x = Math.round((screenWidth - width) / 2);
+            y = Math.round((screenHeight - height) / 2);
+            // Restore minimum size when expanding
+            mainWindow.setMinimumSize(900, 400);
+            originalWindowBounds = null;
+        } else {
+            // Default to current position
+            return true;
+        }
+        
+        mainWindow.setPosition(x, y);
+        return true;
+    }
+    return false;
+})
