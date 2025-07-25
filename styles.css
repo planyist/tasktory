@@ -795,6 +795,12 @@ td:nth-child(6) {
     border: 1px solid #ffeaa7;
 }
 
+.status.inprogress {
+    background-color: #e7f3ff;
+    color: #0066cc;
+    border: 1px solid #b3d9ff;
+}
+
 .status.urgent {
     background-color: #cce5ff;
     color: #003d6b;
@@ -1219,6 +1225,13 @@ body.dark-mode .status.pending {
     background-color: #4a4a2a;
     color: #ffc107;
     border: 1px solid #6a6a3a;
+    font-weight: 700;
+}
+
+body.dark-mode .status.inprogress {
+    background-color: #1a3a4a;
+    color: #64b5f6;
+    border: 1px solid #2a4a5a;
     font-weight: 700;
 }
 

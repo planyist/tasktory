@@ -465,6 +465,7 @@ class TaskManager {
                 // Status
                 'done': 'Done',
                 'pending': 'Pending',
+                'inprogress': 'In Progress', 
                 'overdue': 'Overdue',
                 'urgent': 'Due Soon',
                 // Table headers
@@ -523,6 +524,7 @@ class TaskManager {
                 // Status
                 'done': '완료',
                 'pending': '대기',
+                'inprogress': '진행중',
                 'overdue': '지연',
                 'urgent': '임박',
                 // Table headers
@@ -585,6 +587,7 @@ class TaskManager {
 
     getTaskStatus(task) {
         const now = new Date();
+        const startDate = new Date(task.startDateTime);
         const targetDate = new Date(task.targetDateTime);
         const oneHourBefore = new Date(targetDate.getTime() - 60 * 60 * 1000);
         
@@ -594,6 +597,8 @@ class TaskManager {
             return { status: 'overdue', text: this.getLocalizedText('overdue') };
         } else if (now >= oneHourBefore) {
             return { status: 'urgent', text: this.getLocalizedText('urgent') };
+        } else if (now >= startDate) {
+            return { status: 'inprogress', text: this.getLocalizedText('inprogress') };
         } else {
             return { status: 'pending', text: this.getLocalizedText('pending') };
         }
@@ -2069,9 +2074,11 @@ class TaskManager {
                     // Log status change
                     const statusText = this.language === 'ko' ? 
                         (currentStatus.status === 'overdue' ? '연체' : 
-                         currentStatus.status === 'urgent' ? '긴급' : '대기') :
+                         currentStatus.status === 'urgent' ? '긴급' : 
+                         currentStatus.status === 'inprogress' ? '진행중' : '대기') :
                         (currentStatus.status === 'overdue' ? 'overdue' : 
-                         currentStatus.status === 'urgent' ? 'urgent' : 'pending');
+                         currentStatus.status === 'urgent' ? 'urgent' : 
+                         currentStatus.status === 'inprogress' ? 'inprogress' : 'pending');
                     
                     await this.addLog('STATUS_CHANGE', task, `Status changed to ${statusText}`);
                 } else if (!previousStatus) {

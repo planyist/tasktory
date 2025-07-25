@@ -152,6 +152,7 @@ ipcMain.handle('add-log', async (event, logEntry) => {
         const statusMap = {
             'completed': 'COMPLETED',
             'pending': 'PENDING',
+            'inprogress': 'INPROGRESS',
             'urgent': 'URGENT',
             'overdue': 'OVERDUE'
         };
