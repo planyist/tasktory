@@ -77,8 +77,12 @@ class TaskManager {
         document.getElementById('addTaskBtn').title = this.getLocalizedText('addTask');
         document.getElementById('exportBtn').title = this.getLocalizedText('downloadExport');
         document.getElementById('importBtn').title = this.getLocalizedText('uploadImport');
+        document.getElementById('statisticsBtn').title = this.getLocalizedText('statistics');
         document.getElementById('settingsBtn').title = this.getLocalizedText('settings');
         document.getElementById('aboutBtn').title = this.getLocalizedText('about');
+        document.getElementById('collapseBtn').title = this.getLocalizedText('collapseView');
+        document.getElementById('collapsedExpandBtn').title = this.getLocalizedText('expand');
+        document.getElementById('clearSearchBtn').title = this.getLocalizedText('clearSearch');
         
         // Search input
         document.getElementById('searchInput').placeholder = this.getLocalizedText('search');
@@ -109,6 +113,198 @@ class TaskManager {
         
         // Confirmation modal buttons
         document.getElementById('confirmCancelBtn').textContent = this.getLocalizedText('cancel');
+        
+        // Completion counter text
+        this.updateCompletionCounterText();
+        
+        // Settings modal elements
+        const settingsTitle = document.getElementById('settingsTitle');
+        if (settingsTitle) settingsTitle.textContent = this.getLocalizedText('settingsTitle');
+        
+        const settingsLanguageLabel = document.getElementById('settingsLanguageLabel');
+        if (settingsLanguageLabel) settingsLanguageLabel.textContent = this.getLocalizedText('language');
+        
+        const settingsThemeModeLabel = document.getElementById('settingsThemeModeLabel');
+        if (settingsThemeModeLabel) settingsThemeModeLabel.textContent = this.getLocalizedText('themeMode');
+        
+        const lightModeBtn = document.getElementById('lightModeBtn');
+        if (lightModeBtn) lightModeBtn.title = this.getLocalizedText('lightMode');
+        
+        const darkModeBtn = document.getElementById('darkModeBtn');
+        if (darkModeBtn) darkModeBtn.title = this.getLocalizedText('darkMode');
+        
+        const settingsDefaultNotificationLabel = document.getElementById('settingsDefaultNotificationLabel');
+        if (settingsDefaultNotificationLabel) settingsDefaultNotificationLabel.textContent = this.getLocalizedText('defaultNotification');
+        
+        const notificationOnBtn = document.getElementById('notificationOnBtn');
+        if (notificationOnBtn) notificationOnBtn.title = this.getLocalizedText('notificationsOn');
+        
+        const notificationOffBtn = document.getElementById('notificationOffBtn');
+        if (notificationOffBtn) notificationOffBtn.title = this.getLocalizedText('notificationsOff');
+        
+        const settingsUnfocusedOpacityLabel = document.getElementById('settingsUnfocusedOpacityLabel');
+        if (settingsUnfocusedOpacityLabel) settingsUnfocusedOpacityLabel.textContent = this.getLocalizedText('unfocusedOpacity');
+        
+        const settingsTagPresetsLabel = document.getElementById('settingsTagPresetsLabel');
+        if (settingsTagPresetsLabel) settingsTagPresetsLabel.textContent = this.getLocalizedText('tagPresets');
+        
+        const settingsUseColorsText = document.getElementById('settingsUseColorsText');
+        if (settingsUseColorsText) settingsUseColorsText.childNodes[0].textContent = this.getLocalizedText('useColors') + ' ';
+        
+        const addTagPresetBtn = document.getElementById('addTagPresetBtn');
+        if (addTagPresetBtn) addTagPresetBtn.textContent = this.getLocalizedText('add');
+        
+        // About modal elements
+        const aboutViewHistoryTitle = document.getElementById('aboutViewHistoryTitle');
+        if (aboutViewHistoryTitle) aboutViewHistoryTitle.textContent = this.getLocalizedText('viewHistory');
+        
+        const aboutHowToUseTitle = document.getElementById('aboutHowToUseTitle');
+        if (aboutHowToUseTitle) aboutHowToUseTitle.textContent = this.getLocalizedText('howToUse');
+        
+        const aboutNotificationsTitle = document.getElementById('aboutNotificationsTitle');
+        if (aboutNotificationsTitle) aboutNotificationsTitle.textContent = this.getLocalizedText('notifications');
+        
+        const aboutTaskStatusTitle = document.getElementById('aboutTaskStatusTitle');
+        if (aboutTaskStatusTitle) aboutTaskStatusTitle.textContent = this.getLocalizedText('taskStatus');
+        
+        const aboutKeyboardShortcutsTitle = document.getElementById('aboutKeyboardShortcutsTitle');
+        if (aboutKeyboardShortcutsTitle) aboutKeyboardShortcutsTitle.textContent = this.getLocalizedText('keyboardShortcuts');
+        
+        const aboutAddNewTask = document.getElementById('aboutAddNewTask');
+        if (aboutAddNewTask) aboutAddNewTask.textContent = this.getLocalizedText('addNewTaskShortcut');
+        
+        const aboutCollapseView = document.getElementById('aboutCollapseView');
+        if (aboutCollapseView) aboutCollapseView.textContent = this.getLocalizedText('collapseViewShortcut');
+        
+        const aboutCloseModal = document.getElementById('aboutCloseModal');
+        if (aboutCloseModal) aboutCloseModal.textContent = this.getLocalizedText('closeModalShortcut');
+        
+        const aboutVersionLabel = document.getElementById('aboutVersionLabel');
+        if (aboutVersionLabel) aboutVersionLabel.textContent = this.getLocalizedText('version') + ':';
+        
+        const aboutLicenseLabel = document.getElementById('aboutLicenseLabel');
+        if (aboutLicenseLabel) aboutLicenseLabel.textContent = this.getLocalizedText('license') + ':';
+        
+        const aboutAuthorLabel = document.getElementById('aboutAuthorLabel');
+        if (aboutAuthorLabel) aboutAuthorLabel.textContent = this.getLocalizedText('author') + ':';
+        
+        // About modal - How to Use instructions
+        const aboutAddTaskTitle = document.getElementById('aboutAddTaskTitle');
+        if (aboutAddTaskTitle) aboutAddTaskTitle.textContent = this.getLocalizedText('addTask') + ':';
+        const aboutAddTaskDesc = document.getElementById('aboutAddTaskDesc');
+        if (aboutAddTaskDesc) aboutAddTaskDesc.textContent = this.getLocalizedText('addTaskInstruction');
+        const aboutAddTaskDescEnd = document.getElementById('aboutAddTaskDescEnd');
+        if (aboutAddTaskDescEnd) aboutAddTaskDescEnd.textContent = this.getLocalizedText('addTaskInstructionEnd');
+        
+        const aboutEditTitle = document.getElementById('aboutEditTitle');
+        if (aboutEditTitle) aboutEditTitle.textContent = this.getLocalizedText('edit') + ':';
+        const aboutEditDesc = document.getElementById('aboutEditDesc');
+        if (aboutEditDesc) aboutEditDesc.textContent = this.getLocalizedText('editInstruction');
+        const aboutEditDescEnd = document.getElementById('aboutEditDescEnd');
+        if (aboutEditDescEnd) aboutEditDescEnd.textContent = this.getLocalizedText('editInstructionEnd');
+        
+        const aboutCompleteTitle = document.getElementById('aboutCompleteTitle');
+        if (aboutCompleteTitle) aboutCompleteTitle.textContent = this.getLocalizedText('complete') + ':';
+        const aboutCompleteDesc = document.getElementById('aboutCompleteDesc');
+        if (aboutCompleteDesc) aboutCompleteDesc.textContent = this.getLocalizedText('completeInstruction');
+        const aboutCompleteDescEnd = document.getElementById('aboutCompleteDescEnd');
+        if (aboutCompleteDescEnd) aboutCompleteDescEnd.textContent = this.getLocalizedText('completeInstructionEnd');
+        
+        const aboutDeleteTitle = document.getElementById('aboutDeleteTitle');
+        if (aboutDeleteTitle) aboutDeleteTitle.textContent = this.getLocalizedText('delete') + ':';
+        const aboutDeleteDesc = document.getElementById('aboutDeleteDesc');
+        if (aboutDeleteDesc) aboutDeleteDesc.textContent = this.getLocalizedText('deleteInstruction');
+        const aboutDeleteDescEnd = document.getElementById('aboutDeleteDescEnd');
+        if (aboutDeleteDescEnd) aboutDeleteDescEnd.textContent = this.getLocalizedText('deleteInstructionEnd');
+        
+        const aboutHighlightTitle = document.getElementById('aboutHighlightTitle');
+        if (aboutHighlightTitle) aboutHighlightTitle.textContent = this.getLocalizedText('highlight') + ':';
+        const aboutHighlightDesc = document.getElementById('aboutHighlightDesc');
+        if (aboutHighlightDesc) aboutHighlightDesc.textContent = this.getLocalizedText('highlightInstruction');
+        const aboutHighlightDescEnd = document.getElementById('aboutHighlightDescEnd');
+        if (aboutHighlightDescEnd) aboutHighlightDescEnd.textContent = this.getLocalizedText('highlightInstructionEnd');
+        
+        const aboutReorderTitle = document.getElementById('aboutReorderTitle');
+        if (aboutReorderTitle) aboutReorderTitle.textContent = this.getLocalizedText('moveUp') + '/' + this.getLocalizedText('moveDown') + ':';
+        const aboutReorderDesc = document.getElementById('aboutReorderDesc');
+        if (aboutReorderDesc) aboutReorderDesc.textContent = this.getLocalizedText('reorderInstruction');
+        const aboutReorderDescEnd = document.getElementById('aboutReorderDescEnd');
+        if (aboutReorderDescEnd) aboutReorderDescEnd.textContent = this.getLocalizedText('reorderInstructionEnd');
+        
+        const aboutExportImportTitle = document.getElementById('aboutExportImportTitle');
+        if (aboutExportImportTitle) aboutExportImportTitle.textContent = this.getLocalizedText('downloadExport') + '/' + this.getLocalizedText('uploadImport') + ':';
+        const aboutExportImportDesc = document.getElementById('aboutExportImportDesc');
+        if (aboutExportImportDesc) aboutExportImportDesc.textContent = this.getLocalizedText('exportImportInstruction');
+        const aboutExportImportDescEnd = document.getElementById('aboutExportImportDescEnd');
+        if (aboutExportImportDescEnd) aboutExportImportDescEnd.textContent = this.getLocalizedText('exportImportInstructionEnd');
+        
+        const aboutTagsTitle = document.getElementById('aboutTagsTitle');
+        if (aboutTagsTitle) aboutTagsTitle.textContent = this.getLocalizedText('tags') + ':';
+        const aboutTagsDesc = document.getElementById('aboutTagsDesc');
+        if (aboutTagsDesc) aboutTagsDesc.textContent = this.getLocalizedText('tagsInstruction');
+        
+        const aboutNotificationsInstructionTitle = document.getElementById('aboutNotificationsInstructionTitle');
+        if (aboutNotificationsInstructionTitle) aboutNotificationsInstructionTitle.textContent = this.getLocalizedText('notifications') + ':';
+        const aboutNotificationsInstructionDesc = document.getElementById('aboutNotificationsInstructionDesc');
+        if (aboutNotificationsInstructionDesc) aboutNotificationsInstructionDesc.textContent = this.getLocalizedText('notificationsInstruction');
+        const aboutNotificationsInstructionDescEnd = document.getElementById('aboutNotificationsInstructionDescEnd');
+        if (aboutNotificationsInstructionDescEnd) aboutNotificationsInstructionDescEnd.textContent = this.getLocalizedText('notificationsInstructionEnd');
+        
+        // About modal - Notifications section
+        const aboutAutoAlertsTitle = document.getElementById('aboutAutoAlertsTitle');
+        if (aboutAutoAlertsTitle) aboutAutoAlertsTitle.textContent = this.getLocalizedText('autoAlerts') + ':';
+        const aboutAutoAlertsDesc = document.getElementById('aboutAutoAlertsDesc');
+        if (aboutAutoAlertsDesc) aboutAutoAlertsDesc.textContent = this.getLocalizedText('autoAlertsDesc');
+        
+        const aboutOverdueAlertTitle = document.getElementById('aboutOverdueAlertTitle');
+        if (aboutOverdueAlertTitle) aboutOverdueAlertTitle.textContent = this.getLocalizedText('overdueAlert') + ':';
+        const aboutOverdueAlertDesc = document.getElementById('aboutOverdueAlertDesc');
+        if (aboutOverdueAlertDesc) aboutOverdueAlertDesc.textContent = this.getLocalizedText('overdueAlertDesc');
+        
+        const aboutTogglePerTaskTitle = document.getElementById('aboutTogglePerTaskTitle');
+        if (aboutTogglePerTaskTitle) aboutTogglePerTaskTitle.textContent = this.getLocalizedText('togglePerTask') + ':';
+        const aboutTogglePerTaskDesc = document.getElementById('aboutTogglePerTaskDesc');
+        if (aboutTogglePerTaskDesc) aboutTogglePerTaskDesc.textContent = this.getLocalizedText('togglePerTaskDesc');
+        
+        const aboutDefaultSettingTitle = document.getElementById('aboutDefaultSettingTitle');
+        if (aboutDefaultSettingTitle) aboutDefaultSettingTitle.textContent = this.getLocalizedText('defaultSetting') + ':';
+        const aboutDefaultSettingDesc = document.getElementById('aboutDefaultSettingDesc');
+        if (aboutDefaultSettingDesc) aboutDefaultSettingDesc.textContent = this.getLocalizedText('defaultSettingDesc');
+        const aboutDefaultSettingEnd = document.getElementById('aboutDefaultSettingEnd');
+        if (aboutDefaultSettingEnd) aboutDefaultSettingEnd.textContent = this.getLocalizedText('defaultSettingEnd');
+        
+        // About modal - Task Status descriptions
+        const aboutPendingStatus = document.getElementById('aboutPendingStatus');
+        if (aboutPendingStatus) aboutPendingStatus.textContent = this.getLocalizedText('pending');
+        const aboutPendingStatusDesc = document.getElementById('aboutPendingStatusDesc');
+        if (aboutPendingStatusDesc) aboutPendingStatusDesc.textContent = this.getLocalizedText('pendingStatusDesc');
+        
+        const aboutInProgressStatus = document.getElementById('aboutInProgressStatus');
+        if (aboutInProgressStatus) aboutInProgressStatus.textContent = this.getLocalizedText('inprogress');
+        const aboutInProgressStatusDesc = document.getElementById('aboutInProgressStatusDesc');
+        if (aboutInProgressStatusDesc) aboutInProgressStatusDesc.textContent = this.getLocalizedText('inProgressStatusDesc');
+        
+        const aboutDueSoonStatus = document.getElementById('aboutDueSoonStatus');
+        if (aboutDueSoonStatus) aboutDueSoonStatus.textContent = this.getLocalizedText('urgent');
+        const aboutDueSoonStatusDesc = document.getElementById('aboutDueSoonStatusDesc');
+        if (aboutDueSoonStatusDesc) aboutDueSoonStatusDesc.textContent = this.getLocalizedText('dueSoonStatusDesc');
+        
+        const aboutOverdueStatus = document.getElementById('aboutOverdueStatus');
+        if (aboutOverdueStatus) aboutOverdueStatus.textContent = this.getLocalizedText('overdue');
+        const aboutOverdueStatusDesc = document.getElementById('aboutOverdueStatusDesc');
+        if (aboutOverdueStatusDesc) aboutOverdueStatusDesc.textContent = this.getLocalizedText('overdueStatusDesc');
+        
+        const aboutCompletedStatus = document.getElementById('aboutCompletedStatus');
+        if (aboutCompletedStatus) aboutCompletedStatus.textContent = this.getLocalizedText('done');
+        const aboutCompletedStatusDesc = document.getElementById('aboutCompletedStatusDesc');
+        if (aboutCompletedStatusDesc) aboutCompletedStatusDesc.textContent = this.getLocalizedText('completedStatusDesc');
+        
+        // About modal - Completion Counter section
+        const aboutCompletionCounterTitle = document.getElementById('aboutCompletionCounterTitle');
+        if (aboutCompletionCounterTitle) aboutCompletionCounterTitle.textContent = this.getLocalizedText('completionCounterTitle');
+        
+        const aboutCompletionCounterDesc = document.getElementById('aboutCompletionCounterDesc');
+        if (aboutCompletionCounterDesc) aboutCompletionCounterDesc.textContent = this.getLocalizedText('completionCounterDescription');
     }
 
 
@@ -311,33 +507,36 @@ class TaskManager {
 
         // Table button click events (event delegation)
         document.getElementById('tasksTable').addEventListener('click', (e) => {
-            if (e.target.classList.contains('action-btn') || e.target.parentElement.classList.contains('action-btn')) {
-                const button = e.target.classList.contains('action-btn') ? e.target : e.target.parentElement;
+            // Find the closest action button (handles nested SVG elements)
+            const button = e.target.closest('.action-btn');
+            if (button) {
                 const taskId = button.getAttribute('data-task-id');
                 const action = button.getAttribute('data-action');
                 
-                switch (action) {
-                    case 'edit':
-                        this.editTask(taskId);
-                        break;
-                    case 'complete':
-                        this.completeTask(taskId);
-                        break;
-                    case 'delete':
-                        this.deleteTask(taskId);
-                        break;
-                    case 'highlight':
-                        this.toggleHighlight(taskId);
-                        break;
-                    case 'up':
-                        this.moveTask(taskId, 'up');
-                        break;
-                    case 'down':
-                        this.moveTask(taskId, 'down');
-                        break;
-                    case 'notification':
-                        this.toggleNotification(taskId);
-                        break;
+                if (taskId && action) {
+                    switch (action) {
+                        case 'edit':
+                            this.editTask(taskId);
+                            break;
+                        case 'complete':
+                            this.completeTask(taskId);
+                            break;
+                        case 'delete':
+                            this.deleteTask(taskId);
+                            break;
+                        case 'highlight':
+                            this.toggleHighlight(taskId);
+                            break;
+                        case 'up':
+                            this.moveTask(taskId, 'up');
+                            break;
+                        case 'down':
+                            this.moveTask(taskId, 'down');
+                            break;
+                        case 'notification':
+                            this.toggleNotification(taskId);
+                            break;
+                    }
                 }
             }
         });
@@ -596,7 +795,79 @@ class TaskManager {
                 'confirmComplete': 'Confirm completion',
                 'confirmDelete': 'Confirm deletion',
                 'tagsHelpText': 'You can add tag presets in Settings to make tagging easier.',
-                'tagsInlineHelp': '(Create presets in Settings for easier tagging)'
+                'tagsInlineHelp': '(Create presets in Settings for easier tagging)',
+                // Statistics and UI elements
+                'statistics': 'Statistics',
+                'statisticsTitle': 'Statistics (Last 30 Days)',
+                'collapseView': 'Collapse view (Ctrl+M)',
+                'expand': 'Expand',
+                'clearSearch': 'Clear search',
+                'expandToFullView': 'Expand to full view',
+                // Settings modal
+                'settingsTitle': 'Settings',
+                'language': 'Language',
+                'themeMode': 'Theme Mode',
+                'lightMode': 'Light Mode',
+                'darkMode': 'Dark Mode',
+                'defaultNotification': 'Default Notification',
+                'notificationsOn': 'Notifications On',
+                'notificationsOff': 'Notifications Off',
+                'unfocusedOpacity': 'Unfocused Opacity',
+                'tagPresets': 'Tag Presets',
+                'useColors': 'Use colors:',
+                'add': 'Add',
+                // About modal
+                'aboutTitle': 'About Tasktory',
+                'viewHistory': 'View History',
+                'howToUse': 'How to Use',
+                'notifications': 'Notifications',
+                'taskStatus': 'Task Status',
+                'keyboardShortcuts': 'Keyboard Shortcuts',
+                'addNewTaskShortcut': 'Add new task',
+                'collapseViewShortcut': 'Collapse view (80px width)',
+                'closeModalShortcut': 'Close modal or date picker',
+                'version': 'Version',
+                'license': 'License',
+                'author': 'Author',
+                // Settings - Tag presets
+                'noTagPresetsAdded': 'No tag presets added yet',
+                // About - How to Use instructions
+                'addTaskInstruction': 'Click',
+                'addTaskInstructionEnd': 'icon or press Ctrl+N',
+                'editInstruction': 'Click',
+                'editInstructionEnd': 'icon in Actions column',
+                'completeInstruction': 'Click',
+                'completeInstructionEnd': 'icon to mark as done',
+                'deleteInstruction': 'Click',
+                'deleteInstructionEnd': 'icon to remove task',
+                'highlightInstruction': 'Click',
+                'highlightInstructionEnd': 'icon to highlight important tasks',
+                'reorderInstruction': 'Use',
+                'reorderInstructionEnd': 'arrows to change task order',
+                'exportImportInstruction': 'Use',
+                'exportImportInstructionEnd': 'arrows to backup/restore data',
+                'tagsInstruction': 'Use #hashtags separated by spaces (e.g., #work #urgent)',
+                'notificationsInstruction': 'Click',
+                'notificationsInstructionEnd': 'icon to toggle task notifications',
+                // About - Notifications section
+                'autoAlerts': 'Auto Alerts',
+                'autoAlertsDesc': '1 hour and 15 minutes before deadline',
+                'overdueAlert': 'Overdue Alert',
+                'overdueAlertDesc': 'When task passes target time',
+                'togglePerTask': 'Toggle Per Task',
+                'togglePerTaskDesc': 'Use bell button in task row',
+                'defaultSetting': 'Default Setting',
+                'defaultSettingDesc': 'Configure in Settings',
+                'defaultSettingEnd': 'icon',
+                // About - Task Status descriptions
+                'pendingStatusDesc': 'Task is waiting to be started',
+                'inProgressStatusDesc': 'Task is currently being worked on',
+                'dueSoonStatusDesc': 'Less than 1 hour remaining',
+                'overdueStatusDesc': 'Task has passed target time',
+                'completedStatusDesc': 'Task has been finished',
+                // Completion Counter section
+                'completionCounterTitle': 'Completion Counter',
+                'completionCounterDescription': 'The completion counter shows the number of tasks completed today, based on completion records in the daily history log files.'
             },
             'ko': {
                 // Status
@@ -657,7 +928,79 @@ class TaskManager {
                 'confirmComplete': '완료 확인',
                 'confirmDelete': '삭제 확인',
                 'tagsHelpText': '설정에서 태그 프리셋을 추가하면 태그 작성이 더 쉬워집니다.',
-                'tagsInlineHelp': '(설정에서 프리셋 생성 가능)'
+                'tagsInlineHelp': '(설정에서 프리셋 생성 가능)',
+                // Statistics and UI elements
+                'statistics': '통계',
+                'statisticsTitle': '통계 (최근 30일)',
+                'collapseView': '축소 보기 (Ctrl+M)',
+                'expand': '확장',
+                'clearSearch': '검색 지우기',
+                'expandToFullView': '전체 보기로 확장',
+                // Settings modal
+                'settingsTitle': '설정',
+                'language': '언어',
+                'themeMode': '테마 모드',
+                'lightMode': '라이트 모드',
+                'darkMode': '다크 모드',
+                'defaultNotification': '기본 알림',
+                'notificationsOn': '알림 켜기',
+                'notificationsOff': '알림 끄기',
+                'unfocusedOpacity': '비활성 투명도',
+                'tagPresets': '태그 프리셋',
+                'useColors': '색상 사용:',
+                'add': '추가',
+                // About modal
+                'aboutTitle': 'Tasktory 정보',
+                'viewHistory': '이력 보기',
+                'howToUse': '사용법',
+                'notifications': '알림',
+                'taskStatus': '작업 상태',
+                'keyboardShortcuts': '키보드 단축키',
+                'addNewTaskShortcut': '새 작업 추가',
+                'collapseViewShortcut': '축소 보기 (80px 너비)',
+                'closeModalShortcut': '모달 또는 날짜 선택기 닫기',
+                'version': '버전',
+                'license': '라이센스',
+                'author': '제작자',
+                // Settings - Tag presets
+                'noTagPresetsAdded': '아직 태그 프리셋이 추가되지 않았습니다',
+                // About - How to Use instructions
+                'addTaskInstruction': '클릭',
+                'addTaskInstructionEnd': '아이콘을 클릭하거나 Ctrl+N을 누르세요',
+                'editInstruction': '클릭',
+                'editInstructionEnd': '작업 열의 아이콘을 클릭하세요',
+                'completeInstruction': '클릭',
+                'completeInstructionEnd': '아이콘을 클릭하여 완료 표시',
+                'deleteInstruction': '클릭',
+                'deleteInstructionEnd': '아이콘을 클릭하여 작업 제거',
+                'highlightInstruction': '클릭',
+                'highlightInstructionEnd': '아이콘을 클릭하여 중요한 작업 강조',
+                'reorderInstruction': '사용',
+                'reorderInstructionEnd': '화살표로 작업 순서 변경',
+                'exportImportInstruction': '사용',
+                'exportImportInstructionEnd': '화살표로 데이터 백업/복원',
+                'tagsInstruction': '공백으로 구분된 #해시태그 사용 (예: #작업 #긴급)',
+                'notificationsInstruction': '클릭',
+                'notificationsInstructionEnd': '아이콘을 클릭하여 작업 알림 토글',
+                // About - Notifications section
+                'autoAlerts': '자동 알림',
+                'autoAlertsDesc': '마감 1시간 및 15분 전',
+                'overdueAlert': '지연 알림',
+                'overdueAlertDesc': '작업이 목표 시간을 초과했을 때',
+                'togglePerTask': '작업별 토글',
+                'togglePerTaskDesc': '작업 행의 벨 버튼 사용',
+                'defaultSetting': '기본 설정',
+                'defaultSettingDesc': '설정에서 구성',
+                'defaultSettingEnd': '아이콘',
+                // About - Task Status descriptions
+                'pendingStatusDesc': '작업이 시작을 기다리고 있습니다',
+                'inProgressStatusDesc': '작업이 현재 진행 중입니다',
+                'dueSoonStatusDesc': '1시간 미만 남음',
+                'overdueStatusDesc': '작업이 목표 시간을 초과했습니다',
+                'completedStatusDesc': '작업이 완료되었습니다',
+                // Completion Counter section
+                'completionCounterTitle': '완료 카운터',
+                'completionCounterDescription': '완료 카운터는 일일 이력 로그 파일의 완료 기록을 기반으로 오늘 완료된 작업 수를 나타냅니다.'
             },
             'zh': {
                 // Status
@@ -718,7 +1061,79 @@ class TaskManager {
                 'confirmComplete': '确认完成',
                 'confirmDelete': '确认删除',
                 'tagsHelpText': '您可以在设置中添加标签预设以便于标记。',
-                'tagsInlineHelp': '（在设置中创建预设以便于标记）'
+                'tagsInlineHelp': '（在设置中创建预设以便于标记）',
+                // Statistics and UI elements
+                'statistics': '统计',
+                'statisticsTitle': '统计（最近30天）',
+                'collapseView': '折叠视图 (Ctrl+M)',
+                'expand': '展开',
+                'clearSearch': '清除搜索',
+                'expandToFullView': '展开到完整视图',
+                // Settings modal
+                'settingsTitle': '设置',
+                'language': '语言',
+                'themeMode': '主题模式',
+                'lightMode': '亮色模式',
+                'darkMode': '暗色模式',
+                'defaultNotification': '默认通知',
+                'notificationsOn': '开启通知',
+                'notificationsOff': '关闭通知',
+                'unfocusedOpacity': '未聚焦透明度',
+                'tagPresets': '标签预设',
+                'useColors': '使用颜色：',
+                'add': '添加',
+                // About modal
+                'aboutTitle': '关于 Tasktory',
+                'viewHistory': '查看历史',
+                'howToUse': '使用方法',
+                'notifications': '通知',
+                'taskStatus': '任务状态',
+                'keyboardShortcuts': '键盘快捷键',
+                'addNewTaskShortcut': '添加新任务',
+                'collapseViewShortcut': '折叠视图（80px宽度）',
+                'closeModalShortcut': '关闭模态框或日期选择器',
+                'version': '版本',
+                'license': '许可证',
+                'author': '作者',
+                // Settings - Tag presets
+                'noTagPresetsAdded': '尚未添加标签预设',
+                // About - How to Use instructions
+                'addTaskInstruction': '点击',
+                'addTaskInstructionEnd': '图标或按 Ctrl+N',
+                'editInstruction': '点击',
+                'editInstructionEnd': '操作列中的图标',
+                'completeInstruction': '点击',
+                'completeInstructionEnd': '图标标记为完成',
+                'deleteInstruction': '点击',
+                'deleteInstructionEnd': '图标删除任务',
+                'highlightInstruction': '点击',
+                'highlightInstructionEnd': '图标高亮重要任务',
+                'reorderInstruction': '使用',
+                'reorderInstructionEnd': '箭头更改任务顺序',
+                'exportImportInstruction': '使用',
+                'exportImportInstructionEnd': '箭头备份/恢复数据',
+                'tagsInstruction': '使用空格分隔的#标签 (例如: #工作 #紧急)',
+                'notificationsInstruction': '点击',
+                'notificationsInstructionEnd': '图标切换任务通知',
+                // About - Notifications section
+                'autoAlerts': '自动提醒',
+                'autoAlertsDesc': '截止时间前1小时和15分钟',
+                'overdueAlert': '逾期提醒',
+                'overdueAlertDesc': '任务超过目标时间时',
+                'togglePerTask': '按任务切换',
+                'togglePerTaskDesc': '使用任务行中的铃声按钮',
+                'defaultSetting': '默认设置',
+                'defaultSettingDesc': '在设置中配置',
+                'defaultSettingEnd': '图标',
+                // About - Task Status descriptions
+                'pendingStatusDesc': '任务等待开始',
+                'inProgressStatusDesc': '任务正在进行中',
+                'dueSoonStatusDesc': '剩余时间不足1小时',
+                'overdueStatusDesc': '任务已超过目标时间',
+                'completedStatusDesc': '任务已完成',
+                // Completion Counter section
+                'completionCounterTitle': '完成计数器',
+                'completionCounterDescription': '完成计数器显示今日完成的任务数量，基于日历史记录文件中的完成记录。'
             },
             'ja': {
                 // Status
@@ -779,7 +1194,79 @@ class TaskManager {
                 'confirmComplete': '完了確認',
                 'confirmDelete': '削除確認',
                 'tagsHelpText': 'タグ付けを簡単にするために、設定でタグプリセットを追加できます。',
-                'tagsInlineHelp': '（簡単なタグ付けのために設定でプリセットを作成）'
+                'tagsInlineHelp': '（簡単なタグ付けのために設定でプリセットを作成）',
+                // Statistics and UI elements
+                'statistics': '統計',
+                'statisticsTitle': '統計（過去30日間）',
+                'collapseView': '折りたたみ表示 (Ctrl+M)',
+                'expand': '展開',
+                'clearSearch': '検索をクリア',
+                'expandToFullView': 'フルビューに展開',
+                // Settings modal
+                'settingsTitle': '設定',
+                'language': '言語',
+                'themeMode': 'テーマモード',
+                'lightMode': 'ライトモード',
+                'darkMode': 'ダークモード',
+                'defaultNotification': 'デフォルト通知',
+                'notificationsOn': '通知オン',
+                'notificationsOff': '通知オフ',
+                'unfocusedOpacity': '未フォーカス透明度',
+                'tagPresets': 'タグプリセット',
+                'useColors': '色を使用：',
+                'add': '追加',
+                // About modal
+                'aboutTitle': 'Tasktoryについて',
+                'viewHistory': '履歴を表示',
+                'howToUse': '使用方法',
+                'notifications': '通知',
+                'taskStatus': 'タスクステータス',
+                'keyboardShortcuts': 'キーボードショートカット',
+                'addNewTaskShortcut': '新しいタスクを追加',
+                'collapseViewShortcut': '折りたたみ表示（80px幅）',
+                'closeModalShortcut': 'モーダルまたは日付ピッカーを閉じる',
+                'version': 'バージョン',
+                'license': 'ライセンス',
+                'author': '作者',
+                // Settings - Tag presets
+                'noTagPresetsAdded': 'まだタグプリセットが追加されていません',
+                // About - How to Use instructions
+                'addTaskInstruction': 'クリック',
+                'addTaskInstructionEnd': 'アイコンをクリックまたはCtrl+Nを押す',
+                'editInstruction': 'クリック',
+                'editInstructionEnd': 'アクション列のアイコンをクリック',
+                'completeInstruction': 'クリック',
+                'completeInstructionEnd': 'アイコンで完了マーク',
+                'deleteInstruction': 'クリック',
+                'deleteInstructionEnd': 'アイコンでタスク削除',
+                'highlightInstruction': 'クリック',
+                'highlightInstructionEnd': 'アイコンで重要なタスクをハイライト',
+                'reorderInstruction': '使用',
+                'reorderInstructionEnd': '矢印でタスク順序を変更',
+                'exportImportInstruction': '使用',
+                'exportImportInstructionEnd': '矢印でデータバックアップ/復元',
+                'tagsInstruction': 'スペースで区切られた#ハッシュタグを使用 (例: #作業 #緊急)',
+                'notificationsInstruction': 'クリック',
+                'notificationsInstructionEnd': 'アイコンでタスク通知を切り替え',
+                // About - Notifications section
+                'autoAlerts': '自動アラート',
+                'autoAlertsDesc': '締切の1時間前と15分前',
+                'overdueAlert': '期限切れアラート',
+                'overdueAlertDesc': 'タスクが目標時刻を過ぎた時',
+                'togglePerTask': 'タスク別切り替え',
+                'togglePerTaskDesc': 'タスク行のベルボタンを使用',
+                'defaultSetting': 'デフォルト設定',
+                'defaultSettingDesc': '設定で構成',
+                'defaultSettingEnd': 'アイコン',
+                // About - Task Status descriptions
+                'pendingStatusDesc': 'タスクは開始を待っています',
+                'inProgressStatusDesc': 'タスクは現在進行中です',
+                'dueSoonStatusDesc': '残り1時間未満',
+                'overdueStatusDesc': 'タスクが目標時刻を過ぎました',
+                'completedStatusDesc': 'タスクが完了しました',
+                // Completion Counter section
+                'completionCounterTitle': '完了カウンター',
+                'completionCounterDescription': '完了カウンターは、日別履歴ログファイルの完了記録に基づいて、今日完了したタスク数を表示します。'
             },
             'es': {
                 // Status
@@ -840,7 +1327,79 @@ class TaskManager {
                 'confirmComplete': 'Confirmar finalización',
                 'confirmDelete': 'Confirmar eliminación',
                 'tagsHelpText': 'Puede añadir preajustes de etiquetas en Configuración para facilitar el etiquetado.',
-                'tagsInlineHelp': '(Crear preajustes en Configuración para etiquetado más fácil)'
+                'tagsInlineHelp': '(Crear preajustes en Configuración para etiquetado más fácil)',
+                // Statistics and UI elements
+                'statistics': 'Estadísticas',
+                'statisticsTitle': 'Estadísticas (Últimos 30 Días)',
+                'collapseView': 'Vista contraída (Ctrl+M)',
+                'expand': 'Expandir',
+                'clearSearch': 'Limpiar búsqueda',
+                'expandToFullView': 'Expandir a vista completa',
+                // Settings modal
+                'settingsTitle': 'Configuración',
+                'language': 'Idioma',
+                'themeMode': 'Modo de Tema',
+                'lightMode': 'Modo Claro',
+                'darkMode': 'Modo Oscuro',
+                'defaultNotification': 'Notificación Predeterminada',
+                'notificationsOn': 'Notificaciones Activadas',
+                'notificationsOff': 'Notificaciones Desactivadas',
+                'unfocusedOpacity': 'Opacidad Sin Foco',
+                'tagPresets': 'Preajustes de Etiquetas',
+                'useColors': 'Usar colores:',
+                'add': 'Añadir',
+                // About modal
+                'aboutTitle': 'Acerca de Tasktory',
+                'viewHistory': 'Ver Historial',
+                'howToUse': 'Cómo Usar',
+                'notifications': 'Notificaciones',
+                'taskStatus': 'Estado de Tarea',
+                'keyboardShortcuts': 'Atajos de Teclado',
+                'addNewTaskShortcut': 'Añadir nueva tarea',
+                'collapseViewShortcut': 'Vista contraída (ancho 80px)',
+                'closeModalShortcut': 'Cerrar modal o selector de fecha',
+                'version': 'Versión',
+                'license': 'Licencia',
+                'author': 'Autor',
+                // Settings - Tag presets
+                'noTagPresetsAdded': 'Aún no se han añadido preajustes de etiquetas',
+                // About - How to Use instructions
+                'addTaskInstruction': 'Hacer clic',
+                'addTaskInstructionEnd': 'icono o presionar Ctrl+N',
+                'editInstruction': 'Hacer clic',
+                'editInstructionEnd': 'icono en la columna Acciones',
+                'completeInstruction': 'Hacer clic',
+                'completeInstructionEnd': 'icono para marcar como terminado',
+                'deleteInstruction': 'Hacer clic',
+                'deleteInstructionEnd': 'icono para eliminar tarea',
+                'highlightInstruction': 'Hacer clic',
+                'highlightInstructionEnd': 'icono para resaltar tareas importantes',
+                'reorderInstruction': 'Usar',
+                'reorderInstructionEnd': 'flechas para cambiar orden de tareas',
+                'exportImportInstruction': 'Usar',
+                'exportImportInstructionEnd': 'flechas para respaldar/restaurar datos',
+                'tagsInstruction': 'Usar #hashtags separados por espacios (ej., #trabajo #urgente)',
+                'notificationsInstruction': 'Hacer clic',
+                'notificationsInstructionEnd': 'icono para alternar notificaciones de tarea',
+                // About - Notifications section
+                'autoAlerts': 'Alertas Automáticas',
+                'autoAlertsDesc': '1 hora y 15 minutos antes del plazo',
+                'overdueAlert': 'Alerta de Vencimiento',
+                'overdueAlertDesc': 'Cuando la tarea pasa el tiempo objetivo',
+                'togglePerTask': 'Alternar por Tarea',
+                'togglePerTaskDesc': 'Usar botón de campana en fila de tarea',
+                'defaultSetting': 'Configuración Predeterminada',
+                'defaultSettingDesc': 'Configurar en Ajustes',
+                'defaultSettingEnd': 'icono',
+                // About - Task Status descriptions
+                'pendingStatusDesc': 'La tarea está esperando ser iniciada',
+                'inProgressStatusDesc': 'La tarea está siendo trabajada actualmente',
+                'dueSoonStatusDesc': 'Menos de 1 hora restante',
+                'overdueStatusDesc': 'La tarea ha pasado el tiempo objetivo',
+                'completedStatusDesc': 'La tarea ha sido terminada',
+                // Completion Counter section
+                'completionCounterTitle': 'Contador de Finalización',
+                'completionCounterDescription': 'El contador de finalización muestra el número de tareas completadas hoy, basado en los registros de finalización en los archivos de historial diario.'
             }
         };
         
@@ -1259,7 +1818,7 @@ class TaskManager {
             // Enter collapsed mode - 80px width ultra-minimal view
             container.classList.add('collapsed-mode');
             collapseBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
-            collapseBtn.title = 'Expand to full view';
+            collapseBtn.title = this.getLocalizedText('expandToFullView');
             tableElement.style.display = 'none';
             collapsedElement.style.display = 'none';
             miniLayout.style.display = 'flex';
@@ -1280,7 +1839,7 @@ class TaskManager {
             // Exit collapsed mode - return to normal view
             container.classList.remove('collapsed-mode');
             collapseBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="14,4 14,10 20,10"/><polyline points="10,20 10,14 4,14"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
-            collapseBtn.title = 'Collapse view';
+            collapseBtn.title = this.getLocalizedText('collapseView');
             tableElement.style.display = 'table';
             collapsedElement.style.display = 'none';
             miniLayout.style.display = 'none';
@@ -1324,9 +1883,8 @@ class TaskManager {
             task.highlighted = !task.highlighted;
             
             const action = task.highlighted ? 'HIGHLIGHT' : 'UNHIGHLIGHT';
-            const details = task.highlighted ? 'Task highlighted for emphasis' : 'Task highlight removed';
             
-            await this.addLog(action, task, details);
+            await this.addLog(action, task, task.content);
             await this.saveTasks();
             this.renderTasks();
         }
@@ -1346,14 +1904,14 @@ class TaskManager {
             this.tasks.splice(taskIndex, 1);
             this.tasks.splice(targetIndex, 0, currentTask);
             
-            await this.addLog('MOVE_UP', currentTask, `Moved task up from position ${activeIndex + 1} to ${activeIndex}`);
+            await this.addLog('MOVE_UP', currentTask, currentTask.content);
         } else if (direction === 'down' && activeIndex < activeTasks.length - 1) {
             const targetIndex = this.tasks.findIndex(t => t.id === activeTasks[activeIndex + 1].id);
             
             this.tasks.splice(taskIndex, 1);
             this.tasks.splice(targetIndex, 0, currentTask);
             
-            await this.addLog('MOVE_DOWN', currentTask, `Moved task down from position ${activeIndex + 1} to ${activeIndex + 2}`);
+            await this.addLog('MOVE_DOWN', currentTask, currentTask.content);
         }
 
         await this.saveTasks();
@@ -1417,7 +1975,7 @@ class TaskManager {
         // 첫 번째 입력 필드에 포커스
         setTimeout(() => {
             document.getElementById('taskPosition').focus();
-        }, 100);
+        }, 50);
     }
 
     hideModal() {
@@ -1461,6 +2019,13 @@ class TaskManager {
 
     async showStatisticsModal() {
         const modal = document.getElementById('statisticsModal');
+        
+        // Update statistics modal title
+        const statisticsTitle = modal.querySelector('h2');
+        if (statisticsTitle) {
+            statisticsTitle.textContent = this.getLocalizedText('statisticsTitle');
+        }
+        
         modal.style.display = 'block';
         
         // Load statistics data and render chart
@@ -1584,7 +2149,11 @@ class TaskManager {
             const currentDate = new Date(thirtyDaysAgo);
             currentDate.setDate(thirtyDaysAgo.getDate() + i);
             
-            const dateStr = currentDate.toISOString().split('T')[0]; // YYYY-MM-DD
+            // Use local timezone for consistency with log files
+            const year = currentDate.getFullYear();
+            const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+            const day = String(currentDate.getDate()).padStart(2, '0');
+            const dateStr = `${year}-${month}-${day}`; // YYYY-MM-DD (local timezone)
             const displayDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}`;
             
             let completedCount = 0;
@@ -1599,7 +2168,10 @@ class TaskManager {
                 }
             } else {
                 // For browser mode, we can only show current day from localStorage
-                if (dateStr === new Date().toISOString().split('T')[0]) {
+                // Check if this is today using local timezone
+                const today = new Date();
+                const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+                if (dateStr === todayStr) {
                     completedCount = this.completionCount;
                 }
             }
@@ -1641,7 +2213,7 @@ class TaskManager {
         // Focus on textarea
         setTimeout(() => {
             detailsTextarea.focus();
-        }, 100);
+        }, 50);
     }
 
     hideConfirmModal() {
@@ -1733,7 +2305,7 @@ class TaskManager {
             // Rebuild tasks array with completed tasks at the end
             this.tasks = [...activeTasks, ...completedTasks];
             
-            await this.addLog('ADD', taskData, 'New task created');
+            await this.addLog('ADD', taskData, taskData.content);
         }
 
         // Reset current page if we're beyond available pages
@@ -1766,7 +2338,7 @@ class TaskManager {
             task.completed = true;
             task.completedAt = new Date().toISOString();
             
-            const logDetails = details ? `(completed) ${details}` : task.content;
+            const logDetails = details ? `${task.content} (completed) ${details}` : `${task.content} (completed)`;
             await this.addLog('COMPLETE', task, logDetails);
             await this.saveTasks();
             this.renderTasks();
@@ -1787,7 +2359,7 @@ class TaskManager {
             const task = this.tasks[taskIndex];
             this.tasks.splice(taskIndex, 1);
             
-            const logDetails = details ? `(deleted) ${details}` : task.content;
+            const logDetails = details ? `${task.content} (deleted) ${details}` : `${task.content} (deleted)`;
             await this.addLog('DELETE', task, logDetails);
             await this.saveTasks();
             this.renderTasks();
@@ -1972,7 +2544,7 @@ class TaskManager {
                 return storedCount;
             } else {
                 // New day, reset counter
-                localStorage.setItem('completionCountDate', today);
+                localStorage.setItem('completionCountDate', todayDateString);
                 localStorage.setItem('completionCount', '0');
                 return 0;
             }
@@ -1989,7 +2561,7 @@ class TaskManager {
     updateCompletionCounterText() {
         const counterTextElement = document.getElementById('completionCounterText');
         if (counterTextElement) {
-            counterTextElement.textContent = 'Completed';
+            counterTextElement.textContent = this.getLocalizedText('completionCounter');
         }
     }
 
@@ -1998,9 +2570,11 @@ class TaskManager {
             // In Electron mode, refresh count from log file
             this.completionCount = await this.getTodayCompletionCount();
         } else {
-            // Browser mode: increment localStorage counter
+            // Browser mode: increment localStorage counter and update date
             this.completionCount++;
+            const today = new Date().toDateString();
             localStorage.setItem('completionCount', this.completionCount.toString());
+            localStorage.setItem('completionCountDate', today);
         }
         
         const counterElement = document.getElementById('completionCount');
@@ -2080,7 +2654,7 @@ class TaskManager {
         container.innerHTML = '';
         
         if (this.tagPresets.length === 0) {
-            container.innerHTML = '<div style="color: #666; font-style: italic;">No tag presets added yet</div>';
+            container.innerHTML = `<div style="color: #666; font-style: italic;">${this.getLocalizedText('noTagPresetsAdded')}</div>`;
             return;
         }
         

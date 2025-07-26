@@ -79,11 +79,15 @@ const ensureDataDir = async () => {
     }
 }
 
-// 오늘 날짜의 로그 파일 경로 생성
+// 오늘 날짜의 로그 파일 경로 생성 (로컬 타임존 사용)
 const getTodayLogFile = () => {
-    const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD 형식
-    const logFile = path.join(logsDir, `${today}.log`)
-    console.log('IPC: Today log file:', logFile, 'for date:', today);
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const day = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${year}-${month}-${day}`; // YYYY-MM-DD 형식 (로컬 타임존)
+    const logFile = path.join(logsDir, `${todayStr}.log`)
+    console.log('IPC: Today log file:', logFile, 'for date:', todayStr);
     return logFile
 }
 
@@ -135,8 +139,16 @@ ipcMain.handle('add-log', async (event, logEntry) => {
             await fs.writeFile(todayLogFile, header);
         }
         
-        // Format timestamp to fixed 25 characters
-        const timestamp = new Date().toISOString().padEnd(25);
+        // Format timestamp to fixed 25 characters (로컬 타임존 사용)
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        const seconds = String(now.getSeconds()).padStart(2, '0');
+        const timestamp = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
+        const paddedTimestamp = timestamp.padEnd(25);
         
         // Convert action to English and pad to 15 characters
         const actionMap = {
@@ -176,16 +188,11 @@ ipcMain.handle('add-log', async (event, logEntry) => {
         // Tags and content (no padding needed - variable length)
         const tags = logEntry.task.tags || '';
         
-        // For content: always use actual task content when available
-        let content = logEntry.task.content || logEntry.details || '';
-        
-        // Add action-specific context if needed
-        if (logEntry.action === 'COMPLETE' && logEntry.details) {
-            content = logEntry.details; // Use completion details if provided
-        }
+        // For content: always use logEntry.details if provided, otherwise use task content
+        let content = logEntry.details || logEntry.task.content || '';
         
         // Create fixed-width log line
-        const logLine = `${timestamp}${action}${status}${taskId}${startTime}${targetTime}${tags}\t${content}\n`;
+        const logLine = `${paddedTimestamp}${action}${status}${taskId}${startTime}${targetTime}${tags}\t${content}\n`;
         
         console.log('IPC: Writing log line:', logLine.substring(0, 100) + '...');
         
