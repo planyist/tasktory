@@ -14,6 +14,7 @@ class TaskManager {
         this.tasksPerPage = 10;
         this.defaultNotificationEnabled = localStorage.getItem('defaultNotificationEnabled') !== 'false';
         this.tagPresets = this.loadTagPresets();
+        this.actionThrottleMap = new Map(); // 스로틀링을 위한 맵
         this.init();
     }
 
@@ -1877,20 +1878,43 @@ class TaskManager {
 
 
     async toggleHighlight(taskId) {
+        // 스로틀링 체크 (100ms)
+        if (this.isActionThrottled(`highlight_${taskId}`, 100)) return;
+        
         const task = this.tasks.find(t => t.id === taskId);
         if (task) {
             const wasHighlighted = task.highlighted;
             task.highlighted = !task.highlighted;
             
-            const action = task.highlighted ? 'HIGHLIGHT' : 'UNHIGHLIGHT';
-            
-            await this.addLog(action, task, task.content);
-            await this.saveTasks();
+            // 즉시 UI 업데이트 (사용자 반응성 개선)
             this.renderTasks();
+            
+            // 비동기 작업들은 백그라운드에서 처리
+            const action = task.highlighted ? 'HIGHLIGHT' : 'UNHIGHLIGHT';
+            Promise.all([
+                this.addLog(action, task, task.content),
+                this.saveTasks()
+            ]).catch(error => console.error('Background save failed:', error));
         }
     }
 
+    // 스로틀링 헬퍼 메서드 (너무 빠른 연속 클릭 방지)
+    isActionThrottled(actionKey, throttleMs = 100) {
+        const now = Date.now();
+        const lastAction = this.actionThrottleMap.get(actionKey);
+        
+        if (lastAction && (now - lastAction) < throttleMs) {
+            return true; // 스로틀 중
+        }
+        
+        this.actionThrottleMap.set(actionKey, now);
+        return false; // 실행 허용
+    }
+
     async moveTask(taskId, direction) {
+        // 스로틀링 체크 (200ms - 이동은 조금 더 길게)
+        if (this.isActionThrottled(`move_${taskId}_${direction}`, 200)) return;
+        
         const taskIndex = this.tasks.findIndex(t => t.id === taskId && !t.completed);
         if (taskIndex === -1) return;
 
@@ -1898,24 +1922,35 @@ class TaskManager {
         const activeIndex = activeTasks.findIndex(t => t.id === taskId);
         const currentTask = this.tasks[taskIndex];
         
+        let moved = false;
+        let action = '';
+        
         if (direction === 'up' && activeIndex > 0) {
             const targetIndex = this.tasks.findIndex(t => t.id === activeTasks[activeIndex - 1].id);
             
             this.tasks.splice(taskIndex, 1);
             this.tasks.splice(targetIndex, 0, currentTask);
-            
-            await this.addLog('MOVE_UP', currentTask, currentTask.content);
+            moved = true;
+            action = 'MOVE_UP';
         } else if (direction === 'down' && activeIndex < activeTasks.length - 1) {
             const targetIndex = this.tasks.findIndex(t => t.id === activeTasks[activeIndex + 1].id);
             
             this.tasks.splice(taskIndex, 1);
             this.tasks.splice(targetIndex, 0, currentTask);
-            
-            await this.addLog('MOVE_DOWN', currentTask, currentTask.content);
+            moved = true;
+            action = 'MOVE_DOWN';
         }
 
-        await this.saveTasks();
-        this.renderTasks();
+        if (moved) {
+            // 즉시 UI 업데이트 (사용자 반응성 개선)
+            this.renderTasks();
+            
+            // 비동기 작업들은 백그라운드에서 처리
+            Promise.all([
+                this.addLog(action, currentTask, currentTask.content),
+                this.saveTasks()
+            ]).catch(error => console.error('Background save failed:', error));
+        }
     }
 
     showModal(task = null) {
@@ -2291,8 +2326,8 @@ class TaskManager {
                 // Reposition task if needed
                 this.repositionTask(this.editingTaskId, position);
                 
-                // Simple edit log without diff details
-                await this.addLog('EDIT', taskData, 'Task modified');
+                // Log with actual task content
+                await this.addLog('EDIT', taskData, taskData.content);
             }
         } else {
             // Add mode - insert at specified position
@@ -2829,15 +2864,23 @@ class TaskManager {
     }
 
     async toggleNotification(taskId) {
+        // 스로틀링 체크 (100ms)
+        if (this.isActionThrottled(`notification_${taskId}`, 100)) return;
+        
         const taskIndex = this.tasks.findIndex(t => t.id === taskId);
         if (taskIndex !== -1) {
             const task = this.tasks[taskIndex];
             task.notificationEnabled = !task.notificationEnabled;
             
-            const action = task.notificationEnabled ? 'NOTI_ON' : 'NOTI_OFF';
-            await this.addLog(action, task, task.content);
-            await this.saveTasks();
+            // 즉시 UI 업데이트 (사용자 반응성 개선)
             this.renderTasks();
+            
+            // 비동기 작업들은 백그라운드에서 처리
+            const action = task.notificationEnabled ? 'NOTI_ON' : 'NOTI_OFF';
+            Promise.all([
+                this.addLog(action, task, task.content),
+                this.saveTasks()
+            ]).catch(error => console.error('Background save failed:', error));
         }
     }
 

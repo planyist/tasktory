@@ -86,7 +86,7 @@ const getTodayLogFile = () => {
     const month = String(today.getMonth() + 1).padStart(2, '0');
     const day = String(today.getDate()).padStart(2, '0');
     const todayStr = `${year}-${month}-${day}`; // YYYY-MM-DD 형식 (로컬 타임존)
-    const logFile = path.join(logsDir, `${todayStr}.log`)
+    const logFile = path.join(logsDir, `${todayStr}.tsv`)
     console.log('IPC: Today log file:', logFile, 'for date:', todayStr);
     return logFile
 }
@@ -133,13 +133,13 @@ ipcMain.handle('add-log', async (event, logEntry) => {
             // File doesn't exist, we'll create it with header
         }
         
-        // Add header if file is new
+        // Add TSV header if file is new
         if (!fileExists) {
-            const header = `${'TIMESTAMP'.padEnd(25)}${'ACTION'.padEnd(15)}${'STATUS'.padEnd(10)}${'TASK-ID'.padEnd(45)}${'START-TIME'.padEnd(20)}${'TARGET-TIME'.padEnd(20)}TAGS\tCONTENT\n`;
+            const header = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\n';
             await fs.writeFile(todayLogFile, header);
         }
         
-        // Format timestamp to fixed 25 characters (로컬 타임존 사용)
+        // Format timestamp (로컬 타임존 사용)
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -148,9 +148,8 @@ ipcMain.handle('add-log', async (event, logEntry) => {
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const seconds = String(now.getSeconds()).padStart(2, '0');
         const timestamp = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-        const paddedTimestamp = timestamp.padEnd(25);
         
-        // Convert action to English and pad to 15 characters
+        // Convert action to English
         const actionMap = {
             'ADD': 'ADD',
             'EDIT': 'EDIT', 
@@ -164,9 +163,9 @@ ipcMain.handle('add-log', async (event, logEntry) => {
             'NOTI_OFF': 'NOTI_OFF',
             'STATUS_CHANGE': 'STATUS_CHANGE'
         };
-        const action = (actionMap[logEntry.action] || logEntry.action).padEnd(15);
+        const action = actionMap[logEntry.action] || logEntry.action;
         
-        // Convert status to English and pad to 10 characters  
+        // Convert status to English
         const statusMap = {
             'completed': 'COMPLETED',
             'pending': 'PENDING',
@@ -176,23 +175,27 @@ ipcMain.handle('add-log', async (event, logEntry) => {
         };
         // Use actual task status from the task object, or determine from completion state
         const taskStatus = logEntry.task.status || (logEntry.task.completed ? 'completed' : 'pending');
-        const status = (statusMap[taskStatus] || taskStatus.toUpperCase()).padEnd(10);
+        const status = statusMap[taskStatus] || taskStatus.toUpperCase();
         
-        // Task ID padded to 45 characters
-        const taskId = (logEntry.task.id || logEntry.task.taskId || '').padEnd(45);
-        
-        // Start and target times padded to 20 characters each
-        const startTime = (logEntry.task.startDateTime || '').padEnd(20);
-        const targetTime = (logEntry.task.targetDateTime || '').padEnd(20);
-        
-        // Tags and content (no padding needed - variable length)
+        // Task data
+        const taskId = logEntry.task.id || logEntry.task.taskId || '';
+        const startTime = logEntry.task.startDateTime || '';
+        const targetTime = logEntry.task.targetDateTime || '';
         const tags = logEntry.task.tags || '';
         
         // For content: always use logEntry.details if provided, otherwise use task content
         let content = logEntry.details || logEntry.task.content || '';
         
-        // Create fixed-width log line
-        const logLine = `${paddedTimestamp}${action}${status}${taskId}${startTime}${targetTime}${tags}\t${content}\n`;
+        // TSV helper function to escape tab characters and newlines
+        const escapeTsvValue = (value) => {
+            if (typeof value !== 'string') return value;
+            
+            // Replace tabs and newlines with spaces to maintain TSV structure
+            return value.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, ' ');
+        };
+        
+        // Create TSV log line
+        const logLine = `${escapeTsvValue(timestamp)}\t${escapeTsvValue(action)}\t${escapeTsvValue(status)}\t${escapeTsvValue(taskId)}\t${escapeTsvValue(startTime)}\t${escapeTsvValue(targetTime)}\t${escapeTsvValue(tags)}\t${escapeTsvValue(content)}\n`;
         
         console.log('IPC: Writing log line:', logLine.substring(0, 100) + '...');
         
@@ -289,23 +292,24 @@ ipcMain.handle('show-notification', async (event, title, body) => {
     return false
 })
 
-// Get completed tasks count for a specific date from log file
+// Get completed tasks count for a specific date from TSV log file
 ipcMain.handle('get-completed-tasks-count', async (event, dateStr) => {
     try {
-        const logFile = path.join(logsDir, `${dateStr}.log`);
+        const logFile = path.join(logsDir, `${dateStr}.tsv`);
         const logData = await fs.readFile(logFile, 'utf8');
         
-        // Count COMPLETE actions in the log file
+        // Count COMPLETE actions in the TSV file
         const lines = logData.split('\n').filter(line => line.trim());
         let completedCount = 0;
         
         for (const line of lines) {
             // Skip header line
-            if (line.startsWith('TIMESTAMP')) continue;
+            if (line.startsWith('TIMESTAMP\tACTION\tSTATUS')) continue;
             
-            // Check if the line contains COMPLETE action (at position 25, length 15)
-            if (line.length >= 40) {
-                const action = line.substring(25, 40).trim();
+            // Parse TSV line
+            const columns = line.split('\t');
+            if (columns.length >= 2) {
+                const action = columns[1].trim(); // ACTION is the second column
                 if (action === 'COMPLETE') {
                     completedCount++;
                 }
