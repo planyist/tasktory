@@ -115,7 +115,7 @@ ipcMain.handle('save-tasks', async (event, tasks) => {
 })
 
 // 로그 추가 (날짜별 파일로 저장)
-ipcMain.handle('add-log', async (event, logEntry) => {
+const writeLogEntry = async (logEntry) => {
     try {
         console.log('IPC: Adding log entry:', logEntry.action, 'for task:', logEntry.task.id);
         await ensureDataDir()
@@ -207,6 +207,16 @@ ipcMain.handle('add-log', async (event, logEntry) => {
         console.error('IPC: Failed to add log:', error)
         return false
     }
+}
+
+// 로그 쓰기 직렬화: 렌더러가 add-log를 await 없이 호출하므로, 새 파일에 헤더를
+// 쓰는 writeFile이 다른 호출이 이미 append한 줄을 잘라내지 않도록 순서를 보장한다.
+let logWriteQueue = Promise.resolve()
+
+ipcMain.handle('add-log', async (event, logEntry) => {
+    const write = logWriteQueue.then(() => writeLogEntry(logEntry))
+    logWriteQueue = write.catch(() => {}) // 실패해도 큐는 계속 살려둔다
+    return write
 })
 
 // 데이터 내보내기 (Electron 모드용)
@@ -292,34 +302,39 @@ ipcMain.handle('show-notification', async (event, title, body) => {
     return false
 })
 
+// Count COMPLETE actions in a TSV log (ACTION is the second tab-separated column)
+const countCompletedTsv = (logData) => {
+    return logData.split('\n')
+        .filter(line => line.trim() && !line.startsWith('TIMESTAMP\tACTION\tSTATUS'))
+        .filter(line => {
+            const columns = line.split('\t');
+            return columns.length >= 2 && columns[1].trim() === 'COMPLETE';
+        })
+        .length;
+}
+
+// v0.2.5 이하의 로그는 고정폭 포맷이라 ACTION이 25~40번째 문자에 위치한다
+const countCompletedLegacy = (logData) => {
+    return logData.split('\n')
+        .filter(line => line.trim() && !line.startsWith('TIMESTAMP'))
+        .filter(line => line.substring(25, 40).trim() === 'COMPLETE')
+        .length;
+}
+
 // Get completed tasks count for a specific date from TSV log file
 ipcMain.handle('get-completed-tasks-count', async (event, dateStr) => {
     try {
-        const logFile = path.join(logsDir, `${dateStr}.tsv`);
-        const logData = await fs.readFile(logFile, 'utf8');
-        
-        // Count COMPLETE actions in the TSV file
-        const lines = logData.split('\n').filter(line => line.trim());
-        let completedCount = 0;
-        
-        for (const line of lines) {
-            // Skip header line
-            if (line.startsWith('TIMESTAMP\tACTION\tSTATUS')) continue;
-            
-            // Parse TSV line
-            const columns = line.split('\t');
-            if (columns.length >= 2) {
-                const action = columns[1].trim(); // ACTION is the second column
-                if (action === 'COMPLETE') {
-                    completedCount++;
-                }
-            }
-        }
-        
-        return completedCount;
+        const logData = await fs.readFile(path.join(logsDir, `${dateStr}.tsv`), 'utf8');
+        return countCompletedTsv(logData);
     } catch (error) {
-        // File doesn't exist or other error - return 0
-        return 0;
+        // .tsv가 없으면 v0.2.6 이전에 쌓인 .log 파일을 읽는다 (업그레이드 후 기록 유실 방지)
+        try {
+            const legacyData = await fs.readFile(path.join(logsDir, `${dateStr}.log`), 'utf8');
+            return countCompletedLegacy(legacyData);
+        } catch (legacyError) {
+            // 해당 날짜의 로그가 아예 없음
+            return 0;
+        }
     }
 })
 

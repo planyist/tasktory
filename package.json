@@ -1,8 +1,21 @@
 {
   "name": "tasktory",
-  "version": "0.2.6",
+  "version": "0.2.7",
   "description": "A compact desktop application for managing tasks with always-on-top functionality. Track your tasks efficiently without losing focus.",
   "main": "main.js",
+  "jest": {
+    "testEnvironment": "node",
+    "setupFiles": [
+      "<rootDir>/tests/setup-timezone.js"
+    ],
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/dist/"
+    ],
+    "modulePathIgnorePatterns": [
+      "<rootDir>/dist/"
+    ]
+  },
   "scripts": {
     "test": "jest",
     "start": "electron .",
@@ -36,7 +49,9 @@
   "homepage": "https://github.com/planyist/tasktory#readme",
   "devDependencies": {
     "electron": "^32.0.1",
-    "electron-builder": "^24.13.3"
+    "electron-builder": "^24.13.3",
+    "jest": "^30.4.2",
+    "jest-environment-jsdom": "^30.4.1"
   },
   "build": {
     "appId": "com.tasktory.app",

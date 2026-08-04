@@ -648,6 +648,14 @@ class TaskManager {
     }
 
     async saveTasks() {
+        // 저장을 직렬화한다. 하이라이트/이동/알림 토글은 saveTasks를 await 없이
+        // 호출하므로, 동시에 실행되면 먼저 떠난 스냅샷이 나중에 기록되면서
+        // 뒤에 일어난 변경이 조용히 사라진다.
+        this.saveQueue = (this.saveQueue || Promise.resolve()).then(() => this.writeTasks());
+        return this.saveQueue;
+    }
+
+    async writeTasks() {
         try {
             if (this.isElectron) {
                 // Electron mode: use IPC
@@ -657,12 +665,27 @@ class TaskManager {
                 localStorage.setItem('tasklogger_tasks', JSON.stringify(this.tasks));
                 localStorage.setItem('tasklogger_logs', JSON.stringify(this.logs));
             }
+            return true;
         } catch (error) {
             console.error('Failed to save tasks:', error);
             if (!this.isElectron) {
                 alert('Failed to save data. Please check your browser storage.');
             }
+            return false;
         }
+    }
+
+    // 로그와 저장을 백그라운드로 넘기되 실패를 표면화한다. saveTasks가 예외를
+    // 내부에서 삼키기 때문에 .catch()로는 저장 실패를 절대 잡을 수 없다.
+    persistInBackground(action, task) {
+        Promise.all([
+            this.addLog(action, task, task.content),
+            this.saveTasks()
+        ]).then(([, saved]) => {
+            if (!saved) {
+                console.error(`Failed to persist ${action} for task:`, task.id);
+            }
+        });
     }
 
     async addLog(action, task, details = null) {
@@ -1891,10 +1914,7 @@ class TaskManager {
             
             // 비동기 작업들은 백그라운드에서 처리
             const action = task.highlighted ? 'HIGHLIGHT' : 'UNHIGHLIGHT';
-            Promise.all([
-                this.addLog(action, task, task.content),
-                this.saveTasks()
-            ]).catch(error => console.error('Background save failed:', error));
+            this.persistInBackground(action, task);
         }
     }
 
@@ -1912,8 +1932,10 @@ class TaskManager {
     }
 
     async moveTask(taskId, direction) {
-        // 스로틀링 체크 (200ms - 이동은 조금 더 길게)
-        if (this.isActionThrottled(`move_${taskId}_${direction}`, 200)) return;
+        // 스로틀링 체크: 키에 direction을 넣으면 위/아래 연속 발생이 서로 다른
+        // 키가 되어 스로틀을 그대로 통과한다. 또 200ms는 "위로 세 칸" 같은
+        // 의도적인 연타까지 삼켜버린다. 중복 이벤트만 막을 만큼만 짧게 잡는다.
+        if (this.isActionThrottled(`move_${taskId}`, 50)) return;
         
         const taskIndex = this.tasks.findIndex(t => t.id === taskId && !t.completed);
         if (taskIndex === -1) return;
@@ -1946,10 +1968,7 @@ class TaskManager {
             this.renderTasks();
             
             // 비동기 작업들은 백그라운드에서 처리
-            Promise.all([
-                this.addLog(action, currentTask, currentTask.content),
-                this.saveTasks()
-            ]).catch(error => console.error('Background save failed:', error));
+            this.persistInBackground(action, currentTask);
         }
     }
 
@@ -2561,8 +2580,11 @@ class TaskManager {
         const today = new Date().toDateString();
         
         if (this.isElectron && window.electronAPI && window.electronAPI.getCompletedTasksCount) {
-            // In Electron mode, get count from today's log file
-            const todayStr = new Date().toISOString().split('T')[0]; // YYYY-MM-DD format
+            // In Electron mode, get count from today's log file.
+            // 로그 파일명은 로컬 날짜 기준이므로 toISOString()(UTC)을 쓰면 하루 중
+            // 몇 시간 동안 엉뚱한 날짜 파일을 읽게 된다.
+            const now = new Date();
+            const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             try {
                 const count = await window.electronAPI.getCompletedTasksCount(todayStr);
                 return count;
@@ -2579,7 +2601,7 @@ class TaskManager {
                 return storedCount;
             } else {
                 // New day, reset counter
-                localStorage.setItem('completionCountDate', todayDateString);
+                localStorage.setItem('completionCountDate', today);
                 localStorage.setItem('completionCount', '0');
                 return 0;
             }
@@ -2877,10 +2899,7 @@ class TaskManager {
             
             // 비동기 작업들은 백그라운드에서 처리
             const action = task.notificationEnabled ? 'NOTI_ON' : 'NOTI_OFF';
-            Promise.all([
-                this.addLog(action, task, task.content),
-                this.saveTasks()
-            ]).catch(error => console.error('Background save failed:', error));
+            this.persistInBackground(action, task);
         }
     }
 

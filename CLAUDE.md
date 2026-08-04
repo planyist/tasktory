@@ -8,9 +8,19 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 
 ## Development Commands
 
-- **Start the application**: `npm start` or `electron .`
-- **Run tests**: `npm test` (uses Jest)
 - **Install dependencies**: `npm install`
+- **Start the application**: `npm start` (= `electron .`)
+- **Run tests**: `npm test` (Jest)
+- **Package the app**: `npm run build` (electron-builder), or `build:win` / `build:mac` / `build:linux` for a single target. Output goes to `dist/`.
+
+## Testing
+
+- **Framework**: Jest. Tests live in `tests/`.
+- **`__mocks__/electron.js`** is a manual mock that Jest applies automatically to any test requiring `main.js`. It records every `ipcMain.handle()` registration so tests can call handlers directly via `__invoke(channel, ...args)`, and makes `app.getPath('userData')` return the directory named by the `TASKTORY_USERDATA` env var — so main-process tests do real file I/O against a temp dir.
+- **`tests/setup-timezone.js`** pins `TZ=Asia/Seoul` for the whole run, so tests covering the local-date vs UTC-date distinction behave identically on every machine.
+- `renderer.js` and the inline script in `tasktory-standalone.html` are classic browser scripts with no exports. Tests evaluate the source with `new Function(src + '; return TaskManager;')` rather than adding an export purely for testing. For unit-level tests, build instances with `Object.create(TaskManager.prototype)` to skip the constructor's async `init()`.
+- Test files that need a DOM use the `@jest-environment jsdom` docblock; the default environment is `node`.
+- **Definition of done**: a bug fix ships with a test that fails before the change and passes after.
 
 ## Core Requirements
 
@@ -41,6 +51,9 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 - Logs all user actions (add, complete, edit, delete) to persistent files
 - Completed tasks are automatically moved from active list to log file
 - Maintains historical record of all task activities
+- One file per day under `<userData>/logs/`, named `YYYY-MM-DD.tsv` by **local** date. Columns: `TIMESTAMP ACTION STATUS TASK_ID START_TIME TARGET_TIME TAGS CONTENT`.
+- v0.2.5 and earlier wrote `YYYY-MM-DD.log` in a fixed-width format instead (ACTION at characters 25–40). `get-completed-tasks-count` still reads those as a fallback so the daily counter and the 30-day chart keep pre-upgrade history. Do not drop that fallback.
+- `add-log` is serialized through a promise queue: the renderer fires it without awaiting, and the header write would otherwise truncate rows a concurrent call had already appended.
 
 ## Architecture
 
@@ -48,21 +61,26 @@ This is a complete Electron application with the following structure:
 
 - **main.js**: Main Electron process with always-on-top window configuration and IPC handlers
 - **index.html**: Task management interface with table layout and modal forms
-- **renderer.js**: Client-side logic for task management and UI interactions
+- **renderer.js**: Client-side logic for task management and UI interactions (single `TaskManager` class)
 - **styles.css**: Compact styling optimized for small window size
 - **preload.js**: Security bridge between main and renderer processes
 - **package.json**: Node.js project configuration with Electron dependency
+- **tasktory-standalone.html**: Self-contained single-file browser build with its own, simpler copy of `TaskManager` (localStorage only, no IPC). Independent of `renderer.js` — changes do not propagate between the two.
+- **tests/**, **`__mocks__/`**: Jest suite and the manual `electron` mock (see Testing below)
+- **create-icons.js**, **generate-basic-icon.js**, **setup-icons.js**: one-off scripts for generating the app icons in `assets/`
+- **assets/**: app icons and icon-generation notes
+- **data/**: runtime task/log data written by the app (gitignored)
 
 ### Key Features Implemented:
 - **Always-on-top window**: BrowserWindow configured with `alwaysOnTop: true`
 - **Compact UI**: Table-based interface optimized for 600x400 window
 - **Modal forms**: Popup forms for adding/editing tasks
 - **IPC communication**: Secure file operations between main and renderer
-- **Task persistence**: JSON files for active tasks, structured .log files for history
+- **Task persistence**: JSON file for active tasks, one dated TSV log per day for history
 - **Date/time handling**: Local datetime inputs with Korean timezone support
 - **Hybrid mode**: Works both in Electron (with always-on-top) and browser
 - **Completion tracking**: Daily completion counter with animations and confetti effects
-- **Structured logging**: Fixed-width column format for easy parsing and viewing
+- **Structured logging**: Tab-separated (TSV) format for easy parsing and viewing
 
 ## Key Technologies
 
