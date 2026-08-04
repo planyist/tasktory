@@ -93,7 +93,7 @@ describe('add-log', () => {
         const columns = row.split('\t')
 
         expect(columns).toHaveLength(8)
-        expect(columns[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}$/)
+        expect(columns[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/)
         expect(columns[1]).toBe('COMPLETE')
         expect(columns[2]).toBe('COMPLETED')
         expect(columns[3]).toBe('task-1')
@@ -101,6 +101,19 @@ describe('add-log', () => {
         expect(columns[5]).toBe('2026-08-04T18:00')
         expect(columns[6]).toBe('#work')
         expect(columns[7]).toBe('write tests')
+    })
+
+    // A log line is a permanent record: without the offset there is no way to
+    // tell later which zone it was written in, and in DST regions the same wall
+    // clock time occurs twice, making the file non-monotonic.
+    test('stamps the UTC offset so the timestamp is unambiguous', async () => {
+        await electron.__invoke('add-log', makeEntry('ADD'))
+
+        const timestamp = dataLines(await readLog())[0].split('\t')[0]
+
+        // tests/setup-timezone.js pins the run to Asia/Seoul.
+        expect(timestamp).toMatch(/\+09:00$/)
+        expect(new Date(timestamp).getTime()).not.toBeNaN()
     })
 
     test('falls back to PENDING status when the task has none', async () => {
@@ -259,6 +272,39 @@ describe('export-data / import-data', () => {
             electron.__invoke('import-data', { tasks: [{ id: 'new' }] })
         ).resolves.toBe(true)
         await expect(electron.__invoke('load-tasks')).resolves.toEqual([{ id: 'new' }])
+    })
+})
+
+describe('load-rules / save-rules', () => {
+    const rule = {
+        id: 'rule-1',
+        content: 'weekly report',
+        freq: 'weekly',
+        interval: 1,
+        byWeekday: [1],
+        anchorDate: '2026-08-03',
+        startTimeOfDay: '09:00',
+        targetTimeOfDay: '18:00',
+        lastGeneratedKey: '2026-08-03',
+        enabled: true
+    }
+
+    test('returns an empty list when no rules file exists yet', async () => {
+        await expect(electron.__invoke('load-rules')).resolves.toEqual([])
+    })
+
+    test('round-trips rules through disk', async () => {
+        await expect(electron.__invoke('save-rules', [rule])).resolves.toBe(true)
+        await expect(electron.__invoke('load-rules')).resolves.toEqual([rule])
+    })
+
+    test('keeps rules in their own file, separate from tasks', async () => {
+        await electron.__invoke('save-rules', [rule])
+        await electron.__invoke('save-tasks', [{ id: 'task-1' }])
+
+        expect(fs.existsSync(path.join(userData, 'data', 'rules.json'))).toBe(true)
+        await expect(electron.__invoke('load-tasks')).resolves.toEqual([{ id: 'task-1' }])
+        await expect(electron.__invoke('load-rules')).resolves.toEqual([rule])
     })
 })
 

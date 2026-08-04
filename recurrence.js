@@ -111,8 +111,9 @@ const Recurrence = (() => {
             id,
             content: rule.content,
             tags: rule.tags || '',
-            startDateTime: `${occurrenceKey}T${rule.startTimeOfDay}`,
-            targetDateTime: `${targetKey}T${rule.targetTimeOfDay}`,
+            // 기존 태스크와 같은 'YYYY-MM-DD HH:MM' 저장 형식을 쓴다
+            startDateTime: `${occurrenceKey} ${rule.startTimeOfDay}`,
+            targetDateTime: `${targetKey} ${rule.targetTimeOfDay}`,
             completed: false,
             createdAt: now.toISOString(),
             ruleId: rule.id,

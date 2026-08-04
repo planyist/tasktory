@@ -68,6 +68,7 @@ app.on('window-all-closed', () => {
 const dataDir = path.join(app.getPath('userData'), 'data')
 const logsDir = path.join(app.getPath('userData'), 'logs')
 const tasksFile = path.join(dataDir, 'tasks.json')
+const rulesFile = path.join(dataDir, 'rules.json')
 
 // 데이터 디렉토리 생성
 const ensureDataDir = async () => {
@@ -114,6 +115,29 @@ ipcMain.handle('save-tasks', async (event, tasks) => {
     }
 })
 
+// 반복 규칙 로드 (규칙은 태스크와 별도 파일로 관리한다)
+ipcMain.handle('load-rules', async () => {
+    try {
+        await ensureDataDir()
+        const data = await fs.readFile(rulesFile, 'utf8')
+        return JSON.parse(data)
+    } catch (error) {
+        return []
+    }
+})
+
+// 반복 규칙 저장
+ipcMain.handle('save-rules', async (event, rules) => {
+    try {
+        await ensureDataDir()
+        await fs.writeFile(rulesFile, JSON.stringify(rules, null, 2))
+        return true
+    } catch (error) {
+        console.error('Failed to save rules:', error)
+        return false
+    }
+})
+
 // 로그 추가 (날짜별 파일로 저장)
 const writeLogEntry = async (logEntry) => {
     try {
@@ -147,8 +171,17 @@ const writeLogEntry = async (logEntry) => {
         const hours = String(now.getHours()).padStart(2, '0');
         const minutes = String(now.getMinutes()).padStart(2, '0');
         const seconds = String(now.getSeconds()).padStart(2, '0');
-        const timestamp = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}`;
-        
+        // 로그는 되돌릴 수 없는 과거 기록이다. 로컬 벽시계 시각만 남기면 나중에
+        // 어느 타임존이었는지 복원할 방법이 없고, 서머타임이 있는 지역에서는
+        // 가을 전환 때 같은 시각이 두 번 나와 순서가 뒤엉킨다. UTC 오프셋을 붙인다.
+        // (START_TIME/TARGET_TIME은 "벽시계 의도"라 존을 붙이지 않는다)
+        const offsetMinutes = -now.getTimezoneOffset();
+        const offsetSign = offsetMinutes >= 0 ? '+' : '-';
+        const offsetHours = String(Math.floor(Math.abs(offsetMinutes) / 60)).padStart(2, '0');
+        const offsetMins = String(Math.abs(offsetMinutes) % 60).padStart(2, '0');
+        const offset = `${offsetSign}${offsetHours}:${offsetMins}`;
+        const timestamp = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offset}`;
+
         // Convert action to English
         const actionMap = {
             'ADD': 'ADD',

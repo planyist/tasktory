@@ -13,6 +13,18 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 - **Run tests**: `npm test` (Jest)
 - **Package the app**: `npm run build` (electron-builder), or `build:win` / `build:mac` / `build:linux` for a single target. Output goes to `dist/`.
 
+## Recurring Tasks
+
+A recurring item is stored as a **rule**, never as a task. Only the instances a rule produces appear in the list. Rules live in `<userData>/data/rules.json` via the `load-rules` / `save-rules` IPC pair, deliberately separate from `tasks.json` (whose top level is a bare array).
+
+- **Generation happens on app start, not on a timer.** Tasktory is not always running, so `Recurrence.catchUp(rules, tasks, now)` is called from `init()` to catch up on whatever came due while the app was closed. `rule.lastGeneratedKey` makes it idempotent — opening the app repeatedly produces nothing new.
+- **Times are wall-clock, not instants.** A rule stores `startTimeOfDay: '09:00'`, not an absolute datetime, so "every day at 09:00" keeps its meaning across timezones and DST. Instances are assembled in local time, matching how log files are named.
+- **Missed occurrences are capped.** After a long gap only the most recent occurrence is created; the number dropped comes back as `result.skipped`. Do not silently discard it.
+- **Carry-over is accumulate**: a new occurrence is added even when the previous one is still pending. That policy lives entirely in `shouldCreate()` — switch it there to get replace-in-place behaviour instead.
+- Instances carry `ruleId` and `occurrenceKey`; the pair is a second line of defence against duplicates and drives the repeat badge in the table.
+- Repeat settings appear only when **adding** a task. Editing an instance changes that occurrence alone, so the repeat section is hidden in edit mode.
+- Month-end is clamped: a "31st of each month" rule fires on 28/29 February and 30 April.
+
 ## Testing
 
 - **Framework**: Jest. Tests live in `tests/`.
@@ -52,6 +64,7 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 - Completed tasks are automatically moved from active list to log file
 - Maintains historical record of all task activities
 - One file per day under `<userData>/logs/`, named `YYYY-MM-DD.tsv` by **local** date. Columns: `TIMESTAMP ACTION STATUS TASK_ID START_TIME TARGET_TIME TAGS CONTENT`.
+- `TIMESTAMP` carries the UTC offset (`2026-08-04T14:30:00+09:00`) because a log is a permanent record — without it the zone cannot be recovered later, and in DST regions the same wall-clock time occurs twice. `START_TIME`/`TARGET_TIME` deliberately stay zone-less: they express wall-clock intent, not an instant.
 - v0.2.5 and earlier wrote `YYYY-MM-DD.log` in a fixed-width format instead (ACTION at characters 25–40). `get-completed-tasks-count` still reads those as a fallback so the daily counter and the 30-day chart keep pre-upgrade history. Do not drop that fallback.
 - `add-log` is serialized through a promise queue: the renderer fires it without awaiting, and the header write would otherwise truncate rows a concurrent call had already appended.
 
@@ -65,6 +78,7 @@ This is a complete Electron application with the following structure:
 - **styles.css**: Compact styling optimized for small window size
 - **preload.js**: Security bridge between main and renderer processes
 - **package.json**: Node.js project configuration with Electron dependency
+- **recurrence.js**: Pure recurring-task engine, loaded via `<script>` before `renderer.js` (see Recurring Tasks below)
 - **tasktory-standalone.html**: Self-contained single-file browser build with its own, simpler copy of `TaskManager` (localStorage only, no IPC). Independent of `renderer.js` — changes do not propagate between the two.
 - **tests/**, **`__mocks__/`**: Jest suite and the manual `electron` mock (see Testing below)
 - **create-icons.js**, **generate-basic-icon.js**, **setup-icons.js**: one-off scripts for generating the app icons in `assets/`

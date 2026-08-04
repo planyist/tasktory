@@ -845,12 +845,77 @@ td:nth-child(1) {
 }
 
 .task-content {
+    /* 표는 가운데 정렬로 통일하되, 작업 내용만 예외로 왼쪽 정렬한다.
+       길이가 제각각이라 가운데 정렬하면 줄마다 왼쪽 끝이 어긋나 훑기 어렵다.
+       헤더는 다른 컬럼과 함께 가운데를 유지한다. */
+    text-align: left;
     max-width: 300px;
     word-wrap: break-word;
     white-space: pre-wrap;
     font-weight: 600;
     color: #333;
     line-height: 1.4;
+}
+
+/* 반복 작업 표시 및 모달의 반복 설정 */
+.repeat-badge {
+    display: inline-flex;
+    vertical-align: text-bottom;
+    margin-right: 5px;
+    color: #6f42c1;
+}
+
+.repeat-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.repeat-row select {
+    flex: 0 0 auto;
+}
+
+.repeat-interval {
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #555;
+}
+
+.repeat-interval input {
+    width: 56px;
+}
+
+.repeat-weekdays {
+    display: flex;
+    gap: 4px;
+    margin-top: 8px;
+    flex-wrap: wrap;
+}
+
+.weekday-btn {
+    min-width: 30px;
+    padding: 4px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background-color: #fff;
+    color: #555;
+    cursor: pointer;
+}
+
+.weekday-btn.selected {
+    background-color: #6f42c1;
+    border-color: #6f42c1;
+    color: #fff;
+}
+
+.repeat-help-text {
+    margin-top: 8px;
+    font-size: 11px;
+    color: #6a737d;
+    line-height: 1.5;
 }
 
 .tag {
@@ -867,8 +932,10 @@ td:nth-child(1) {
 }
 
 .status {
+    /* 태그(.tag)는 알약 모양이라, 상태까지 둥글면 한눈에 구분이 안 된다.
+       상태는 각진 사각형으로 두어 모양만으로 구별되게 한다. */
     padding: 5px 10px;
-    border-radius: 14px;
+    border-radius: 3px;
     font-size: 12px;
     font-weight: 700;
     text-align: center;
@@ -1548,6 +1615,27 @@ body.dark-mode .modal-content label:after {
 
 body.dark-mode .tags-help-text {
     color: #ccc;
+}
+
+body.dark-mode .repeat-help-text,
+body.dark-mode .repeat-interval {
+    color: #aaa;
+}
+
+body.dark-mode .weekday-btn {
+    background-color: #3a3a3a;
+    border-color: #555;
+    color: #ddd;
+}
+
+body.dark-mode .weekday-btn.selected {
+    background-color: #8a63d2;
+    border-color: #8a63d2;
+    color: #fff;
+}
+
+body.dark-mode .repeat-badge {
+    color: #b392f0;
 }
 
 /* Label with inline help */

@@ -2,6 +2,7 @@ class TaskManager {
     constructor() {
         this.tasks = [];
         this.logs = [];
+        this.rules = []; // 반복 규칙 (태스크와 별도로 저장)
         this.editingTaskId = null;
         this.isElectron = typeof window.electronAPI !== 'undefined';
         this.locale = this.getSelectedLanguage();
@@ -50,6 +51,8 @@ class TaskManager {
         this.applyTheme();
         this.applyLanguageTheme();
         await this.loadTasks();
+        await this.loadRules();
+        await this.runRecurrenceCatchUp();
         this.renderTasks();
         this.updateCompletionCounter();
         this.updateCompletionCounterText();
@@ -102,6 +105,7 @@ class TaskManager {
         document.getElementById('labelTargetTime').textContent = this.getLocalizedText('targetTime');
         document.getElementById('labelTags').textContent = this.getLocalizedText('tags');
         document.getElementById('labelTaskContent').textContent = this.getLocalizedText('taskContent');
+        this.renderRepeatControls();
         document.getElementById('labelPosition').textContent = this.getLocalizedText('position');
         
         // Modal form placeholders
@@ -496,6 +500,11 @@ class TaskManager {
             this.saveTask();
         });
 
+        // 반복 주기 변경 시 간격/요일 입력 표시 갱신
+        document.getElementById('taskRepeat').addEventListener('change', () => {
+            this.updateRepeatVisibility();
+        });
+
         // Confirmation form submission
         document.getElementById('confirmForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -688,6 +697,65 @@ class TaskManager {
         });
     }
 
+    async loadRules() {
+        try {
+            if (this.isElectron) {
+                this.rules = await window.electronAPI.loadRules();
+            } else {
+                const data = localStorage.getItem('tasklogger_rules');
+                this.rules = data ? JSON.parse(data) : [];
+            }
+        } catch (error) {
+            console.error('Failed to load rules:', error);
+            this.rules = [];
+        }
+    }
+
+    async saveRules() {
+        try {
+            if (this.isElectron) {
+                await window.electronAPI.saveRules(this.rules);
+            } else {
+                localStorage.setItem('tasklogger_rules', JSON.stringify(this.rules));
+            }
+            return true;
+        } catch (error) {
+            console.error('Failed to save rules:', error);
+            return false;
+        }
+    }
+
+    // 앱을 켤 때 밀린 반복 회차를 따라잡는다. Recurrence.catchUp은 멱등이라
+    // 여러 번 호출해도 같은 회차가 두 번 생기지 않는다.
+    async runRecurrenceCatchUp() {
+        if (typeof Recurrence === 'undefined' || this.rules.length === 0) return;
+
+        const result = Recurrence.catchUp(this.rules, this.tasks, new Date(), {
+            newId: () => this.generateId()
+        });
+
+        if (result.created.length === 0) {
+            this.rules = result.rules;
+            return;
+        }
+
+        // 새 회차는 미완료 목록 뒤, 완료된 것들 앞에 넣는다
+        const completed = this.tasks.filter(t => t.completed);
+        const active = this.tasks.filter(t => !t.completed);
+        this.tasks = [...active, ...result.created, ...completed];
+        this.rules = result.rules;
+
+        for (const task of result.created) {
+            await this.addLog('ADD', task, task.content);
+        }
+        await this.saveTasks();
+        await this.saveRules();
+
+        if (result.skipped > 0) {
+            console.log(`Recurrence: skipped ${result.skipped} missed occurrence(s)`);
+        }
+    }
+
     async addLog(action, task, details = null) {
         try {
             const logEntry = {
@@ -794,6 +862,17 @@ class TaskManager {
                 'notification': 'Toggle Notification',
                 // Messages
                 'noTasks': 'No tasks registered. Click the \'+ Add Task\' button to add a task.',
+                'repeat': 'Repeat',
+                'repeatNone': 'No repeat',
+                'repeatDaily': 'Daily',
+                'repeatWeekly': 'Weekly',
+                'repeatMonthly': 'Monthly',
+                'repeatUnitDaily': 'days',
+                'repeatUnitWeekly': 'weeks',
+                'repeatUnitMonthly': 'months',
+                'repeatHelp': 'The next occurrence is created when you open the app, using the times above.',
+                'repeating': 'Repeating task',
+                'weekdaysShort': 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
                 'allCompleted': 'All tasks completed! Add a new task.',
                 'noSearchResults': 'No tasks found matching your search.',
                 'deleteConfirm': 'Are you sure you want to delete this task?',
@@ -927,6 +1006,17 @@ class TaskManager {
                 'notification': '알림 토글',
                 // Messages
                 'noTasks': '등록된 작업이 없습니다. \'+ 작업 추가\' 버튼을 클릭하여 작업을 추가해보세요.',
+                'repeat': '반복',
+                'repeatNone': '반복 안 함',
+                'repeatDaily': '매일',
+                'repeatWeekly': '매주',
+                'repeatMonthly': '매월',
+                'repeatUnitDaily': '일마다',
+                'repeatUnitWeekly': '주마다',
+                'repeatUnitMonthly': '개월마다',
+                'repeatHelp': '다음 회차는 앱을 켤 때 위 시각을 기준으로 생성됩니다.',
+                'repeating': '반복 작업',
+                'weekdaysShort': '일,월,화,수,목,금,토',
                 'allCompleted': '모든 작업이 완료되었습니다! 새로운 작업을 추가해보세요.',
                 'noSearchResults': '검색 조건에 맞는 작업이 없습니다.',
                 'deleteConfirm': '이 작업을 삭제하시겠습니까?',
@@ -1060,6 +1150,17 @@ class TaskManager {
                 'notification': '切换通知',
                 // Messages
                 'noTasks': '没有注册的任务。点击"+ 添加任务"按钮来添加任务。',
+                'repeat': '重复',
+                'repeatNone': '不重复',
+                'repeatDaily': '每天',
+                'repeatWeekly': '每周',
+                'repeatMonthly': '每月',
+                'repeatUnitDaily': '天',
+                'repeatUnitWeekly': '周',
+                'repeatUnitMonthly': '个月',
+                'repeatHelp': '下一次将在您打开应用时按上述时间创建。',
+                'repeating': '重复任务',
+                'weekdaysShort': '日,一,二,三,四,五,六',
                 'allCompleted': '所有任务已完成！添加新任务。',
                 'noSearchResults': '没有找到匹配的任务。',
                 'deleteConfirm': '确定要删除这个任务吗？',
@@ -1193,6 +1294,17 @@ class TaskManager {
                 'notification': '通知切り替え',
                 // Messages
                 'noTasks': 'タスクが登録されていません。「+ タスク追加」ボタンをクリックしてタスクを追加してください。',
+                'repeat': '繰り返し',
+                'repeatNone': '繰り返さない',
+                'repeatDaily': '毎日',
+                'repeatWeekly': '毎週',
+                'repeatMonthly': '毎月',
+                'repeatUnitDaily': '日ごと',
+                'repeatUnitWeekly': '週ごと',
+                'repeatUnitMonthly': 'ヶ月ごと',
+                'repeatHelp': '次回はアプリ起動時に上記の時刻で作成されます。',
+                'repeating': '繰り返しタスク',
+                'weekdaysShort': '日,月,火,水,木,金,土',
                 'allCompleted': 'すべてのタスクが完了しました！新しいタスクを追加してください。',
                 'noSearchResults': '検索条件に一致するタスクが見つかりません。',
                 'deleteConfirm': 'このタスクを削除してもよろしいですか？',
@@ -1326,6 +1438,17 @@ class TaskManager {
                 'notification': 'Alternar Notificación',
                 // Messages
                 'noTasks': 'No hay tareas registradas. Haga clic en el botón \'+ Añadir Tarea\' para añadir una tarea.',
+                'repeat': 'Repetir',
+                'repeatNone': 'Sin repetición',
+                'repeatDaily': 'Diario',
+                'repeatWeekly': 'Semanal',
+                'repeatMonthly': 'Mensual',
+                'repeatUnitDaily': 'días',
+                'repeatUnitWeekly': 'semanas',
+                'repeatUnitMonthly': 'meses',
+                'repeatHelp': 'La próxima repetición se crea al abrir la aplicación, con los horarios de arriba.',
+                'repeating': 'Tarea repetitiva',
+                'weekdaysShort': 'Dom,Lun,Mar,Mié,Jue,Vie,Sáb',
                 'allCompleted': '¡Todas las tareas completadas! Añadir nueva tarea.',
                 'noSearchResults': 'No se encontraron tareas que coincidan con su búsqueda.',
                 'deleteConfirm': '¿Está seguro de que desea eliminar esta tarea?',
@@ -1580,7 +1703,12 @@ class TaskManager {
                 <td>${this.formatDateTime(task.startDateTime)}</td>
                 <td>${this.formatDateTime(task.targetDateTime)}</td>
                 <td class="task-tags">${displayTags}</td>
-                <td class="task-content">${plainContent}</td>
+                <td class="task-content">${task.ruleId ? `<span class="repeat-badge" title="${this.getLocalizedText('repeating')}">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                        <polyline points="17,1 21,5 17,9"/><path d="M3,11V9a4,4,0,0,1,4-4H21"/>
+                        <polyline points="7,23 3,19 7,15"/><path d="M21,13v2a4,4,0,0,1-4,4H3"/>
+                    </svg>
+                </span>` : ''}${plainContent}</td>
                 <td><span class="status ${taskStatus.status}">${taskStatus.text}</span></td>
                 <td class="action-buttons">
                     <button class="action-btn notification-btn" data-task-id="${task.id}" data-action="notification" title="${this.getLocalizedText('notification')}">
@@ -1972,6 +2100,88 @@ class TaskManager {
         }
     }
 
+    // 반복 컨트롤의 라벨/요일 버튼을 현재 언어로 그린다
+    renderRepeatControls() {
+        const label = document.getElementById('labelRepeat');
+        const select = document.getElementById('taskRepeat');
+        const weekdays = document.getElementById('repeatWeekdays');
+        const help = document.getElementById('repeatHelpText');
+        if (!label || !select || !weekdays || !help) return;
+
+        label.textContent = this.getLocalizedText('repeat');
+        help.textContent = this.getLocalizedText('repeatHelp');
+
+        const optionKeys = { none: 'repeatNone', daily: 'repeatDaily', weekly: 'repeatWeekly', monthly: 'repeatMonthly' };
+        for (const option of select.options) {
+            option.textContent = this.getLocalizedText(optionKeys[option.value]);
+        }
+
+        // 요일 버튼은 언어가 바뀔 때마다 다시 그리되 선택 상태는 유지한다
+        const selected = new Set(
+            Array.from(weekdays.querySelectorAll('.weekday-btn.selected')).map(btn => Number(btn.dataset.weekday))
+        );
+        weekdays.innerHTML = '';
+        this.getLocalizedText('weekdaysShort').split(',').forEach((name, index) => {
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = selected.has(index) ? 'weekday-btn selected' : 'weekday-btn';
+            button.dataset.weekday = index;
+            button.textContent = name;
+            button.addEventListener('click', () => button.classList.toggle('selected'));
+            weekdays.appendChild(button);
+        });
+
+        this.updateRepeatVisibility();
+    }
+
+    // 선택한 주기에 따라 간격/요일 입력을 보여준다
+    updateRepeatVisibility() {
+        const freq = document.getElementById('taskRepeat').value;
+        const unitKeys = { daily: 'repeatUnitDaily', weekly: 'repeatUnitWeekly', monthly: 'repeatUnitMonthly' };
+
+        document.getElementById('repeatIntervalWrap').style.display = freq === 'none' ? 'none' : 'inline-flex';
+        document.getElementById('repeatWeekdays').style.display = freq === 'weekly' ? 'flex' : 'none';
+        document.getElementById('repeatHelpText').style.display = freq === 'none' ? 'none' : 'block';
+
+        if (freq !== 'none') {
+            document.getElementById('labelRepeatUnit').textContent = this.getLocalizedText(unitKeys[freq]);
+        }
+    }
+
+    resetRepeatControls() {
+        document.getElementById('taskRepeat').value = 'none';
+        document.getElementById('taskRepeatInterval').value = '1';
+        document.querySelectorAll('#repeatWeekdays .weekday-btn').forEach(btn => btn.classList.remove('selected'));
+        this.updateRepeatVisibility();
+    }
+
+    // 폼에서 반복 규칙을 만든다. 반복이 아니면 null.
+    // 방금 만든 태스크가 곧 첫 회차이므로 lastGeneratedKey를 그 날짜로 찍어
+    // catchUp이 같은 회차를 다시 만들지 않게 한다.
+    buildRuleFromForm(task) {
+        const freq = document.getElementById('taskRepeat').value;
+        if (freq === 'none') return null;
+
+        const [anchorDate, startTimeOfDay] = task.startDateTime.split(' ');
+        const targetTimeOfDay = task.targetDateTime.split(' ')[1];
+        const byWeekday = Array.from(document.querySelectorAll('#repeatWeekdays .weekday-btn.selected'))
+            .map(btn => Number(btn.dataset.weekday));
+
+        return {
+            id: 'rule-' + this.generateId(),
+            content: task.content,
+            tags: task.tags,
+            freq,
+            interval: Math.max(1, parseInt(document.getElementById('taskRepeatInterval').value) || 1),
+            byWeekday: freq === 'weekly' ? byWeekday : [],
+            anchorDate,
+            startTimeOfDay,
+            targetTimeOfDay,
+            lastGeneratedKey: anchorDate,
+            enabled: true
+        };
+    }
+
     showModal(task = null) {
         const modal = document.getElementById('taskModal');
         const modalTitle = document.getElementById('modalTitle');
@@ -1996,10 +2206,17 @@ class TaskManager {
             positionInput.max = this.tasks.filter(t => !t.completed).length;
             
             this.editingTaskId = task.id;
+
+            // 편집은 그 회차 하나만 고친다. 규칙 자체는 여기서 바꾸지 않으므로
+            // 반복 설정을 숨겨 "여기서 고치면 규칙이 바뀐다"는 오해를 막는다.
+            this.resetRepeatControls();
+            document.getElementById('repeatGroup').style.display = 'none';
         } else {
             // Add mode
             modalTitle.textContent = this.getLocalizedText('addNewTask');
             form.reset();
+            document.getElementById('repeatGroup').style.display = '';
+            this.resetRepeatControls();
             
             // Set current time as default
             const now = new Date();
@@ -2352,13 +2569,22 @@ class TaskManager {
             // Add mode - insert at specified position
             const completedTasks = this.tasks.filter(t => t.completed);
             const activeTasks = this.tasks.filter(t => !t.completed);
-            
+
+            // 반복이 선택됐으면 규칙을 만들고, 방금 만든 태스크를 첫 회차로 묶는다
+            const rule = this.buildRuleFromForm(taskData);
+            if (rule) {
+                taskData.ruleId = rule.id;
+                taskData.occurrenceKey = rule.anchorDate;
+                this.rules.push(rule);
+                await this.saveRules();
+            }
+
             // Insert at the specified position (1-based)
             activeTasks.splice(position - 1, 0, taskData);
-            
+
             // Rebuild tasks array with completed tasks at the end
             this.tasks = [...activeTasks, ...completedTasks];
-            
+
             await this.addLog('ADD', taskData, taskData.content);
         }
 

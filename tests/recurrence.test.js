@@ -143,8 +143,8 @@ describe('materialize', () => {
         expect(task).toMatchObject({
             id: 'task-x',
             content: 'weekly report',
-            startDateTime: '2026-08-05T09:00',
-            targetDateTime: '2026-08-05T18:00',
+            startDateTime: '2026-08-05 09:00',
+            targetDateTime: '2026-08-05 18:00',
             completed: false,
             ruleId: 'rule-1',
             occurrenceKey: '2026-08-05'
@@ -156,8 +156,8 @@ describe('materialize', () => {
 
         const task = Recurrence.materialize(overnight, '2026-08-05', 'task-x', at('2026-08-05'))
 
-        expect(task.startDateTime).toBe('2026-08-05T22:00')
-        expect(task.targetDateTime).toBe('2026-08-06T02:00')
+        expect(task.startDateTime).toBe('2026-08-05 22:00')
+        expect(task.targetDateTime).toBe('2026-08-06 02:00')
     })
 })
 
@@ -174,7 +174,7 @@ describe('catchUp', () => {
         const result = run([rule()], [], at('2026-08-03'))
 
         expect(result.created).toHaveLength(1)
-        expect(result.created[0].startDateTime).toBe('2026-08-03T09:00')
+        expect(result.created[0].startDateTime).toBe('2026-08-03 09:00')
         expect(result.rules[0].lastGeneratedKey).toBe('2026-08-03')
         expect(result.skipped).toBe(0)
     })

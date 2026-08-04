@@ -3,6 +3,8 @@ const { contextBridge, ipcRenderer } = require('electron')
 contextBridge.exposeInMainWorld('electronAPI', {
     loadTasks: () => ipcRenderer.invoke('load-tasks'),
     saveTasks: (tasks) => ipcRenderer.invoke('save-tasks', tasks),
+    loadRules: () => ipcRenderer.invoke('load-rules'),
+    saveRules: (rules) => ipcRenderer.invoke('save-rules', rules),
     addLog: (logEntry) => ipcRenderer.invoke('add-log', logEntry),
     exportData: () => ipcRenderer.invoke('export-data'),
     importData: (data) => ipcRenderer.invoke('import-data', data),
