@@ -15,15 +15,19 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 
 ## Recurring Tasks
 
-A recurring item is stored as a **rule**, never as a task. Only the instances a rule produces appear in the list. Rules live in `<userData>/data/rules.json` via the `load-rules` / `save-rules` IPC pair, deliberately separate from `tasks.json` (whose top level is a bare array).
+**A recurring task is one row, and that row is the rule.** Completing it does not remove it — the dates advance to the next occurrence and the row stays. Rules live in `<userData>/data/rules.json` via the `load-rules` / `save-rules` IPC pair, deliberately separate from `tasks.json` (whose top level is a bare array); the row carries `ruleId`.
 
-- **Generation happens on app start, not on a timer.** Tasktory is not always running, so `Recurrence.catchUp(rules, tasks, now)` is called from `init()` to catch up on whatever came due while the app was closed. `rule.lastGeneratedKey` makes it idempotent — opening the app repeatedly produces nothing new.
-- **Times are wall-clock, not instants.** A rule stores `startTimeOfDay: '09:00'`, not an absolute datetime, so "every day at 09:00" keeps its meaning across timezones and DST. Instances are assembled in local time, matching how log files are named.
-- **Missed occurrences are capped.** After a long gap only the most recent occurrence is created; the number dropped comes back as `result.skipped`. Do not silently discard it.
-- **Carry-over is accumulate**: a new occurrence is added even when the previous one is still pending. That policy lives entirely in `shouldCreate()` — switch it there to get replace-in-place behaviour instead.
-- Instances carry `ruleId` and `occurrenceKey`; the pair is a second line of defence against duplicates and drives the repeat badge in the table.
-- Repeat settings appear only when **adding** a task. Editing an instance changes that occurrence alone, so the repeat section is hidden in edit mode.
-- Month-end is clamped: a "31st of each month" rule fires on 28/29 February and 30 April.
+This is the Todoist model, not the calendar model. It was chosen deliberately:
+
+- **The rule must be visible and reachable.** The only entry point to repeat settings is the task's edit modal. If completing hid the row, a monthly rule would be unreachable for a month — you could not edit or stop it. Keeping the row removes that whole class of problem, and with it the need for a rule-management screen.
+- **Nothing is generated ahead of time.** There is no catch-up pass, no generation cursor, no cap on missed occurrences. `tasks.json` grows by one row per rule, not one per occurrence.
+- **Completing advances exactly one step.** A task overdue by five occurrences takes five presses, and each logs its own `COMPLETE`, so the history is honest. To skip ahead the user edits the date — the app does not decide how many missed occurrences were real work.
+- **Deleting the row deletes the rule.** Otherwise an unreachable rule would resurrect the row on next launch.
+- **Times are wall-clock, not instants.** A rule stores `startTimeOfDay: '09:00'`, not an absolute datetime, so "every day at 09:00" keeps its meaning across timezones and DST. Dates are assembled in local time, matching how log files are named.
+- `ensureRuleRows()` on start-up gives a row back to any enabled rule that has none — old data from the previous per-occurrence model, or an imported backup.
+- Month-end is clamped: a "31st of each month" rule fires on 28/29 February and 30 April; a 29 February yearly rule fires on the 28th in common years.
+
+`recurrence.js` is pure date maths and holds no policy: `nextOccurrenceAfter(rule, afterKey)`, `occurrenceTimes(rule, key)`, `localKey(date)`.
 
 ## Testing
 

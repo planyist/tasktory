@@ -1,3 +1,6 @@
+// 접힌 상태의 창 폭. styles.css의 .container.collapsed-mode 와 같은 값이어야 한다.
+const COLLAPSED_WIDTH = 150;
+
 class TaskManager {
     constructor() {
         this.tasks = [];
@@ -52,7 +55,7 @@ class TaskManager {
         this.applyLanguageTheme();
         await this.loadTasks();
         await this.loadRules();
-        await this.runRecurrenceCatchUp();
+        await this.ensureRuleRows();
         this.renderTasks();
         this.updateCompletionCounter();
         this.updateCompletionCounterText();
@@ -505,6 +508,13 @@ class TaskManager {
             this.updateRepeatVisibility();
         });
 
+        // 표 안의 칩(태그·상태·반복)을 클릭하면 그 키워드로 검색한다.
+        // 어떤 단어를 쳐야 하는지 몰라도 되고, 언어가 바뀌어도 보이는 것을 누르면 된다.
+        document.getElementById('tasksTable').addEventListener('click', (e) => {
+            const chip = e.target.closest('[data-filter]');
+            if (chip) this.applyChipFilter(chip.dataset.filter);
+        });
+
         // Confirmation form submission
         document.getElementById('confirmForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -725,35 +735,66 @@ class TaskManager {
         }
     }
 
-    // 앱을 켤 때 밀린 반복 회차를 따라잡는다. Recurrence.catchUp은 멱등이라
-    // 여러 번 호출해도 같은 회차가 두 번 생기지 않는다.
-    async runRecurrenceCatchUp() {
-        if (typeof Recurrence === 'undefined' || this.rules.length === 0) return;
+    // 반복 규칙에는 표에 보이는 행이 하나씩 있어야 한다. 규칙만 남고 행이
+    // 없으면(예전 방식으로 만든 데이터를 열거나, 백업을 가져온 경우) 규칙이
+    // 눈에 안 보여서 손댈 수도 멈출 수도 없다.
+    async ensureRuleRows() {
+        if (typeof Recurrence === 'undefined') return;
 
-        const result = Recurrence.catchUp(this.rules, this.tasks, new Date(), {
-            newId: () => this.generateId()
-        });
+        const created = [];
+        for (const rule of this.rules) {
+            if (rule.enabled === false) continue;
+            if (this.tasks.some(t => t.ruleId === rule.id && !t.completed)) continue;
 
-        if (result.created.length === 0) {
-            this.rules = result.rules;
-            return;
+            const today = Recurrence.localKey(new Date());
+            // 오늘이 회차면 오늘 것으로. 아니면 다음 회차로.
+            const occurrence =
+                Recurrence.nextOccurrenceAfter(rule, Recurrence.localKey(new Date(Date.now() - 86400000))) ||
+                Recurrence.nextOccurrenceAfter(rule, today);
+            if (!occurrence) continue;
+
+            created.push({
+                id: this.generateId(),
+                content: rule.content,
+                tags: rule.tags || '',
+                ...Recurrence.occurrenceTimes(rule, occurrence),
+                completed: false,
+                highlighted: false,
+                notificationEnabled: this.defaultNotificationEnabled,
+                createdAt: new Date().toISOString(),
+                ruleId: rule.id
+            });
         }
 
-        // 새 회차는 미완료 목록 뒤, 완료된 것들 앞에 넣는다
+        if (created.length === 0) return;
+
         const completed = this.tasks.filter(t => t.completed);
         const active = this.tasks.filter(t => !t.completed);
-        this.tasks = [...active, ...result.created, ...completed];
-        this.rules = result.rules;
+        this.tasks = [...active, ...created, ...completed];
 
-        for (const task of result.created) {
+        for (const task of created) {
             await this.addLog('ADD', task, task.content);
         }
         await this.saveTasks();
-        await this.saveRules();
+    }
 
-        if (result.skipped > 0) {
-            console.log(`Recurrence: skipped ${result.skipped} missed occurrence(s)`);
-        }
+    // 반복 작업을 완료하면 목록에서 없애지 않고 다음 회차로 한 칸 옮긴다.
+    // 옮겼으면 true.
+    advanceRecurringTask(task) {
+        if (!task.ruleId || typeof Recurrence === 'undefined') return false;
+
+        const rule = this.rules.find(r => r.id === task.ruleId);
+        if (!rule || rule.enabled === false) return false;
+
+        // 현재 회차 다음 것으로 한 칸만 간다. 밀린 걸 한 번에 건너뛰지 않으므로
+        // 실제로 남은 건수만큼 완료를 눌러야 하고, 몰아서 넘기려면 사용자가
+        // 날짜를 직접 고치면 된다.
+        const currentKey = task.startDateTime.split(' ')[0];
+        const nextKey = Recurrence.nextOccurrenceAfter(rule, currentKey);
+        if (!nextKey) return false;
+
+        Object.assign(task, Recurrence.occurrenceTimes(rule, nextKey));
+        return true;
     }
 
     async addLog(action, task, details = null) {
@@ -867,11 +908,15 @@ class TaskManager {
                 'repeatDaily': 'Daily',
                 'repeatWeekly': 'Weekly',
                 'repeatMonthly': 'Monthly',
+                'repeatYearly': 'Yearly',
                 'repeatUnitDaily': 'days',
                 'repeatUnitWeekly': 'weeks',
                 'repeatUnitMonthly': 'months',
+                'repeatUnitYearly': 'years',
+                'repeatIntervalFormat': 'every {n} {unit}',
                 'repeatHelp': 'The next occurrence is created when you open the app, using the times above.',
                 'repeating': 'Repeating task',
+                'repeatFilter': 'Show repeating tasks only',
                 'weekdaysShort': 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
                 'allCompleted': 'All tasks completed! Add a new task.',
                 'noSearchResults': 'No tasks found matching your search.',
@@ -1011,11 +1056,15 @@ class TaskManager {
                 'repeatDaily': '매일',
                 'repeatWeekly': '매주',
                 'repeatMonthly': '매월',
+                'repeatYearly': '매년',
                 'repeatUnitDaily': '일마다',
                 'repeatUnitWeekly': '주마다',
                 'repeatUnitMonthly': '개월마다',
+                'repeatUnitYearly': '년마다',
+                'repeatIntervalFormat': '{n}{unit}',
                 'repeatHelp': '다음 회차는 앱을 켤 때 위 시각을 기준으로 생성됩니다.',
                 'repeating': '반복 작업',
+                'repeatFilter': '반복 작업만 보기',
                 'weekdaysShort': '일,월,화,수,목,금,토',
                 'allCompleted': '모든 작업이 완료되었습니다! 새로운 작업을 추가해보세요.',
                 'noSearchResults': '검색 조건에 맞는 작업이 없습니다.',
@@ -1155,11 +1204,15 @@ class TaskManager {
                 'repeatDaily': '每天',
                 'repeatWeekly': '每周',
                 'repeatMonthly': '每月',
+                'repeatYearly': '每年',
                 'repeatUnitDaily': '天',
                 'repeatUnitWeekly': '周',
                 'repeatUnitMonthly': '个月',
+                'repeatUnitYearly': '年',
+                'repeatIntervalFormat': '每{n}{unit}',
                 'repeatHelp': '下一次将在您打开应用时按上述时间创建。',
                 'repeating': '重复任务',
+                'repeatFilter': '仅显示重复任务',
                 'weekdaysShort': '日,一,二,三,四,五,六',
                 'allCompleted': '所有任务已完成！添加新任务。',
                 'noSearchResults': '没有找到匹配的任务。',
@@ -1299,11 +1352,15 @@ class TaskManager {
                 'repeatDaily': '毎日',
                 'repeatWeekly': '毎週',
                 'repeatMonthly': '毎月',
+                'repeatYearly': '毎年',
                 'repeatUnitDaily': '日ごと',
                 'repeatUnitWeekly': '週ごと',
                 'repeatUnitMonthly': 'ヶ月ごと',
+                'repeatUnitYearly': '年ごと',
+                'repeatIntervalFormat': '{n}{unit}',
                 'repeatHelp': '次回はアプリ起動時に上記の時刻で作成されます。',
                 'repeating': '繰り返しタスク',
+                'repeatFilter': '繰り返しタスクのみ表示',
                 'weekdaysShort': '日,月,火,水,木,金,土',
                 'allCompleted': 'すべてのタスクが完了しました！新しいタスクを追加してください。',
                 'noSearchResults': '検索条件に一致するタスクが見つかりません。',
@@ -1443,11 +1500,15 @@ class TaskManager {
                 'repeatDaily': 'Diario',
                 'repeatWeekly': 'Semanal',
                 'repeatMonthly': 'Mensual',
+                'repeatYearly': 'Anual',
                 'repeatUnitDaily': 'días',
                 'repeatUnitWeekly': 'semanas',
                 'repeatUnitMonthly': 'meses',
+                'repeatUnitYearly': 'años',
+                'repeatIntervalFormat': 'cada {n} {unit}',
                 'repeatHelp': 'La próxima repetición se crea al abrir la aplicación, con los horarios de arriba.',
                 'repeating': 'Tarea repetitiva',
+                'repeatFilter': 'Mostrar solo tareas repetitivas',
                 'weekdaysShort': 'Dom,Lun,Mar,Mié,Jue,Vie,Sáb',
                 'allCompleted': '¡Todas las tareas completadas! Añadir nueva tarea.',
                 'noSearchResults': 'No se encontraron tareas que coincidan con su búsqueda.',
@@ -1584,6 +1645,69 @@ class TaskManager {
         }
     }
 
+    // 태그를 화면에 보이는 형태로. 색상 태그는 저장값과 표시값이 다르다:
+    // '#[RED]이슈'로 저장되지만 '#이슈'로 보인다. 검색이 저장값만 보면
+    // 화면의 태그를 그대로 입력해도 안 걸린다.
+    displayTagTexts(task) {
+        return (task.tags || '')
+            .split(/\s+/)
+            .filter(tag => tag.startsWith('#'))
+            .map(tag => this.parseTagWithColor(tag).content);
+    }
+
+    // 검색 대상 태그 문자열 (저장값 + 표시값 둘 다)
+    searchableTags(task) {
+        return [task.tags || '', ...this.displayTagTexts(task)].join(' ').toLowerCase();
+    }
+
+    // 칩 클릭 = 그 키워드로 검색. 검색창에도 값을 넣어 무슨 일이 일어났는지 보이게 하고,
+    // 기존 지우기 버튼으로 그대로 되돌릴 수 있게 한다.
+    applyChipFilter(value) {
+        const input = document.getElementById('searchInput');
+        if (input) input.value = value;
+
+        this.searchQuery = value.toLowerCase();
+        this.currentPage = 1;
+        this.renderTasks();
+    }
+
+    // 반복 주기를 사람이 읽는 문장으로. 반복이 아니면 빈 문자열.
+    // 예: '매일', '3일마다', '매주 월·수', '매년'
+    describeRuleCadence(rule) {
+        const baseKeys = {
+            daily: 'repeatDaily', weekly: 'repeatWeekly',
+            monthly: 'repeatMonthly', yearly: 'repeatYearly'
+        };
+        const unitKeys = {
+            daily: 'repeatUnitDaily', weekly: 'repeatUnitWeekly',
+            monthly: 'repeatUnitMonthly', yearly: 'repeatUnitYearly'
+        };
+        if (!baseKeys[rule.freq]) return '';
+
+        const interval = rule.interval || 1;
+        let text = interval === 1
+            ? this.getLocalizedText(baseKeys[rule.freq])
+            : this.getLocalizedText('repeatIntervalFormat')
+                  .replace('{n}', interval)
+                  .replace('{unit}', this.getLocalizedText(unitKeys[rule.freq]));
+
+        if (rule.freq === 'weekly' && rule.byWeekday && rule.byWeekday.length) {
+            const names = this.getLocalizedText('weekdaysShort').split(',');
+            const days = [...rule.byWeekday].sort((a, b) => a - b).map(d => names[d]);
+            text += ' ' + days.join('·');
+        }
+        return text;
+    }
+
+    // 태스크 기준. 검색과 표 표시가 같은 문자열을 쓰도록 한 곳에서 만든다.
+    describeRepeat(task) {
+        if (!task.ruleId) return '';
+        const rule = this.rules.find(r => r.id === task.ruleId);
+        if (!rule) return '';
+        // '반복'을 함께 넣어 두면 검색 한 번으로 반복 작업만 추릴 수 있다
+        return `${this.getLocalizedText('repeating')} ${this.describeRuleCadence(rule)}`.trim();
+    }
+
     getTaskStatus(task) {
         const now = new Date();
         const startDate = new Date(task.startDateTime);
@@ -1638,16 +1762,20 @@ class TaskManager {
         if (this.searchQuery) {
             activeTasks = activeTasks.filter(task => {
                 const content = task.content.toLowerCase();
-                const tags = (task.tags || '').toLowerCase();
+                const tags = this.searchableTags(task);
                 const startTime = this.formatDateTime(task.startDateTime).toLowerCase();
                 const targetTime = this.formatDateTime(task.targetDateTime).toLowerCase();
                 const status = this.getTaskStatus(task).text.toLowerCase();
-                
-                return content.includes(this.searchQuery) || 
+                // 반복 작업은 주기 설명과 '반복' 라벨로도 검색된다.
+                // '반복'으로 전부, '매주'로 주간 것만 뽑을 수 있다.
+                const repeat = this.describeRepeat(task).toLowerCase();
+
+                return content.includes(this.searchQuery) ||
                        tags.includes(this.searchQuery) ||
                        startTime.includes(this.searchQuery) ||
                        targetTime.includes(this.searchQuery) ||
-                       status.includes(this.searchQuery);
+                       status.includes(this.searchQuery) ||
+                       (repeat !== '' && repeat.includes(this.searchQuery));
             });
         }
 
@@ -1683,6 +1811,21 @@ class TaskManager {
             const allActiveTasks = this.tasks.filter(t => !t.completed);
             const actualPosition = allActiveTasks.findIndex(t => t.id === task.id) + 1;
             const taskStatus = this.getTaskStatus(task);
+            const rule = task.ruleId ? this.rules.find(r => r.id === task.ruleId) : null;
+            const repeatCadence = rule ? this.describeRuleCadence(rule) : '';
+            // 주기는 시작 시간 아래 한 번만. 두 시각의 주기가 다를 수 없으므로
+            // 양쪽에 쓰면 같은 문장이 한 줄 건너 반복될 뿐이다.
+            // 다른 칩과 같은 규칙: 보이는 글자 그대로 걸러진다. '2일마다'를 눌렀는데
+            // 반복 전체가 나오면 누른 것과 결과가 어긋난다.
+            const cadenceMarkup = repeatCadence ? `
+                <div class="repeat-cadence" data-filter="${repeatCadence}" title="${repeatCadence}">
+                    <span class="repeat-badge">
+                        <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                            <polyline points="17,1 21,5 17,9"/><path d="M3,11V9a4,4,0,0,1,4-4H21"/>
+                            <polyline points="7,23 3,19 7,15"/><path d="M21,13v2a4,4,0,0,1-4,4H3"/>
+                        </svg>
+                    </span>${repeatCadence}
+                </div>` : '';
             const row = document.createElement('tr');
             
             if (task.highlighted) {
@@ -1695,21 +1838,16 @@ class TaskManager {
             // Tags from the tags field with color support
             const displayTags = task.tags ? task.tags.split(/\s+/).filter(tag => tag.startsWith('#')).map(tag => {
                 const parsed = this.parseTagWithColor(tag);
-                return `<span class="tag" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
+                return `<span class="tag" data-filter="${parsed.content}" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
             }).join(' ') : '';
             
             row.innerHTML = `
                 <td>${actualPosition}</td>
-                <td>${this.formatDateTime(task.startDateTime)}</td>
+                <td>${this.formatDateTime(task.startDateTime)}${cadenceMarkup}</td>
                 <td>${this.formatDateTime(task.targetDateTime)}</td>
                 <td class="task-tags">${displayTags}</td>
-                <td class="task-content">${task.ruleId ? `<span class="repeat-badge" title="${this.getLocalizedText('repeating')}">
-                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <polyline points="17,1 21,5 17,9"/><path d="M3,11V9a4,4,0,0,1,4-4H21"/>
-                        <polyline points="7,23 3,19 7,15"/><path d="M21,13v2a4,4,0,0,1-4,4H3"/>
-                    </svg>
-                </span>` : ''}${plainContent}</td>
-                <td><span class="status ${taskStatus.status}">${taskStatus.text}</span></td>
+                <td class="task-content">${plainContent}</td>
+                <td><span class="status ${taskStatus.status}" data-filter="${taskStatus.text}" title="${taskStatus.text}">${taskStatus.text}</span></td>
                 <td class="action-buttons">
                     <button class="action-btn notification-btn" data-task-id="${task.id}" data-action="notification" title="${this.getLocalizedText('notification')}">
                         ${task.notificationEnabled !== false ? 
@@ -1822,8 +1960,9 @@ class TaskManager {
             return;
         }
 
-        // Show only first 20 tasks in mini view
-        const tasksToShow = activeTasks.slice(0, 20);
+        // 창 높이는 활성 작업 전체 기준으로 계산되므로 여기서도 전부 그린다.
+        // 예전에는 20개로 잘라서 개수가 많으면 아래쪽이 빈 채로 남았다.
+        const tasksToShow = activeTasks;
 
         tasksToShow.forEach((task, index) => {
             const li = document.createElement('li');
@@ -1845,31 +1984,38 @@ class TaskManager {
                 li.style.padding = '4px 6px';
             }
             
-            // Truncate content to fit in 80px width
-            const truncatedContent = task.content.length > 8 ? 
-                task.content.substring(0, 8) + '...' : 
-                task.content;
-            
-            li.innerHTML = `${index + 1}. ${truncatedContent}`;
-            
-            // Add tooltip with full content for truncated tasks
-            if (task.content.length > 8) {
-                li.title = task.content;
-            }
-            
-            // Add status-based styling
-            const status = this.getTaskStatus(task);
-            if (status === 'urgent') {
-                li.classList.add('urgent');
-            } else if (status === 'overdue') {
-                li.classList.add('overdue');
-            }
-            
-            // Add click handler for collapsed items
-            li.addEventListener('click', () => {
-                this.editTask(task.id);
-            });
-            
+            // 순번을 붙이지 않는다. 폭이 좁아 글자 예산이 빠듯한데 "1. "이 그중
+            // 상당 부분을 먹고, 내용이 숫자로 시작하면 "1. 1. ..."처럼 겹쳐 보인다.
+            // 자르기는 CSS의 text-overflow에 맡긴다 - 실제 폭에 맞춰 잘리므로
+            // 글자 수로 미리 자르는 것보다 정확하다.
+            // 순번은 별도 span으로 넣고 색을 달리한다. 예전처럼 내용 문자열
+            // 앞에 그냥 붙이면, 내용이 '1.'로 시작할 때 어느 쪽이 순번인지
+            // 구분되지 않는다.
+            const order = document.createElement('span');
+            order.className = 'mini-index';
+            order.textContent = index + 1;
+
+            // 여러 줄짜리 메모는 첫 줄만. nowrap이라 줄바꿈이 전부 한 줄로
+            // 이어붙어 무슨 작업인지 더 알아보기 어려워진다.
+            // 첫 줄이 '1. '처럼 목록 번호로 시작하면 그 번호는 떼어낸다.
+            // 바로 앞에 순번이 있어서 '1  1. ...'처럼 숫자가 붙어 보인다.
+            const text = document.createElement('span');
+            text.className = 'mini-text';
+            text.textContent = task.content
+                .split('\n')[0]
+                .replace(/^\s*\d+\s*[.)]\s*/, '');
+
+            li.append(order, text);
+            li.title = task.content;
+
+            // 상태별 배경색은 넣지 않는다. 좁은 목록에서는 색이 정보를 더해주기보다
+            // 시끄럽기만 하다. (원래도 getTaskStatus가 돌려주는 객체를 문자열과
+            // 비교하고 있어 한 번도 칠해진 적이 없었다.)
+
+            // 클릭 핸들러는 붙이지 않는다. 150px 창에서 편집 모달이 열리면
+            // 제대로 보이지도 않는다. 미니 뷰는 읽기 전용이고, 전체 내용은
+            // 마우스를 올리면 툴팁으로 보인다.
+
             collapsedList.appendChild(li);
         });
     }
@@ -1966,8 +2112,11 @@ class TaskManager {
         const collapsedElement = document.getElementById('collapsedTaskList');
         const miniLayout = document.getElementById('collapsedMiniLayout');
 
+        // 문서 레벨 스크롤바는 컨테이너 CSS로는 못 막는다. body에도 표시를 남긴다.
+        document.body.classList.toggle('collapsed-mode-body', this.isCollapsed);
+
         if (this.isCollapsed) {
-            // Enter collapsed mode - 80px width ultra-minimal view
+            // Enter collapsed mode - narrow side strip
             container.classList.add('collapsed-mode');
             collapseBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15,3 21,3 21,9"/><polyline points="9,21 3,21 3,15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
             collapseBtn.title = this.getLocalizedText('expandToFullView');
@@ -1985,7 +2134,7 @@ class TaskManager {
                 const paddingHeight = 30; // Bottom padding
                 const dynamicHeight = Math.max(150, baseHeight + (taskCount * taskHeight) + paddingHeight);
                 
-                this.resizeAndPositionWindow(80, dynamicHeight, 'top-right-150');
+                this.resizeAndPositionWindow(COLLAPSED_WIDTH, dynamicHeight, 'top-right-150');
             }
         } else {
             // Exit collapsed mode - return to normal view
@@ -2111,7 +2260,7 @@ class TaskManager {
         label.textContent = this.getLocalizedText('repeat');
         help.textContent = this.getLocalizedText('repeatHelp');
 
-        const optionKeys = { none: 'repeatNone', daily: 'repeatDaily', weekly: 'repeatWeekly', monthly: 'repeatMonthly' };
+        const optionKeys = { none: 'repeatNone', daily: 'repeatDaily', weekly: 'repeatWeekly', monthly: 'repeatMonthly', yearly: 'repeatYearly' };
         for (const option of select.options) {
             option.textContent = this.getLocalizedText(optionKeys[option.value]);
         }
@@ -2137,7 +2286,7 @@ class TaskManager {
     // 선택한 주기에 따라 간격/요일 입력을 보여준다
     updateRepeatVisibility() {
         const freq = document.getElementById('taskRepeat').value;
-        const unitKeys = { daily: 'repeatUnitDaily', weekly: 'repeatUnitWeekly', monthly: 'repeatUnitMonthly' };
+        const unitKeys = { daily: 'repeatUnitDaily', weekly: 'repeatUnitWeekly', monthly: 'repeatUnitMonthly', yearly: 'repeatUnitYearly' };
 
         document.getElementById('repeatIntervalWrap').style.display = freq === 'none' ? 'none' : 'inline-flex';
         document.getElementById('repeatWeekdays').style.display = freq === 'weekly' ? 'flex' : 'none';
@@ -2148,6 +2297,56 @@ class TaskManager {
         }
     }
 
+    // 편집 시 해당 태스크가 속한 규칙을 폼에 채운다
+    populateRepeatControls(task) {
+        this.resetRepeatControls();
+
+        const rule = task && task.ruleId ? this.rules.find(r => r.id === task.ruleId) : null;
+        if (!rule) return;
+
+        document.getElementById('taskRepeat').value = rule.freq;
+        document.getElementById('taskRepeatInterval').value = String(rule.interval || 1);
+        (rule.byWeekday || []).forEach(day => {
+            const button = document.querySelector(`#repeatWeekdays .weekday-btn[data-weekday="${day}"]`);
+            if (button) button.classList.add('selected');
+        });
+
+        this.updateRepeatVisibility();
+    }
+
+    // 편집 저장 시 규칙을 만들거나/갱신하거나/해제한다.
+    // taskData를 제자리에서 수정하고, 규칙 목록도 함께 갱신한다.
+    async applyRepeatChange(taskData, previousTask) {
+        const freq = document.getElementById('taskRepeat').value;
+        const previousRuleId = previousTask && previousTask.ruleId;
+
+        if (freq === 'none') {
+            if (!previousRuleId) return;
+            // 반복 해제: 규칙을 지운다. 이 행은 평범한 일회성 작업으로 남는다.
+            this.rules = this.rules.filter(r => r.id !== previousRuleId);
+            delete taskData.ruleId;
+            await this.saveRules();
+            return;
+        }
+
+        const rule = this.buildRuleFromForm(taskData);
+        const existingIndex = previousRuleId
+            ? this.rules.findIndex(r => r.id === previousRuleId)
+            : -1;
+
+        if (existingIndex !== -1) {
+            // 기존 규칙 갱신. id는 유지해야 이 행과의 연결이 끊기지 않는다.
+            const previousRule = this.rules[existingIndex];
+            this.rules[existingIndex] = { ...rule, id: previousRule.id };
+            taskData.ruleId = previousRule.id;
+        } else {
+            this.rules.push(rule);
+            taskData.ruleId = rule.id;
+        }
+
+        await this.saveRules();
+    }
+
     resetRepeatControls() {
         document.getElementById('taskRepeat').value = 'none';
         document.getElementById('taskRepeatInterval').value = '1';
@@ -2156,8 +2355,6 @@ class TaskManager {
     }
 
     // 폼에서 반복 규칙을 만든다. 반복이 아니면 null.
-    // 방금 만든 태스크가 곧 첫 회차이므로 lastGeneratedKey를 그 날짜로 찍어
-    // catchUp이 같은 회차를 다시 만들지 않게 한다.
     buildRuleFromForm(task) {
         const freq = document.getElementById('taskRepeat').value;
         if (freq === 'none') return null;
@@ -2177,7 +2374,6 @@ class TaskManager {
             anchorDate,
             startTimeOfDay,
             targetTimeOfDay,
-            lastGeneratedKey: anchorDate,
             enabled: true
         };
     }
@@ -2207,10 +2403,9 @@ class TaskManager {
             
             this.editingTaskId = task.id;
 
-            // 편집은 그 회차 하나만 고친다. 규칙 자체는 여기서 바꾸지 않으므로
-            // 반복 설정을 숨겨 "여기서 고치면 규칙이 바뀐다"는 오해를 막는다.
-            this.resetRepeatControls();
-            document.getElementById('repeatGroup').style.display = 'none';
+            // 편집에서도 반복 설정을 그대로 보여주고 고칠 수 있게 한다
+            document.getElementById('repeatGroup').style.display = '';
+            this.populateRepeatControls(task);
         } else {
             // Add mode
             modalTitle.textContent = this.getLocalizedText('addNewTask');
@@ -2557,8 +2752,12 @@ class TaskManager {
             const taskIndex = this.tasks.findIndex(t => t.id === this.editingTaskId);
             if (taskIndex !== -1) {
                 const oldTask = { ...this.tasks[taskIndex] };
+
+                // 반복 설정 변경(신규/수정/해제)을 taskData와 규칙에 반영한다
+                await this.applyRepeatChange(taskData, oldTask);
+
                 this.tasks[taskIndex] = taskData;
-                
+
                 // Reposition task if needed
                 this.repositionTask(this.editingTaskId, position);
                 
@@ -2570,11 +2769,10 @@ class TaskManager {
             const completedTasks = this.tasks.filter(t => t.completed);
             const activeTasks = this.tasks.filter(t => !t.completed);
 
-            // 반복이 선택됐으면 규칙을 만들고, 방금 만든 태스크를 첫 회차로 묶는다
+            // 반복이 선택됐으면 규칙을 만들고 이 행에 묶는다. 이 행이 곧 규칙이 된다.
             const rule = this.buildRuleFromForm(taskData);
             if (rule) {
                 taskData.ruleId = rule.id;
-                taskData.occurrenceKey = rule.anchorDate;
                 this.rules.push(rule);
                 await this.saveRules();
             }
@@ -2615,11 +2813,19 @@ class TaskManager {
         const taskIndex = this.tasks.findIndex(t => t.id === taskId);
         if (taskIndex !== -1) {
             const task = this.tasks[taskIndex];
-            task.completed = true;
-            task.completedAt = new Date().toISOString();
-            
+
             const logDetails = details ? `${task.content} (completed) ${details}` : `${task.content} (completed)`;
-            await this.addLog('COMPLETE', task, logDetails);
+            // 로그는 완료 상태로 남긴다. 반복이면 태스크 자체는 다음 회차로
+            // 넘어가지만, 이번 회차를 해냈다는 기록은 그대로 있어야 한다.
+            await this.addLog('COMPLETE', { ...task, completed: true }, logDetails);
+
+            // 반복 작업은 사라지지 않고 다음 회차로 이동한다. 그 행이 곧 규칙이라
+            // 없애버리면 반복을 다시 볼 방법이 없어진다.
+            if (!this.advanceRecurringTask(task)) {
+                task.completed = true;
+                task.completedAt = new Date().toISOString();
+            }
+
             await this.saveTasks();
             this.renderTasks();
             
@@ -2638,7 +2844,14 @@ class TaskManager {
         if (taskIndex !== -1) {
             const task = this.tasks[taskIndex];
             this.tasks.splice(taskIndex, 1);
-            
+
+            // 반복 작업의 행은 곧 규칙이다. 행만 지우고 규칙을 남기면 손댈 수
+            // 없는 규칙이 되어 다음 실행 때 행이 되살아난다.
+            if (task.ruleId) {
+                this.rules = this.rules.filter(r => r.id !== task.ruleId);
+                await this.saveRules();
+            }
+
             const logDetails = details ? `${task.content} (deleted) ${details}` : `${task.content} (deleted)`;
             await this.addLog('DELETE', task, logDetails);
             await this.saveTasks();
@@ -2698,6 +2911,7 @@ class TaskManager {
                             const success = await window.electronAPI.importData(data);
                             if (success) {
                                 await this.loadTasks();
+                                await this.loadRules();
                                 this.renderTasks();
                                 alert(this.getLocalizedText('dataImportSuccess'));
                             } else {
@@ -2707,6 +2921,8 @@ class TaskManager {
                             // Browser mode: use local storage
                             this.tasks = data.tasks;
                             if (data.logs) this.logs = data.logs;
+                            this.rules = data.rules || [];
+                            await this.saveRules();
                             await this.saveTasks();
                             this.renderTasks();
                             alert(this.getLocalizedText('dataImportSuccess'));

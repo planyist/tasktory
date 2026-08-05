@@ -21,64 +21,12 @@
             Browser Mode: Data is stored in local storage. Use Electron mode for always-on-top functionality.
         </div>
         
-        <header>
-            <div class="header-left">
-                <h1>Tasktory</h1>
-            </div>
-            <div class="header-buttons">
-                <button id="exportBtn" class="btn icon-btn" title="Export Data">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="12" y1="6" x2="12" y2="18"/>
-                        <polyline points="7,13 12,18 17,13"/>
-                        <line x1="6" y1="21" x2="18" y2="21" stroke-width="1.5"/>
-                    </svg>
-                </button>
-                <button id="importBtn" class="btn icon-btn" title="Import Data">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                        <line x1="12" y1="6" x2="12" y2="18"/>
-                        <polyline points="7,11 12,6 17,11"/>
-                        <line x1="6" y1="21" x2="18" y2="21" stroke-width="1.5"/>
-                    </svg>
-                </button>
-                <button id="statisticsBtn" class="btn icon-btn" title="Statistics">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="18" y1="20" x2="18" y2="10"/>
-                        <line x1="12" y1="20" x2="12" y2="4"/>
-                        <line x1="6" y1="20" x2="6" y2="14"/>
-                    </svg>
-                </button>
-                <button id="settingsBtn" class="btn icon-btn" title="Settings">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                        <circle cx="12" cy="12" r="3"/>
-                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
-                    </svg>
-                </button>
-                <button id="aboutBtn" class="btn icon-btn" title="About">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <circle cx="12" cy="12" r="10"/>
-                        <path d="M9,9h0a3,3,0,0,1,6,0c0,2-3,3-3,3"/>
-                        <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
-                    </svg>
-                </button>
-                <button id="collapseBtn" class="btn icon-btn" title="Collapse view (Ctrl+M)">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="14,4 14,10 20,10"/>
-                        <polyline points="10,20 10,14 4,14"/>
-                        <line x1="21" y1="3" x2="14" y2="10"/>
-                        <line x1="3" y1="21" x2="10" y2="14"/>
-                    </svg>
-                </button>
-            </div>
-        </header>
-        
         <main>
-            <div class="completion-counter-container">
+            <div class="table-controls">
                 <div id="completionCounter" class="completion-counter">
                     <span id="completionCounterText"></span> <span id="completionCount" class="completion-count">0</span>
                 </div>
-            </div>
-            <div class="table-controls">
-                <div class="controls-right">
+                <div class="controls-actions">
                     <div class="search-container">
                         <input type="text" id="searchInput" placeholder="" class="search-input">
                         <button id="clearSearchBtn" class="btn clear-search-btn" title="Clear search">
@@ -95,6 +43,50 @@
                         </svg>
                     </button>
                 </div>
+                    <div class="header-buttons">
+                        <button id="exportBtn" class="btn icon-btn" title="Export Data">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="6" x2="12" y2="18"/>
+                                <polyline points="7,13 12,18 17,13"/>
+                                <line x1="6" y1="21" x2="18" y2="21" stroke-width="1.5"/>
+                            </svg>
+                        </button>
+                        <button id="importBtn" class="btn icon-btn" title="Import Data">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                                <line x1="12" y1="6" x2="12" y2="18"/>
+                                <polyline points="7,11 12,6 17,11"/>
+                                <line x1="6" y1="21" x2="18" y2="21" stroke-width="1.5"/>
+                            </svg>
+                        </button>
+                        <button id="statisticsBtn" class="btn icon-btn" title="Statistics">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="18" y1="20" x2="18" y2="10"/>
+                                <line x1="12" y1="20" x2="12" y2="4"/>
+                                <line x1="6" y1="20" x2="6" y2="14"/>
+                            </svg>
+                        </button>
+                        <button id="settingsBtn" class="btn icon-btn" title="Settings">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                                <circle cx="12" cy="12" r="3"/>
+                                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                            </svg>
+                        </button>
+                        <button id="aboutBtn" class="btn icon-btn" title="About">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"/>
+                                <path d="M9,9h0a3,3,0,0,1,6,0c0,2-3,3-3,3"/>
+                                <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
+                            </svg>
+                        </button>
+                        <button id="collapseBtn" class="btn icon-btn" title="Collapse view (Ctrl+M)">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="14,4 14,10 20,10"/>
+                                <polyline points="10,20 10,14 4,14"/>
+                                <line x1="21" y1="3" x2="14" y2="10"/>
+                                <line x1="3" y1="21" x2="10" y2="14"/>
+                            </svg>
+                        </button>
+                    </div>
             </div>
             <div class="table-container">
                 <table id="tasksTable">
@@ -120,25 +112,25 @@
                         <!-- Collapsed task items -->
                     </ul>
                 </div>
-                
-                <!-- Pagination -->
-                <div id="paginationContainer" class="pagination-container">
-                    <div class="pagination">
-                        <button id="prevPageBtn" class="pagination-btn">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="15,18 9,12 15,6"/>
-                            </svg>
-                        </button>
-                        <div id="pageNumbers" class="page-numbers"></div>
-                        <button id="nextPageBtn" class="pagination-btn">
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="9,18 15,12 9,6"/>
-                            </svg>
-                        </button>
-                    </div>
+            </div>
+
+            <!-- Pagination: 표 바깥에 두어야 스크롤과 무관하게 항상 표 아래에 고정된다 -->
+            <div id="paginationContainer" class="pagination-container">
+                <div class="pagination">
+                    <button id="prevPageBtn" class="pagination-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15,18 9,12 15,6"/>
+                        </svg>
+                    </button>
+                    <div id="pageNumbers" class="page-numbers"></div>
+                    <button id="nextPageBtn" class="pagination-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9,18 15,12 9,6"/>
+                        </svg>
+                    </button>
                 </div>
             </div>
-            
+
             <!-- Collapsed Mini Layout (100px width) -->
             <div id="collapsedMiniLayout" class="collapsed-mini-layout">
                 <button id="collapsedExpandBtn" class="collapsed-expand-btn" title="Expand">
@@ -207,9 +199,9 @@
                             <option value="daily"></option>
                             <option value="weekly"></option>
                             <option value="monthly"></option>
+                            <option value="yearly"></option>
                         </select>
                         <span class="repeat-interval" id="repeatIntervalWrap" style="display: none;">
-                            <span id="labelRepeatEvery">every</span>
                             <input type="number" id="taskRepeatInterval" min="1" max="99" value="1">
                             <span id="labelRepeatUnit"></span>
                         </span>
@@ -366,7 +358,7 @@
             
             <br><br>
             
-            <p><strong id="aboutVersionLabel">Version:</strong> 0.2.8</p>
+            <p><strong id="aboutVersionLabel">Version:</strong> 0.3.0</p>
             <p><strong id="aboutLicenseLabel">License:</strong> MIT</p>
             <p><strong id="aboutAuthorLabel">Author:</strong> Jeonghwan Yoo &lt;planyist@gmail.com&gt;</p>
         </div>

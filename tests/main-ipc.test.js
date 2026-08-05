@@ -258,11 +258,89 @@ describe('export-data / import-data', () => {
         const exported = await electron.__invoke('export-data')
 
         expect(exported.tasks).toEqual(tasks)
-        expect(exported.version).toBe('1.0')
+        expect(exported.version).toBe('1.2')
     })
 
-    test('exports an empty task list when nothing has been saved', async () => {
-        await expect(electron.__invoke('export-data')).resolves.toMatchObject({ tasks: [] })
+    describe('log history', () => {
+        test('includes every dated log file in the backup', async () => {
+            await electron.__invoke('add-log', makeEntry('ADD'))
+            await fsp.writeFile(path.join(logsDir, '2025-07-26.log'), 'legacy content\n')
+
+            const exported = await electron.__invoke('export-data')
+
+            expect(Object.keys(exported.logFiles).sort()).toEqual([
+                '2025-07-26.log',
+                `${todayStr()}.tsv`
+            ])
+            expect(exported.logFiles['2025-07-26.log']).toBe('legacy content\n')
+        })
+
+        test('ignores files that are not dated logs', async () => {
+            await fsp.mkdir(logsDir, { recursive: true })
+            await fsp.writeFile(path.join(logsDir, 'notes.txt'), 'nope')
+
+            const exported = await electron.__invoke('export-data')
+
+            expect(exported.logFiles).toEqual({})
+        })
+
+        test('restores log files on import', async () => {
+            await electron.__invoke('import-data', {
+                tasks: [],
+                logFiles: { '2026-01-15.tsv': 'restored\n' }
+            })
+
+            await expect(
+                fsp.readFile(path.join(logsDir, '2026-01-15.tsv'), 'utf8')
+            ).resolves.toBe('restored\n')
+        })
+
+        test('leaves log files the backup does not mention alone', async () => {
+            await fsp.mkdir(logsDir, { recursive: true })
+            await fsp.writeFile(path.join(logsDir, '2026-02-02.tsv'), 'keep me\n')
+
+            await electron.__invoke('import-data', {
+                tasks: [],
+                logFiles: { '2026-01-15.tsv': 'restored\n' }
+            })
+
+            await expect(
+                fsp.readFile(path.join(logsDir, '2026-02-02.tsv'), 'utf8')
+            ).resolves.toBe('keep me\n')
+        })
+
+        // A backup is untrusted input: import writes real files from its keys.
+        test('refuses a log name that would escape the logs directory', async () => {
+            await electron.__invoke('import-data', {
+                tasks: [],
+                logFiles: { '../../pwned.tsv': 'bad', 'evil.sh': 'bad' }
+            })
+
+            expect(fs.existsSync(path.join(userData, 'pwned.tsv'))).toBe(false)
+            expect(fs.existsSync(path.join(logsDir, 'evil.sh'))).toBe(false)
+        })
+
+        test('a v1.0 backup without logFiles imports without error', async () => {
+            await expect(
+                electron.__invoke('import-data', { tasks: [{ id: 'a' }] })
+            ).resolves.toBe(true)
+        })
+    })
+
+    test('exports empty lists when nothing has been saved', async () => {
+        await expect(electron.__invoke('export-data')).resolves.toMatchObject({
+            tasks: [],
+            rules: []
+        })
+    })
+
+    // Without the rules, importing a backup restores the tasks but silently
+    // drops every recurring item.
+    test('exports the recurrence rules alongside the tasks', async () => {
+        const rules = [{ id: 'rule-1', freq: 'daily', content: 'standup' }]
+        await electron.__invoke('save-rules', rules)
+
+        await expect(electron.__invoke('export-data')).resolves.toMatchObject({ rules })
     })
 
     test('import-data overwrites the stored tasks', async () => {
@@ -272,6 +350,24 @@ describe('export-data / import-data', () => {
             electron.__invoke('import-data', { tasks: [{ id: 'new' }] })
         ).resolves.toBe(true)
         await expect(electron.__invoke('load-tasks')).resolves.toEqual([{ id: 'new' }])
+    })
+
+    test('import-data restores the rules from the backup', async () => {
+        const rules = [{ id: 'rule-1', freq: 'daily', content: 'standup' }]
+
+        await electron.__invoke('import-data', { tasks: [], rules })
+
+        await expect(electron.__invoke('load-rules')).resolves.toEqual(rules)
+    })
+
+    // Otherwise the old rules keep generating occurrences for tasks that the
+    // import just removed.
+    test('import-data clears stale rules when the backup has none', async () => {
+        await electron.__invoke('save-rules', [{ id: 'rule-old', freq: 'daily' }])
+
+        await electron.__invoke('import-data', { tasks: [{ id: 'new' }] })
+
+        await expect(electron.__invoke('load-rules')).resolves.toEqual([])
     })
 })
 

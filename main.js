@@ -5,6 +5,7 @@ const path = require('path')
 let mainWindow
 let unfocusedOpacity = 1.0
 let originalWindowBounds = null
+const NORMAL_MIN_WIDTH = 900 // 접힘 여부 판단 기준 (BrowserWindow의 minWidth와 같다)
 
 const createWindow = () => {
     mainWindow = new BrowserWindow({
@@ -252,18 +253,40 @@ ipcMain.handle('add-log', async (event, logEntry) => {
     return write
 })
 
+// 백업에 담을 수 있는 로그 파일명만 허용한다. 가져오기는 이 이름으로 파일을
+// 쓰므로, 검증하지 않으면 조작된 백업이 데이터 폴더 밖에 파일을 만들 수 있다.
+const LOG_FILE_NAME = /^\d{4}-\d{2}-\d{2}\.(tsv|log)$/
+
+const readAllLogs = async () => {
+    const logs = {}
+    const names = await fs.readdir(logsDir).catch(() => [])
+
+    for (const name of names) {
+        if (!LOG_FILE_NAME.test(name)) continue
+        const content = await fs.readFile(path.join(logsDir, name), 'utf8').catch(() => null)
+        if (content !== null) logs[name] = content
+    }
+    return logs
+}
+
 // 데이터 내보내기 (Electron 모드용)
 ipcMain.handle('export-data', async () => {
     try {
         await ensureDataDir()
         const tasksData = await fs.readFile(tasksFile, 'utf8').catch(() => '[]')
-        
+        const rulesData = await fs.readFile(rulesFile, 'utf8').catch(() => '[]')
+
+        // 규칙을 함께 내보내지 않으면, 가져오기로 태스크만 복원됐을 때
+        // 반복 작업이 통째로 사라진다.
+        // 브라우저 모드는 logs를 배열로 쓰므로, 파일 이력은 다른 키에 담는다
         const exportData = {
             tasks: JSON.parse(tasksData),
+            rules: JSON.parse(rulesData),
+            logFiles: await readAllLogs(),
             exportDate: new Date().toISOString(),
-            version: '1.0'
+            version: '1.2'
         }
-        
+
         return exportData
     } catch (error) {
         console.error('Failed to export data:', error)
@@ -276,6 +299,18 @@ ipcMain.handle('import-data', async (event, data) => {
     try {
         await ensureDataDir()
         await fs.writeFile(tasksFile, JSON.stringify(data.tasks, null, 2))
+        // 태스크를 통째로 갈아끼우므로 규칙도 함께 맞춰야 한다. 규칙만 남으면
+        // 사라진 태스크의 회차가 다음 실행 때 되살아난다.
+        // v1.0 백업에는 rules가 없으므로 그 경우 규칙을 비운다.
+        await fs.writeFile(rulesFile, JSON.stringify(data.rules || [], null, 2))
+
+        // 이력은 파일 단위로 덮어쓴다. 백업에 없는 날짜의 로그는 건드리지 않아,
+        // 다른 기기의 기록을 실수로 지우지 않는다.
+        for (const [name, content] of Object.entries(data.logFiles || {})) {
+            if (!LOG_FILE_NAME.test(name) || typeof content !== 'string') continue
+            await fs.writeFile(path.join(logsDir, name), content)
+        }
+
         return true
     } catch (error) {
         console.error('Failed to import data:', error)
@@ -374,16 +409,17 @@ ipcMain.handle('get-completed-tasks-count', async (event, dateStr) => {
 // Resize window for collapsed mode
 ipcMain.handle('resize-window', async (event, width, height) => {
     if (mainWindow) {
-        if (width === 80) {
+        // 접힌 폭은 값이 바뀔 수 있으므로 특정 숫자가 아니라 "평소 최소폭보다 좁은가"로 판단한다
+        if (width < NORMAL_MIN_WIDTH) {
             // Store original bounds before collapsing
             originalWindowBounds = mainWindow.getBounds();
             // Temporarily remove minimum size constraints for collapse
-            mainWindow.setMinimumSize(80, 400);
+            mainWindow.setMinimumSize(width, 400);
         }
         
         mainWindow.setSize(width, height);
         
-        if (width !== 80 && originalWindowBounds) {
+        if (width >= NORMAL_MIN_WIDTH && originalWindowBounds) {
             // Restore original position and minimum size when expanding
             mainWindow.setPosition(originalWindowBounds.x, originalWindowBounds.y);
             mainWindow.setMinimumSize(900, 400);
@@ -397,40 +433,37 @@ ipcMain.handle('resize-window', async (event, width, height) => {
 
 // Resize and position window with specific positioning
 ipcMain.handle('resize-and-position-window', async (event, width, height, position) => {
-    if (mainWindow) {
-        const { screen } = require('electron');
-        const primaryDisplay = screen.getPrimaryDisplay();
-        const { width: screenWidth, height: screenHeight } = primaryDisplay.workAreaSize;
-        
-        if (width === 80) {
-            // Store original bounds before collapsing
-            originalWindowBounds = mainWindow.getBounds();
-            // Temporarily remove minimum size constraints for collapse
-            mainWindow.setMinimumSize(80, height);
+    if (!mainWindow) return false
+
+    const { screen } = require('electron')
+    // workArea는 크기뿐 아니라 원점도 준다. 작업표시줄이 왼쪽/위에 있거나
+    // 모니터가 여러 대면 작업 영역이 0,0에서 시작하지 않는다.
+    const { workArea } = screen.getPrimaryDisplay()
+
+    let x, y
+    if (position === 'top-right-150') {
+        if (!originalWindowBounds) {
+            originalWindowBounds = mainWindow.getBounds()
         }
-        
-        mainWindow.setSize(width, height);
-        
-        // Calculate position based on position parameter
-        let x, y;
-        if (position === 'top-right-150') {
-            // Position at top-right, 150px down from top
-            x = screenWidth - width - 20; // 20px padding from right edge
-            y = 150;
-        } else if (position === 'center') {
-            // Center the window
-            x = Math.round((screenWidth - width) / 2);
-            y = Math.round((screenHeight - height) / 2);
-            // Restore minimum size when expanding
-            mainWindow.setMinimumSize(900, 400);
-            originalWindowBounds = null;
-        } else {
-            // Default to current position
-            return true;
-        }
-        
-        mainWindow.setPosition(x, y);
-        return true;
+        y = workArea.y + 150
+        // 작업이 많으면 계산된 높이가 화면을 넘어가고, 그러면 창 안에 스크롤이 생긴다
+        height = Math.min(height, workArea.height - 150)
+        // 최소 크기를 먼저 풀어야 좁은 폭/낮은 높이가 실제로 적용된다
+        mainWindow.setMinimumSize(width, 100)
+        // 화면 오른쪽 끝에 붙인다
+        x = workArea.x + workArea.width - width
+    } else if (position === 'center') {
+        mainWindow.setMinimumSize(NORMAL_MIN_WIDTH, 400)
+        originalWindowBounds = null
+        x = workArea.x + Math.round((workArea.width - width) / 2)
+        y = workArea.y + Math.round((workArea.height - height) / 2)
+    } else {
+        // Default to current position
+        return true
     }
-    return false;
+
+    // 크기와 위치를 한 번에 적용한다. setSize와 setPosition을 따로 부르면
+    // 중간 상태에서 최소 크기 제약이나 OS 위치 보정에 걸려 어긋난다.
+    mainWindow.setBounds({ x, y, width, height })
+    return true
 })

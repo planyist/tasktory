@@ -89,36 +89,6 @@ body {
     transition: all 0.3s ease;
 }
 
-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    margin-bottom: 10px;
-    padding-bottom: 8px;
-    border-bottom: 1px solid var(--border-light);
-}
-
-.header-left {
-    display: flex;
-    flex-direction: column;
-    gap: 5px;
-}
-
-
-h1 {
-    color: var(--text-primary);
-    font-size: 22px;
-    font-weight: var(--font-weight-heavy);
-    margin: 0;
-    letter-spacing: -0.5px;
-}
-
-.completion-counter-container {
-    display: flex;
-    justify-content: center;
-    margin-bottom: 2px;
-}
-
 .completion-counter {
     font-size: 16px;
     font-weight: var(--font-weight-bold);
@@ -261,32 +231,48 @@ h1 {
     display: flex;
 }
 
-/* Collapsed view styles - Ultra compact 80px width layout */
-.container.collapsed-mode {
-    width: 80px !important;
-    height: 100vh !important;
-    padding: 3px !important;
-    max-width: 80px !important;
+/* Collapsed view styles - compact side strip.
+   80px는 한글 3~4자밖에 못 담아 무슨 작업인지 알아볼 수 없었다. */
+/* 접힘 상태에서 문서 자체가 스크롤되지 않게 한다.
+   컨테이너에만 overflow를 걸면 html/body 레벨 스크롤바는 그대로 남는다. */
+html:has(body.collapsed-mode-body),
+body.collapsed-mode-body {
+    overflow: hidden !important;
+    height: 100vh;
 }
 
-.container.collapsed-mode header,
-.container.collapsed-mode .completion-counter-container,
+.container.collapsed-mode {
+    width: 150px !important;
+    height: 100vh !important;
+    padding: 3px !important;
+    max-width: 150px !important;
+    /* 안쪽 요소들이 100vh를 다시 쓰면 padding 만큼 넘쳐 스크롤바가 생긴다 */
+    overflow: hidden !important;
+}
+
 .container.collapsed-mode .table-controls,
-.container.collapsed-mode #paginationContainer {
+.container.collapsed-mode #paginationContainer,
+/* 접힘 상태에서는 미니 목록만 쓴다. 표 패널을 남겨두면 flex 열에서 자리를
+   차지해 내용이 넘치고 스크롤바가 생긴다. */
+.container.collapsed-mode .table-container {
     display: none !important;
 }
 
+/* 100vh를 다시 쓰지 않는다. 부모가 이미 100vh - padding 이므로
+   여기서 100vh를 주면 딱 padding 만큼 넘쳐서 스크롤바가 나타난다. */
 .container.collapsed-mode main {
-    height: 100vh;
+    height: 100%;
+    min-height: 0;
     overflow: hidden;
 }
 
 .collapsed-mini-layout {
     display: none;
     flex-direction: column;
-    height: auto;
-    min-height: 100vh;
-    width: 74px;
+    height: 100%;
+    min-height: 0;
+    /* 고정 폭이면 컨테이너 폭을 바꿀 때 어긋나 가로 스크롤이 생긴다 */
+    width: 100%;
     align-items: center;
     padding: 3px 0;
     opacity: 0;
@@ -334,7 +320,8 @@ h1 {
 
 .collapsed-task-list {
     flex: 1;
-    overflow: visible;
+    min-height: 0;
+    overflow: hidden;
     width: 100%;
 }
 
@@ -347,15 +334,34 @@ h1 {
 .collapsed-task-list li {
     padding: 2px 4px;
     margin-bottom: 1px;
+    /* 미니 뷰는 읽기 전용이다. pointer-events를 막지는 않는데,
+       막으면 잘린 내용을 보여주는 title 툴팁까지 안 뜬다. */
     cursor: default;
-    pointer-events: none;
     font-size: 11px;
     background: #f8f9fa;
     border-radius: 2px;
-    word-wrap: break-word;
     line-height: 1.1;
-    text-overflow: ellipsis;
     overflow: hidden;
+    white-space: nowrap;
+    display: flex;
+    align-items: baseline;
+    gap: 4px;
+}
+
+/* 순번. 내용과 확실히 구분되도록 흐린 색으로 두고 폭을 고정한다. */
+.mini-index {
+    flex: 0 0 auto;
+    min-width: 10px;
+    color: #adb5bd;
+    font-weight: 700;
+    text-align: right;
+}
+
+.mini-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
     white-space: nowrap;
 }
 
@@ -382,7 +388,8 @@ h1 {
 .pagination-container {
     display: flex;
     justify-content: center;
-    margin-top: 15px;
+    flex: 0 0 auto;
+    margin-top: 10px;
 }
 
 .pagination {
@@ -709,20 +716,33 @@ h1 {
 
 main {
     flex: 1;
+    min-height: 0; /* flex 자식이 내용보다 작게 줄어들 수 있어야 스크롤이 생긴다 */
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
+/* 상단은 한 줄이다. 왼쪽은 상태(완료 카운터), 오른쪽은 동작.
+   동작은 다시 두 묶음으로 나뉜다 - 목록 조작(검색·추가)과 앱 유틸리티(내보내기·설정 등).
+   검색과 추가는 둘 다 "목록에 하는 일"이라 붙여 둔다. */
 .table-controls {
     display: flex;
-    justify-content: flex-end;
     align-items: center;
-    margin-bottom: 5px;
+    gap: 12px;
+    margin-bottom: 8px;
 }
 
-.controls-right {
+.controls-actions {
     display: flex;
     align-items: center;
     gap: 8px;
+    margin-left: auto;
+}
+
+/* 목록 조작과 앱 유틸리티 사이의 옅은 구분 */
+.table-controls .header-buttons {
+    padding-left: 12px;
+    border-left: 1px solid var(--border-light);
 }
 
 .search-input {
@@ -750,8 +770,11 @@ main {
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
     overflow-y: auto;
     overflow-x: hidden;
+    /* 남은 세로 공간을 전부 채운다. 예전에는 max-height: calc(100vh - 200px)로
+       상단 높이를 하드코딩했는데, 상단 구성이 바뀌면 그만큼 아래에 빈 공간이
+       남는다. flex에 맡겨 두면 상단이 어떻게 바뀌든 알아서 맞는다. */
     flex: 1;
-    max-height: calc(100vh - 200px);
+    min-height: 0;
     position: relative;
     border: 1px solid #ddd;
 }
@@ -809,12 +832,15 @@ tbody tr:hover {
     background-color: #f8f9fa;
 }
 
+/* 작업 내용이 여러 줄이면 행이 꽤 높아진다. 그때 왼쪽 번호에서 오른쪽 버튼까지
+   눈이 이동하는 동안 같은 행에 머무는지 알려주는 게 이 줄무늬다.
+   예전 #fafafa는 흰색과 2% 차이라 사실상 보이지 않았다. */
 tbody tr:nth-child(even) {
-    background-color: #fafafa;
+    background-color: #e9edf2;
 }
 
 tbody tr:nth-child(even):hover {
-    background-color: #f0f0f0;
+    background-color: #dbe1e8;
 }
 
 tbody tr.highlighted .task-content {
@@ -858,11 +884,33 @@ td:nth-child(1) {
 }
 
 /* 반복 작업 표시 및 모달의 반복 설정 */
+/* 주기는 시작 시간 아래에 붙인다. 작업 내용 옆에 두면 내용과 뒤섞여 눈에 안 들어온다. */
+.repeat-cadence {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    margin-top: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    color: #6f42c1;
+    white-space: nowrap;
+}
+
 .repeat-badge {
     display: inline-flex;
-    vertical-align: text-bottom;
-    margin-right: 5px;
     color: #6f42c1;
+}
+
+/* 태그·상태·반복 칩은 모두 클릭하면 그 키워드로 걸러진다.
+   같은 규칙을 쓰므로 눌러도 되는 것처럼 보여야 한다. */
+[data-filter] {
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+}
+
+[data-filter]:hover {
+    opacity: 0.72;
 }
 
 .repeat-row {
@@ -871,19 +919,26 @@ td:nth-child(1) {
     gap: 8px;
 }
 
+/* 공용 입력 규칙이 width:100%를 걸기 때문에, 한 줄에 나란히 놓으려면
+   두 컨트롤 모두 특이도를 이겨서 폭을 되돌려야 한다. */
 .repeat-row select {
-    flex: 0 0 auto;
+    flex: 1 1 auto;
+    width: auto;
+    min-width: 130px;
 }
 
 .repeat-interval {
+    display: none; /* 주기를 고르면 JS가 inline-flex로 바꾼다 */
     align-items: center;
     gap: 6px;
     font-size: 12px;
     color: #555;
+    white-space: nowrap;
 }
 
-.repeat-interval input {
-    width: 56px;
+.repeat-interval input[type="number"] {
+    width: 60px;
+    flex: 0 0 auto;
 }
 
 .repeat-weekdays {
@@ -1233,6 +1288,7 @@ label {
 input[type="datetime-local"],
 input[type="text"],
 input[type="number"],
+select,
 textarea {
     width: 100%;
     padding: 8px;
@@ -1359,10 +1415,6 @@ body.dark-mode header {
     border-bottom-color: #333;
 }
 
-body.dark-mode h1 {
-    color: #ffffff;
-    font-weight: 700;
-}
 
 body.dark-mode .icon-btn {
     background-color: #2d2d2d;
@@ -1491,12 +1543,14 @@ body.dark-mode tbody tr:hover {
     background-color: #3d3d3d;
 }
 
+/* 다크에서는 밝게 띄우는 쪽이 어둡게 내리는 것보다 잘 보인다.
+   #252525는 배경 #2d2d2d보다 어두워 거의 티가 나지 않았다. */
 body.dark-mode tbody tr:nth-child(even) {
-    background-color: #252525;
+    background-color: #3a3f46;
 }
 
 body.dark-mode tbody tr:nth-child(even):hover {
-    background-color: #353535;
+    background-color: #474d55;
 }
 
 body.dark-mode td {
@@ -1634,7 +1688,8 @@ body.dark-mode .weekday-btn.selected {
     color: #fff;
 }
 
-body.dark-mode .repeat-badge {
+body.dark-mode .repeat-badge,
+body.dark-mode .repeat-cadence {
     color: #b392f0;
 }
 
@@ -2054,6 +2109,10 @@ body.dark-mode .collapsed-task-list li {
     color: #e0e0e0;
 }
 
+body.dark-mode .mini-index {
+    color: #6c757d;
+}
+
 body.dark-mode .collapsed-task-list li:hover {
     background-color: rgba(255, 255, 255, 0.1);
 }
@@ -2084,14 +2143,9 @@ body.dark-mode .collapsed-task-list li.overdue:hover {
         padding: 15px;
     }
     
-    header {
-        flex-direction: column;
-        gap: 15px;
-        align-items: stretch;
-    }
-    
-    .add-btn {
-        width: 100%;
+    .table-controls {
+        flex-wrap: wrap;
+        gap: 8px;
     }
     
     table {

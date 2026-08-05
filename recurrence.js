@@ -1,21 +1,23 @@
 // 반복 규칙 엔진.
 //
-// 반복 항목은 태스크가 아니라 "규칙"으로 저장하고, 실제 목록에 보이는 것은
-// 규칙에서 찍어낸 인스턴스뿐이다. Tasktory는 상시 실행되는 서버가 아니므로
-// 타이머로 생성하지 않고, 앱을 켤 때마다 catchUp()으로 밀린 회차를 따라잡는다.
-// rule.lastGeneratedKey 덕분에 하루에 몇 번을 켜도 결과가 같다(멱등).
+// 반복 작업은 표에 행 하나로 존재한다. 그 행이 곧 규칙이고, 완료하면 사라지는
+// 대신 날짜가 규칙에 따라 다음 회차로 한 칸 이동한다. 회차를 미리 만들어 쌓지
+// 않으므로 앱을 오래 안 켜도 목록이 넘치지 않고, 규칙이 항상 눈에 보여서
+// 언제든 수정하거나 중단할 수 있다.
+//
+// 밀린 회차를 앱이 세어주지는 않는다. 실제로 몇 건이 남았는지는 사용자만 알기
+// 때문에, 몰아서 넘기려면 날짜를 직접 고치면 된다.
 //
 // 규칙 형태:
 //   {
 //     id, content, tags,
-//     freq: 'daily' | 'weekly' | 'monthly',
-//     interval: 1,                  // n일/주/개월마다
+//     freq: 'daily' | 'weekly' | 'monthly' | 'yearly',
+//     interval: 1,                  // n일/주/개월/년마다
 //     byWeekday: [1, 3],            // weekly 전용, 0=일요일
 //     byMonthDay: 15,               // monthly 전용, 말일 초과 시 그 달 마지막 날로 클램프
-//     anchorDate: 'YYYY-MM-DD',     // 규칙 시작일. interval 계산의 기준점
+//     anchorDate: 'YYYY-MM-DD',     // 규칙 시작일. interval의 기준점(위상)
 //     startTimeOfDay: 'HH:MM',      // 절대 시각이 아니라 "벽시계 시각"만 저장한다.
 //     targetTimeOfDay: 'HH:MM',     // 타임존이 바뀌어도 "매일 09시"의 의미가 유지된다.
-//     lastGeneratedKey: 'YYYY-MM-DD' | null,
 //     enabled: true
 //   }
 
@@ -73,6 +75,14 @@ const Recurrence = (() => {
             return weeksApart % interval === 0
         }
 
+        if (rule.freq === 'yearly') {
+            const yearsApart = parts.y - anchorParts.y
+            if (yearsApart % interval !== 0) return false
+            if (parts.m !== anchorParts.m) return false
+            // 2월 29일 규칙은 평년에 2월 28일로 내린다
+            return parts.d === Math.min(anchorParts.d, daysInMonth(parts.y, parts.m))
+        }
+
         if (rule.freq === 'monthly') {
             const monthsApart = (parts.y - anchorParts.y) * 12 + (parts.m - anchorParts.m)
             if (monthsApart % interval !== 0) return false
@@ -87,83 +97,31 @@ const Recurrence = (() => {
         return false
     }
 
-    // (afterKey, throughKey] 구간의 회차 날짜들
-    const occurrencesBetween = (rule, afterKey, throughKey) => {
+    // afterKey 다음으로 오는 회차 날짜. 없으면 null.
+    const nextOccurrenceAfter = (rule, afterKey) => {
         const start = dayNumber(parseKey(afterKey)) + 1
-        const end = dayNumber(parseKey(throughKey))
-        const found = []
+        // 병적인 입력에서도 멈추도록 상한을 둔다. 가장 성긴 규칙(수년 간격)도
+        // 이 안에서는 반드시 걸린다.
+        const limit = start + 366 * 12
 
-        // 병적인 입력(수십 년 전 anchor 등)에서도 멈추도록 상한을 둔다
-        const limit = Math.min(end, start + 366 * 10)
         for (let dn = start; dn <= limit; dn++) {
-            if (matches(rule, dn)) found.push(toKey(fromDayNumber(dn)))
+            if (matches(rule, dn)) return toKey(fromDayNumber(dn))
         }
-        return found
+        return null
     }
 
-    // 회차 -> 실제 태스크. 목표 시각이 시작 시각보다 이르면 다음 날로 넘긴다
-    // (예: 22:00 시작 ~ 02:00 목표).
-    const materialize = (rule, occurrenceKey, id, now) => {
+    // 회차 날짜 -> 태스크가 쓰는 시작/목표 시각.
+    // 목표 시각이 시작 시각보다 이르면 다음 날로 넘긴다 (예: 22:00 시작 ~ 02:00 목표).
+    const occurrenceTimes = (rule, occurrenceKey) => {
         const rollsOver = rule.targetTimeOfDay <= rule.startTimeOfDay
         const targetKey = rollsOver ? addDaysToKey(occurrenceKey, 1) : occurrenceKey
 
         return {
-            id,
-            content: rule.content,
-            tags: rule.tags || '',
             // 기존 태스크와 같은 'YYYY-MM-DD HH:MM' 저장 형식을 쓴다
             startDateTime: `${occurrenceKey} ${rule.startTimeOfDay}`,
-            targetDateTime: `${targetKey} ${rule.targetTimeOfDay}`,
-            completed: false,
-            createdAt: now.toISOString(),
-            ruleId: rule.id,
-            occurrenceKey
+            targetDateTime: `${targetKey} ${rule.targetTimeOfDay}`
         }
     }
 
-    // 이월 정책. 지금은 누적형이다: 이전 회차가 미완료로 남아 있어도 새 회차를
-    // 그대로 추가하고, 같은 회차만 중복 생성하지 않는다. 갱신형(항상 1개만 유지)으로
-    // 바꾸려면 이 함수만 고치면 된다.
-    const shouldCreate = (rule, occurrenceKey, tasks) =>
-        !tasks.some((task) => task.ruleId === rule.id && task.occurrenceKey === occurrenceKey)
-
-    // 앱을 켤 때 밀린 회차를 따라잡는다.
-    //   options.lookaheadDays - 며칠 앞까지 미리 만들지 (기본 0 = 오늘까지)
-    //   options.maxPerRule    - 한 번에 규칙당 최대 몇 개까지 만들지 (기본 1)
-    //   options.newId         - 새 태스크 id 생성기
-    // 반환: { rules, created, skipped }
-    //   skipped 는 상한 때문에 건너뛴 회차 수. 조용히 잘라내지 않고 호출자에게 알린다.
-    const catchUp = (rules, tasks, now, options = {}) => {
-        const lookaheadDays = options.lookaheadDays || 0
-        const maxPerRule = options.maxPerRule || 1
-        const newId = options.newId || (() => `task-${Math.random().toString(36).slice(2)}`)
-
-        const throughKey = addDaysToKey(localKey(now), lookaheadDays)
-        const created = []
-        let skipped = 0
-
-        const nextRules = rules.map((rule) => {
-            if (rule.enabled === false) return rule
-
-            const afterKey =
-                rule.lastGeneratedKey || addDaysToKey(rule.anchorDate, -1)
-            const due = occurrencesBetween(rule, afterKey, throughKey)
-            if (due.length === 0) return rule
-
-            skipped += Math.max(0, due.length - maxPerRule)
-
-            for (const occurrenceKey of due.slice(-maxPerRule)) {
-                if (shouldCreate(rule, occurrenceKey, tasks)) {
-                    created.push(materialize(rule, occurrenceKey, newId(), now))
-                }
-            }
-
-            // 건너뛴 회차도 소비된 것으로 처리해 다음 실행에서 되살아나지 않게 한다
-            return { ...rule, lastGeneratedKey: due[due.length - 1] }
-        })
-
-        return { rules: nextRules, created, skipped }
-    }
-
-    return { matches, occurrencesBetween, materialize, catchUp, localKey, addDaysToKey }
+    return { nextOccurrenceAfter, occurrenceTimes, localKey }
 })()
