@@ -1,6 +1,77 @@
 // 접힌 상태의 창 폭. styles.css의 .container.collapsed-mode 와 같은 값이어야 한다.
 const COLLAPSED_WIDTH = 150;
 
+// 화면에 보여줄 날짜 형식들. 저장 형식은 항상 'YYYY-MM-DD HH:mm'으로 고정이고
+// 여기 있는 건 표시/입력용일 뿐이다. 그래야 설정을 바꿔도 기존 데이터가 안 깨진다.
+const DATE_FORMATS = [
+    'YYYY-MM-DD HH:mm',
+    'YYYY/MM/DD HH:mm',
+    'YYYY.MM.DD HH:mm',
+    'YYYYMMDD HHmm',
+    'DD/MM/YYYY HH:mm',
+    'MM/DD/YYYY hh:mm A',
+    'YYYY-MM-DD hh:mm A'
+];
+
+const STORAGE_FORMAT = 'YYYY-MM-DD HH:mm';
+
+// 토큰 하나당 정규식 조각과 값 추출기. 형식 문자열 하나로 출력과 입력을 모두
+// 만들어내므로 둘이 어긋날 수 없다.
+const DATE_TOKENS = {
+    YYYY: { re: '(\\d{4})', get: (d) => String(d.getFullYear()) },
+    MM: { re: '(\\d{2})', get: (d) => String(d.getMonth() + 1).padStart(2, '0') },
+    DD: { re: '(\\d{2})', get: (d) => String(d.getDate()).padStart(2, '0') },
+    HH: { re: '(\\d{2})', get: (d) => String(d.getHours()).padStart(2, '0') },
+    hh: { re: '(\\d{2})', get: (d) => String(d.getHours() % 12 || 12).padStart(2, '0') },
+    mm: { re: '(\\d{2})', get: (d) => String(d.getMinutes()).padStart(2, '0') },
+    A: { re: '([AaPp][Mm])', get: (d) => (d.getHours() < 12 ? 'AM' : 'PM') }
+};
+
+const TOKEN_PATTERN = /YYYY|MM|DD|HH|hh|mm|A/g;
+
+const formatWithPattern = (date, pattern) =>
+    pattern.replace(TOKEN_PATTERN, (token) => DATE_TOKENS[token].get(date));
+
+// 형식 문자열대로 파싱한다. 형식에 맞지 않으면 null.
+const parseWithPattern = (text, pattern) => {
+    const order = [];
+    let source = '';
+    let lastIndex = 0;
+
+    // 토큰은 정규식 그룹으로, 나머지 리터럴은 이스케이프해서 이어붙인다
+    for (const match of pattern.matchAll(TOKEN_PATTERN)) {
+        source += pattern.slice(lastIndex, match.index).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        source += DATE_TOKENS[match[0]].re;
+        order.push(match[0]);
+        lastIndex = match.index + match[0].length;
+    }
+    source += pattern.slice(lastIndex).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+    const found = new RegExp(`^${source}$`).exec(String(text).trim());
+    if (!found) return null;
+
+    const parts = {};
+    order.forEach((token, index) => { parts[token] = found[index + 1]; });
+
+    const year = Number(parts.YYYY);
+    const month = Number(parts.MM);
+    const day = Number(parts.DD);
+    const minute = Number(parts.mm || 0);
+    let hour = Number(parts.HH ?? parts.hh ?? 0);
+
+    if (parts.A) {
+        const isPm = parts.A.toUpperCase() === 'PM';
+        hour = (hour % 12) + (isPm ? 12 : 0);
+    }
+
+    const date = new Date(year, month - 1, day, hour, minute);
+    // 존재하지 않는 날짜(2월 30일 등)는 다른 달로 굴러가므로 되돌려 확인한다
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return null;
+    }
+    return date;
+};
+
 class TaskManager {
     constructor() {
         this.tasks = [];
@@ -10,6 +81,7 @@ class TaskManager {
         this.isElectron = typeof window.electronAPI !== 'undefined';
         this.locale = this.getSelectedLanguage();
         this.darkMode = localStorage.getItem('darkMode') === 'true';
+        this.dateFormat = localStorage.getItem('dateFormat') || DATE_FORMATS[0];
         this.searchQuery = '';
         this.notifiedTasks = new Set(); // 이미 알림을 보낸 태스크들
         this.completionCount = 0; // Will be set in init()
@@ -82,6 +154,7 @@ class TaskManager {
         
         // Header buttons tooltips
         document.getElementById('addTaskBtn').title = this.getLocalizedText('addTask');
+        this.updateDateFormatControls();
         document.getElementById('exportBtn').title = this.getLocalizedText('downloadExport');
         document.getElementById('importBtn').title = this.getLocalizedText('uploadImport');
         document.getElementById('statisticsBtn').title = this.getLocalizedText('statistics');
@@ -508,6 +581,11 @@ class TaskManager {
             this.updateRepeatVisibility();
         });
 
+        // 날짜 표시 형식
+        document.getElementById('dateFormatSelect').addEventListener('change', (e) => {
+            this.changeDateFormat(e.target.value);
+        });
+
         // 표 안의 칩(태그·상태·반복)을 클릭하면 그 키워드로 검색한다.
         // 어떤 단어를 쳐야 하는지 몰라도 되고, 언어가 바뀌어도 보이는 것을 누르면 된다.
         document.getElementById('tasksTable').addEventListener('click', (e) => {
@@ -561,14 +639,9 @@ class TaskManager {
             }
         });
 
-        // Date input validation
-        document.getElementById('startDateTime').addEventListener('blur', (e) => {
-            this.validateDateTimeInput(e.target);
-        });
-
-        document.getElementById('targetDateTime').addEventListener('blur', (e) => {
-            this.validateDateTimeInput(e.target);
-        });
+        // 날짜 형식 검증은 하지 않는다. 입력이 datetime-local이라 브라우저가
+        // 형식을 보장하고, 값은 'T'로 구분된다. 예전 검증은 텍스트 입력 시절의
+        // 공백 구분 형식을 기대해서 정상 입력에도 항상 빨간 테두리를 씌웠다.
 
         // Settings modal opacity slider (Electron only)
         if (this.isElectron) {
@@ -831,40 +904,22 @@ class TaskManager {
         });
     }
 
+    // 모달 입력창에 채울 문자열. 설정한 표시 형식을 그대로 쓴다.
     formatDateTimeLocal(date) {
-        // text input에 사용할 형식 (YYYY-MM-DD HH:MM)
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const day = String(date.getDate()).padStart(2, '0');
-        const hours = String(date.getHours()).padStart(2, '0');
-        const minutes = String(date.getMinutes()).padStart(2, '0');
-        
-        return `${year}-${month}-${day} ${hours}:${minutes}`;
+        return formatWithPattern(date, this.dateFormat);
     }
 
-    validateDateTimeInput(input) {
-        const value = input.value.trim();
-        const pattern = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/;
-        
-        if (value && !pattern.test(value)) {
-            input.style.borderColor = '#e74c3c';
-            input.title = 'Format: YYYY-MM-DD HH:MM (e.g., 2025-07-24 14:30)';
-        } else {
-            input.style.borderColor = '';
-            input.title = '';
-        }
+    // 저장 형식(항상 'YYYY-MM-DD HH:mm')으로 변환. 형식이 안 맞으면 null.
+    parseInputDateTime(text) {
+        const date = parseWithPattern(text, this.dateFormat);
+        return date ? formatWithPattern(date, STORAGE_FORMAT) : null;
     }
 
     formatDateTime(dateTime) {
         if (!dateTime) return '';
         const date = new Date(dateTime);
-        return date.toLocaleString(this.locale, {
-            year: 'numeric',
-            month: '2-digit',
-            day: '2-digit',
-            hour: '2-digit',
-            minute: '2-digit'
-        });
+        if (isNaN(date.getTime())) return '';
+        return formatWithPattern(date, this.dateFormat);
     }
 
     getLocalizedText(key) {
@@ -917,6 +972,8 @@ class TaskManager {
                 'repeatHelp': 'The next occurrence is created when you open the app, using the times above.',
                 'repeating': 'Repeating task',
                 'repeatFilter': 'Show repeating tasks only',
+                'dateFormat': 'Date Format',
+                'invalidDateFormat': 'Please enter the date in this format:',
                 'weekdaysShort': 'Sun,Mon,Tue,Wed,Thu,Fri,Sat',
                 'allCompleted': 'All tasks completed! Add a new task.',
                 'noSearchResults': 'No tasks found matching your search.',
@@ -1065,6 +1122,8 @@ class TaskManager {
                 'repeatHelp': '다음 회차는 앱을 켤 때 위 시각을 기준으로 생성됩니다.',
                 'repeating': '반복 작업',
                 'repeatFilter': '반복 작업만 보기',
+                'dateFormat': '날짜 표기',
+                'invalidDateFormat': '날짜를 이 형식으로 입력해 주세요:',
                 'weekdaysShort': '일,월,화,수,목,금,토',
                 'allCompleted': '모든 작업이 완료되었습니다! 새로운 작업을 추가해보세요.',
                 'noSearchResults': '검색 조건에 맞는 작업이 없습니다.',
@@ -1213,6 +1272,8 @@ class TaskManager {
                 'repeatHelp': '下一次将在您打开应用时按上述时间创建。',
                 'repeating': '重复任务',
                 'repeatFilter': '仅显示重复任务',
+                'dateFormat': '日期格式',
+                'invalidDateFormat': '请按此格式输入日期：',
                 'weekdaysShort': '日,一,二,三,四,五,六',
                 'allCompleted': '所有任务已完成！添加新任务。',
                 'noSearchResults': '没有找到匹配的任务。',
@@ -1361,6 +1422,8 @@ class TaskManager {
                 'repeatHelp': '次回はアプリ起動時に上記の時刻で作成されます。',
                 'repeating': '繰り返しタスク',
                 'repeatFilter': '繰り返しタスクのみ表示',
+                'dateFormat': '日付形式',
+                'invalidDateFormat': '次の形式で日付を入力してください:',
                 'weekdaysShort': '日,月,火,水,木,金,土',
                 'allCompleted': 'すべてのタスクが完了しました！新しいタスクを追加してください。',
                 'noSearchResults': '検索条件に一致するタスクが見つかりません。',
@@ -1509,6 +1572,8 @@ class TaskManager {
                 'repeatHelp': 'La próxima repetición se crea al abrir la aplicación, con los horarios de arriba.',
                 'repeating': 'Tarea repetitiva',
                 'repeatFilter': 'Mostrar solo tareas repetitivas',
+                'dateFormat': 'Formato de fecha',
+                'invalidDateFormat': 'Introduzca la fecha con este formato:',
                 'weekdaysShort': 'Dom,Lun,Mar,Mié,Jue,Vie,Sáb',
                 'allCompleted': '¡Todas las tareas completadas! Añadir nueva tarea.',
                 'noSearchResults': 'No se encontraron tareas que coincidan con su búsqueda.',
@@ -1658,6 +1723,41 @@ class TaskManager {
     // 검색 대상 태그 문자열 (저장값 + 표시값 둘 다)
     searchableTags(task) {
         return [task.tags || '', ...this.displayTagTexts(task)].join(' ').toLowerCase();
+    }
+
+    // 날짜 형식 선택 목록. 형식 문자열과 그 형식으로 찍은 실제 예시를 함께 보여준다.
+    updateDateFormatControls() {
+        const label = document.getElementById('settingsDateFormatLabel');
+        const select = document.getElementById('dateFormatSelect');
+        const preview = document.getElementById('dateFormatPreview');
+        if (!label || !select) return;
+
+        label.textContent = this.getLocalizedText('dateFormat');
+
+        if (select.options.length !== DATE_FORMATS.length) {
+            select.innerHTML = '';
+            for (const pattern of DATE_FORMATS) {
+                const option = document.createElement('option');
+                option.value = pattern;
+                select.appendChild(option);
+            }
+        }
+
+        const sample = new Date(2026, 7, 4, 15, 30);
+        Array.from(select.options).forEach((option, index) => {
+            const pattern = DATE_FORMATS[index];
+            option.textContent = `${pattern}    ${formatWithPattern(sample, pattern)}`;
+        });
+
+        select.value = this.dateFormat;
+        if (preview) preview.textContent = formatWithPattern(new Date(), this.dateFormat);
+    }
+
+    changeDateFormat(pattern) {
+        this.dateFormat = pattern;
+        localStorage.setItem('dateFormat', pattern);
+        this.updateDateFormatControls();
+        this.renderTasks();
     }
 
     // 칩 클릭 = 그 키워드로 검색. 검색창에도 값을 넣어 무슨 일이 일어났는지 보이게 하고,
@@ -2008,9 +2108,18 @@ class TaskManager {
             li.append(order, text);
             li.title = task.content;
 
-            // 상태별 배경색은 넣지 않는다. 좁은 목록에서는 색이 정보를 더해주기보다
-            // 시끄럽기만 하다. (원래도 getTaskStatus가 돌려주는 객체를 문자열과
-            // 비교하고 있어 한 번도 칠해진 적이 없었다.)
+            // 상태색은 하이라이트가 없을 때만 칠한다. 하이라이트는 사용자가
+            // 직접 지정한 것이라 자동 판정인 상태색보다 우선한다.
+            // (getTaskStatus는 {status, text} 객체다. 예전에는 이걸 문자열과
+            // 비교해서 이 분기가 한 번도 참이 된 적이 없었다.)
+            if (!task.highlighted) {
+                const { status } = this.getTaskStatus(task);
+                if (status === 'urgent') {
+                    li.classList.add('urgent');
+                } else if (status === 'overdue') {
+                    li.classList.add('overdue');
+                }
+            }
 
             // 클릭 핸들러는 붙이지 않는다. 150px 창에서 편집 모달이 열리면
             // 제대로 보이지도 않는다. 미니 뷰는 읽기 전용이고, 전체 내용은
@@ -2524,6 +2633,14 @@ class TaskManager {
             
             // Bar width
             const barWidth = chartWidth / statisticsData.length;
+
+            // 차트는 canvas라 CSS가 닿지 않는다. 다크모드에서 어두운 회색 글씨를
+            // 그리면 배경에 묻혀 안 보이므로 색을 직접 골라야 한다.
+            // 폰트도 Arial 고정이면 한글이 대체 폰트로 나온다.
+            const palette = this.darkMode
+                ? { bar: '#4d9fff', value: '#f0f0f0', label: '#b0b0b0', axis: '#555', grid: '#3a3a3a' }
+                : { bar: '#007bff', value: '#333', label: '#666', axis: '#ccc', grid: '#f0f0f0' };
+            const font = (size) => `${size}px ${getComputedStyle(document.body).fontFamily}`;
             
             // Draw bars
             statisticsData.forEach((data, index) => {
@@ -2532,21 +2649,21 @@ class TaskManager {
                 const y = canvas.height - padding - barHeight;
                 
                 // Draw bar
-                ctx.fillStyle = '#007bff';
+                ctx.fillStyle = palette.bar;
                 ctx.fillRect(x + 2, y, barWidth - 4, barHeight);
                 
                 // Draw value on top of bar if > 0
                 if (data.completed > 0) {
-                    ctx.fillStyle = '#333';
-                    ctx.font = '12px Arial';
+                    ctx.fillStyle = palette.value;
+                    ctx.font = font(12);
                     ctx.textAlign = 'center';
                     ctx.fillText(data.completed.toString(), x + barWidth/2, y - 5);
                 }
                 
                 // Draw date label (show every 5th day)
                 if (index % 5 === 0 || index === statisticsData.length - 1) {
-                    ctx.fillStyle = '#666';
-                    ctx.font = '10px Arial';
+                    ctx.fillStyle = palette.label;
+                    ctx.font = font(10);
                     ctx.textAlign = 'center';
                     ctx.save();
                     ctx.translate(x + barWidth/2, canvas.height - 10);
@@ -2557,7 +2674,7 @@ class TaskManager {
             });
             
             // Draw axes
-            ctx.strokeStyle = '#ccc';
+            ctx.strokeStyle = palette.axis;
             ctx.lineWidth = 1;
             
             // Y-axis
@@ -2578,14 +2695,14 @@ class TaskManager {
                 const value = Math.round((maxValue / steps) * i);
                 const y = canvas.height - padding - (i / steps) * chartHeight;
                 
-                ctx.fillStyle = '#666';
-                ctx.font = '12px Arial';
+                ctx.fillStyle = palette.label;
+                ctx.font = font(12);
                 ctx.textAlign = 'right';
                 ctx.fillText(value.toString(), padding - 10, y + 4);
                 
                 // Grid lines
                 if (i > 0) {
-                    ctx.strokeStyle = '#f0f0f0';
+                    ctx.strokeStyle = palette.grid;
                     ctx.beginPath();
                     ctx.moveTo(padding, y);
                     ctx.lineTo(canvas.width - padding, y);
@@ -2597,8 +2714,8 @@ class TaskManager {
             console.error('Failed to render statistics chart:', error);
             
             // Show error message on canvas
-            ctx.fillStyle = '#666';
-            ctx.font = '16px Arial';
+            ctx.fillStyle = this.darkMode ? '#b0b0b0' : '#666';
+            ctx.font = `16px ${getComputedStyle(document.body).fontFamily}`;
             ctx.textAlign = 'center';
             ctx.fillText('Failed to load statistics data', canvas.width/2, canvas.height/2);
         }
@@ -2713,9 +2830,17 @@ class TaskManager {
             return;
         }
 
-        // Parse datetime-local format (YYYY-MM-DDTHH:MM)
-        const startDate = new Date(startDateTime);
-        const targetDate = new Date(targetDateTime);
+        // 입력은 설정한 표시 형식으로 들어온다. 저장 형식으로 바꿔서 보관한다.
+        const storedStart = this.parseInputDateTime(startDateTime);
+        const storedTarget = this.parseInputDateTime(targetDateTime);
+
+        if (!storedStart || !storedTarget) {
+            alert(`${this.getLocalizedText('invalidDateFormat')}\n${this.dateFormat}`);
+            return;
+        }
+
+        const startDate = new Date(storedStart);
+        const targetDate = new Date(storedTarget);
 
         if (startDate >= targetDate) {
             alert(this.getLocalizedText('targetAfterStart'));
@@ -2733,8 +2858,8 @@ class TaskManager {
 
         const taskData = {
             id: this.editingTaskId || this.generateId(),
-            startDateTime: startDateTime.replace('T', ' '),
-            targetDateTime: targetDateTime.replace('T', ' '),
+            startDateTime: storedStart,
+            targetDateTime: storedTarget,
             content,
             tags,
             completed: false,

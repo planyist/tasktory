@@ -212,8 +212,7 @@ describe('collapsed mini view', () => {
         expect(items()).toHaveLength(25)
     })
 
-    // Colour bars were noise in a strip this narrow, so the list stays plain.
-    test('does not colour rows by status', async () => {
+    test('colours rows by status', async () => {
         const manager = await boot([
             task('due', { startDateTime: soon(-120), targetDateTime: soon(30) }),
             task('late', { startDateTime: soon(-300), targetDateTime: soon(-60) })
@@ -222,10 +221,26 @@ describe('collapsed mini view', () => {
         manager.isCollapsed = true
         manager.renderTasks()
 
-        for (const item of items()) {
-            expect(item.classList.contains('urgent')).toBe(false)
-            expect(item.classList.contains('overdue')).toBe(false)
-        }
+        expect(items()[0].classList.contains('urgent')).toBe(true)
+        expect(items()[1].classList.contains('overdue')).toBe(true)
+    })
+
+    // A highlight is something the user set by hand; a status is derived from
+    // the clock. The deliberate choice should win.
+    test('lets a highlight override the status colour', async () => {
+        const manager = await boot([
+            task('late', {
+                startDateTime: soon(-300),
+                targetDateTime: soon(-60),
+                highlighted: true
+            })
+        ])
+
+        manager.isCollapsed = true
+        manager.renderTasks()
+
+        expect(items()[0].classList.contains('overdue')).toBe(false)
+        expect(items()[0].style.backgroundColor).toBeTruthy()
     })
 
     // The strip is read-only: an edit modal cannot render usefully in a 150px
@@ -283,5 +298,131 @@ describe('background persistence through the real IPC path', () => {
             expect.stringContaining('Failed to persist'),
             'a'
         )
+    })
+})
+
+describe('date format setting', () => {
+    const at = (id) => document.getElementById(id)
+    const startCell = () => document.querySelector('#tasksBody tr').cells[1].textContent.trim()
+
+    const afternoon = () =>
+        task('a', { startDateTime: '2026-08-04 15:30', targetDateTime: '2026-08-04 18:00' })
+
+    test('defaults to the ISO-style pattern', async () => {
+        const manager = await boot([afternoon()])
+
+        expect(manager.dateFormat).toBe('YYYY-MM-DD HH:mm')
+        expect(startCell()).toBe('2026-08-04 15:30')
+    })
+
+    test.each([
+        ['YYYY/MM/DD HH:mm', '2026/08/04 15:30'],
+        ['YYYYMMDD HHmm', '20260804 1530'],
+        ['DD/MM/YYYY HH:mm', '04/08/2026 15:30'],
+        ['MM/DD/YYYY hh:mm A', '08/04/2026 03:30 PM']
+    ])('renders the table with %s', async (pattern, expected) => {
+        const manager = await boot([afternoon()])
+
+        manager.changeDateFormat(pattern)
+
+        expect(startCell()).toBe(expected)
+    })
+
+    test('the edit modal uses the same pattern as the table', async () => {
+        const manager = await boot([afternoon()])
+        manager.changeDateFormat('YYYYMMDD HHmm')
+
+        manager.showModal(manager.tasks[0])
+
+        expect(at('startDateTime').value).toBe('20260804 1530')
+        expect(at('targetDateTime').value).toBe('20260804 1800')
+    })
+
+    // Storage must not follow the display setting, or changing the setting
+    // would rewrite every date in tasks.json.
+    test('saves in the fixed storage format whatever the display pattern', async () => {
+        const manager = await boot([])
+        manager.changeDateFormat('YYYYMMDD HHmm')
+
+        at('startDateTime').value = '20260910 0900'
+        at('targetDateTime').value = '20260910 1800'
+        at('taskContent').value = 'ship it'
+        at('taskPosition').value = '1'
+        await manager.saveTask()
+        await settle()
+
+        expect(stored[0].startDateTime).toBe('2026-09-10 09:00')
+        expect(stored[0].targetDateTime).toBe('2026-09-10 18:00')
+    })
+
+    test('round-trips a 12-hour pattern back to 24-hour storage', async () => {
+        const manager = await boot([])
+        manager.changeDateFormat('MM/DD/YYYY hh:mm A')
+
+        at('startDateTime').value = '09/10/2026 09:00 AM'
+        at('targetDateTime').value = '09/10/2026 03:30 PM'
+        at('taskContent').value = 'ship it'
+        at('taskPosition').value = '1'
+        await manager.saveTask()
+        await settle()
+
+        expect(stored[0].startDateTime).toBe('2026-09-10 09:00')
+        expect(stored[0].targetDateTime).toBe('2026-09-10 15:30')
+    })
+
+    test('rejects input that does not match the chosen pattern', async () => {
+        jest.spyOn(window, 'alert').mockImplementation(() => {})
+        const manager = await boot([])
+        manager.changeDateFormat('YYYY-MM-DD HH:mm')
+
+        at('startDateTime').value = '2026/09/10 09:00'
+        at('targetDateTime').value = '2026-09-10 18:00'
+        at('taskContent').value = 'ship it'
+        at('taskPosition').value = '1'
+        await manager.saveTask()
+        await settle()
+
+        expect(stored).toEqual([])
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('YYYY-MM-DD HH:mm'))
+    })
+
+    test('rejects a date that does not exist', async () => {
+        jest.spyOn(window, 'alert').mockImplementation(() => {})
+        const manager = await boot([])
+
+        at('startDateTime').value = '2026-02-30 09:00'
+        at('targetDateTime').value = '2026-03-01 18:00'
+        at('taskContent').value = 'ship it'
+        at('taskPosition').value = '1'
+        await manager.saveTask()
+        await settle()
+
+        expect(stored).toEqual([])
+    })
+
+    test('remembers the choice across launches', async () => {
+        const first = await boot([afternoon()])
+        first.changeDateFormat('YYYY.MM.DD HH:mm')
+
+        const second = await boot([afternoon()])
+
+        expect(second.dateFormat).toBe('YYYY.MM.DD HH:mm')
+        expect(at('dateFormatSelect').value).toBe('YYYY.MM.DD HH:mm')
+    })
+
+    test('lists every pattern with a worked example', async () => {
+        await boot([])
+
+        const options = Array.from(at('dateFormatSelect').options)
+        expect(options.length).toBeGreaterThan(1)
+        expect(options[0].textContent).toContain('YYYY-MM-DD HH:mm')
+        expect(options[0].textContent).toContain('2026-08-04 15:30')
+    })
+
+    test('is labelled in the selected language', async () => {
+        localStorage.setItem('selectedLanguage', 'ko')
+        await boot([])
+
+        expect(at('settingsDateFormatLabel').textContent).toBe('날짜 표기')
     })
 })

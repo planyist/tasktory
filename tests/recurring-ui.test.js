@@ -223,8 +223,8 @@ describe('editing a task', () => {
         manager.showModal(manager.tasks[0])
 
         fillTaskForm({
-            start: '2026-08-03T09:00',
-            target: '2026-08-03T18:00',
+            start: '2026-08-03 09:00',
+            target: '2026-08-03 18:00',
             content: 'weekly report'
         })
         chooseRepeat('weekly', { interval: 2, weekdays: [3] })
@@ -247,8 +247,8 @@ describe('editing a task', () => {
         manager.showModal(manager.tasks[0])
 
         fillTaskForm({
-            start: '2026-08-03T09:00',
-            target: '2026-08-03T18:00',
+            start: '2026-08-03 09:00',
+            target: '2026-08-03 18:00',
             content: 'weekly report'
         })
         chooseRepeat('none')
@@ -267,8 +267,8 @@ describe('editing a task', () => {
         manager.showModal(manager.tasks[0])
 
         fillTaskForm({
-            start: '2026-08-04T09:00',
-            target: '2026-08-04T18:00',
+            start: '2026-08-04 09:00',
+            target: '2026-08-04 18:00',
             content: 'one-off'
         })
         chooseRepeat('monthly', { interval: 3 })
@@ -290,8 +290,8 @@ describe('creating a repeating task', () => {
     test('stores a rule and links the row to it', async () => {
         const manager = await boot()
         fillTaskForm({
-            start: '2026-08-04T09:00',
-            target: '2026-08-04T18:00',
+            start: '2026-08-04 09:00',
+            target: '2026-08-04 18:00',
             content: 'daily standup'
         })
         chooseRepeat('daily', { interval: 2 })
@@ -317,8 +317,8 @@ describe('creating a repeating task', () => {
     test('records the chosen weekdays for a weekly rule', async () => {
         const manager = await boot()
         fillTaskForm({
-            start: '2026-08-03T09:00',
-            target: '2026-08-03T18:00',
+            start: '2026-08-03 09:00',
+            target: '2026-08-03 18:00',
             content: 'gym'
         })
         chooseRepeat('weekly', { weekdays: [1, 3, 5] })
@@ -332,8 +332,8 @@ describe('creating a repeating task', () => {
     test('creates no rule when repeat is left off', async () => {
         const manager = await boot()
         fillTaskForm({
-            start: '2026-08-04T09:00',
-            target: '2026-08-04T18:00',
+            start: '2026-08-04 09:00',
+            target: '2026-08-04 18:00',
             content: 'one-off task'
         })
 
@@ -347,8 +347,8 @@ describe('creating a repeating task', () => {
     test('shows the cadence once, under the start time', async () => {
         const manager = await boot()
         fillTaskForm({
-            start: '2026-08-03T09:00',
-            target: '2026-08-03T18:00',
+            start: '2026-08-03 09:00',
+            target: '2026-08-03 18:00',
             content: 'gym'
         })
         chooseRepeat('weekly', { weekdays: [1, 3] })
@@ -370,8 +370,8 @@ describe('creating a repeating task', () => {
     test('spells out an interval greater than one', async () => {
         const manager = await boot()
         fillTaskForm({
-            start: '2026-08-03T09:00',
-            target: '2026-08-03T18:00',
+            start: '2026-08-03 09:00',
+            target: '2026-08-03 18:00',
             content: 'deep clean'
         })
         chooseRepeat('monthly', { interval: 3 })
@@ -387,8 +387,8 @@ describe('creating a repeating task', () => {
     test('marks the row with a repeat badge', async () => {
         const manager = await boot()
         fillTaskForm({
-            start: '2026-08-04T09:00',
-            target: '2026-08-04T18:00',
+            start: '2026-08-04 09:00',
+            target: '2026-08-04 18:00',
             content: 'daily standup'
         })
         chooseRepeat('daily')

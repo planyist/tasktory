@@ -163,11 +163,11 @@
                 </div>
                 <div class="form-group">
                     <label for="startDateTime" id="labelStartTime">Start Time</label>
-                    <input type="datetime-local" id="startDateTime" required>
+                    <input type="text" id="startDateTime" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <label for="targetDateTime" id="labelTargetTime">Target Time</label>
-                    <input type="datetime-local" id="targetDateTime" required>
+                    <input type="text" id="targetDateTime" required autocomplete="off">
                 </div>
                 <div class="form-group">
                     <div class="label-with-help">
@@ -258,6 +258,12 @@
                 </div>
             </div>
             
+            <div class="settings-group">
+                <label for="dateFormatSelect" id="settingsDateFormatLabel">Date Format</label>
+                <select id="dateFormatSelect"></select>
+                <div id="dateFormatPreview" class="date-format-preview"></div>
+            </div>
+
             <div class="settings-group">
                 <label id="settingsDefaultNotificationLabel">Default Notification</label>
                 <div class="notification-toggle">
@@ -358,7 +364,7 @@
             
             <br><br>
             
-            <p><strong id="aboutVersionLabel">Version:</strong> 0.3.0</p>
+            <p><strong id="aboutVersionLabel">Version:</strong> 0.3.1</p>
             <p><strong id="aboutLicenseLabel">License:</strong> MIT</p>
             <p><strong id="aboutAuthorLabel">Author:</strong> Jeonghwan Yoo &lt;planyist@gmail.com&gt;</p>
         </div>

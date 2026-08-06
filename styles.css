@@ -601,6 +601,22 @@ body.collapsed-mode-body {
     gap: 10px;
 }
 
+/* 형식 문자열과 예시를 나란히 보여주므로 등폭 글꼴이 읽기 좋다 */
+#dateFormatSelect {
+    font-family: Consolas, 'Courier New', monospace;
+}
+
+.date-format-preview {
+    margin-top: 6px;
+    font-size: 12px;
+    font-family: Consolas, 'Courier New', monospace;
+    color: #6a737d;
+}
+
+body.dark-mode .date-format-preview {
+    color: #aaa;
+}
+
 .notification-btn {
     width: 40px;
     height: 40px;
@@ -843,13 +859,20 @@ tbody tr:nth-child(even):hover {
     background-color: #dbe1e8;
 }
 
-tbody tr.highlighted .task-content {
+/* 하이라이트는 행 전체에 건다. 작업 내용 칸에만 칠하면 좁은 표에서 눈에 잘
+   안 띄고, 홀짝 줄무늬와 섞여 어중간해 보인다. */
+tbody tr.highlighted td {
     background-color: #fff2e6 !important;
     color: #bf6900 !important;
-    border: 2px solid #fd7e14 !important;
-    border-radius: 4px !important;
-    padding: 8px !important;
     font-weight: 600 !important;
+}
+
+tbody tr.highlighted td:first-child {
+    box-shadow: inset 3px 0 0 #fd7e14;
+}
+
+tbody tr.highlighted:hover td {
+    background-color: #ffe6cc !important;
 }
 
 td {
@@ -2061,13 +2084,14 @@ body.dark-mode .tag-preset-item {
     border-color: #bbdefb;
 }
 
-body.dark-mode tbody tr.highlighted .task-content {
+body.dark-mode tbody tr.highlighted td {
     background-color: #4a3a2a !important;
     color: #fd7e14 !important;
-    border: 2px solid #fd7e14 !important;
-    border-radius: 4px !important;
-    padding: 8px !important;
     font-weight: 600 !important;
+}
+
+body.dark-mode tbody tr.highlighted:hover td {
+    background-color: #5a4632 !important;
 }
 
 body.dark-mode .collapsed-expand-btn {

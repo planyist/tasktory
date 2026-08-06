@@ -17,6 +17,7 @@ const makeManager = (overrides = {}) =>
         tasks: [],
         logs: [],
         locale: 'en',
+        dateFormat: 'YYYY-MM-DD HH:mm',
         isElectron: false,
         searchQuery: '',
         currentPage: 1,
@@ -170,28 +171,6 @@ describe('formatDateTimeLocal', () => {
         expect(makeManager().formatDateTimeLocal(new Date(2026, 7, 4, 9, 5))).toBe(
             '2026-08-04 09:05'
         )
-    })
-})
-
-describe('validateDateTimeInput', () => {
-    test('flags a malformed value', () => {
-        const input = { value: '2026/08/04 09:00', style: {}, title: '' }
-
-        makeManager().validateDateTimeInput(input)
-
-        expect(input.style.borderColor).toBe('#e74c3c')
-        expect(input.title).toContain('YYYY-MM-DD HH:MM')
-    })
-
-    test('accepts a well-formed value and an empty value', () => {
-        for (const value of ['2026-08-04 09:00', '']) {
-            const input = { value, style: { borderColor: '#e74c3c' }, title: 'x' }
-
-            makeManager().validateDateTimeInput(input)
-
-            expect(input.style.borderColor).toBe('')
-            expect(input.title).toBe('')
-        }
     })
 })
 
