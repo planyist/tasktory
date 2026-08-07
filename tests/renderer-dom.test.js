@@ -1138,3 +1138,42 @@ describe('action bar styling hooks', () => {
         ])
     })
 })
+
+describe('notification history across restarts', () => {
+    const soon = (minutes) => new Date(Date.now() + minutes * 60 * 1000).toISOString()
+
+    // notifiedTasks lived only in memory, so every relaunch re-fired the
+    // 1-hour, 15-minute and overdue alerts for anything still in range.
+    test('does not alert twice for the same task after a relaunch', async () => {
+        const due = task('a', { startDateTime: soon(-120), targetDateTime: soon(30) })
+
+        const first = await boot([due])
+        first.startNotificationCheck.mockRestore?.()
+        await first.checkUpcomingTasks()
+        const alertsBefore = electronAPI.showNotification.mock.calls.length
+        expect(alertsBefore).toBeGreaterThan(0)
+
+        const second = await boot([due])
+        await second.checkUpcomingTasks()
+
+        expect(electronAPI.showNotification).not.toHaveBeenCalled()
+        expect(second.notifiedTasks.size).toBeGreaterThan(0)
+    })
+
+    test('forgets tasks that are no longer in the list', async () => {
+        const manager = await boot([task('a')])
+        manager.notifiedTasks = new Set(['task-gone-1hour', 'a-1hour'])
+
+        manager.rememberNotified('a-15min')
+
+        expect([...manager.notifiedTasks].sort()).toEqual(['a-15min', 'a-1hour'])
+    })
+
+    test('survives a corrupted store', async () => {
+        localStorage.setItem('notifiedTasks', 'not json')
+
+        const manager = await boot([task('a')])
+
+        expect(manager.notifiedTasks.size).toBe(0)
+    })
+})

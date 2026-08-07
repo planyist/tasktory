@@ -88,7 +88,9 @@ class TaskManager {
         this.searchQuery = '';
         this.searchColumn = 'all'; // 검색 대상 컬럼
         this.selectedTaskIds = new Set(); // 일괄 처리용 선택
-        this.notifiedTasks = new Set(); // 이미 알림을 보낸 태스크들
+        // 이미 알림을 보낸 태스크들. 메모리에만 두면 앱을 껐다 켤 때마다
+        // 아직 시간대에 걸린 작업의 알림이 전부 다시 울린다.
+        this.notifiedTasks = this.loadNotifiedTasks();
         this.completionCount = 0; // Will be set in init()
         this.isCollapsed = false;
         this.currentPage = 1;
@@ -3562,21 +3564,44 @@ class TaskManager {
             // 1시간 전 알림
             if (now >= oneHourBefore && now < targetDate && !this.notifiedTasks.has(task.id + '-1hour')) {
                 await this.showTaskNotification(task, '1 hour remaining!');
-                this.notifiedTasks.add(task.id + '-1hour');
+                this.rememberNotified(task.id + '-1hour');
             }
 
             // 15분 전 알림
             if (now >= fifteenMinutesBefore && now < targetDate && !this.notifiedTasks.has(task.id + '-15min')) {
                 await this.showTaskNotification(task, '15 minutes remaining!');
-                this.notifiedTasks.add(task.id + '-15min');
+                this.rememberNotified(task.id + '-15min');
             }
 
             // 시간 초과 알림
             if (now >= targetDate && !this.notifiedTasks.has(task.id + '-overdue')) {
                 await this.showTaskNotification(task, 'Task is now overdue!');
-                this.notifiedTasks.add(task.id + '-overdue');
+                this.rememberNotified(task.id + '-overdue');
             }
         }
+    }
+
+    loadNotifiedTasks() {
+        try {
+            const saved = JSON.parse(localStorage.getItem('notifiedTasks') || '[]');
+            return new Set(Array.isArray(saved) ? saved : []);
+        } catch (error) {
+            return new Set();
+        }
+    }
+
+    // 알림 기록을 남긴다. 지금 목록에 없는 태스크의 기록은 같이 정리해서
+    // 지운 작업의 흔적이 무한히 쌓이지 않게 한다.
+    rememberNotified(key) {
+        this.notifiedTasks.add(key);
+
+        const live = new Set(this.tasks.map(task => task.id));
+        for (const entry of [...this.notifiedTasks]) {
+            if (!live.has(entry.slice(0, entry.lastIndexOf('-')))) {
+                this.notifiedTasks.delete(entry);
+            }
+        }
+        localStorage.setItem('notifiedTasks', JSON.stringify([...this.notifiedTasks]));
     }
 
     async showTaskNotification(task, timeMsg) {
