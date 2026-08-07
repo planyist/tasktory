@@ -15,6 +15,9 @@ const DATE_FORMATS = [
 
 const STORAGE_FORMAT = 'YYYY-MM-DD HH:mm';
 
+// main.js가 로그 파일에 쓰는 헤더와 같아야 한다
+const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT';
+
 // 토큰 하나당 정규식 조각과 값 추출기. 형식 문자열 하나로 출력과 입력을 모두
 // 만들어내므로 둘이 어긋날 수 없다.
 const DATE_TOKENS = {
@@ -83,6 +86,8 @@ class TaskManager {
         this.darkMode = localStorage.getItem('darkMode') === 'true';
         this.dateFormat = localStorage.getItem('dateFormat') || DATE_FORMATS[0];
         this.searchQuery = '';
+        this.searchColumn = 'all'; // 검색 대상 컬럼
+        this.selectedTaskIds = new Set(); // 일괄 처리용 선택
         this.notifiedTasks = new Set(); // 이미 알림을 보낸 태스크들
         this.completionCount = 0; // Will be set in init()
         this.isCollapsed = false;
@@ -155,6 +160,7 @@ class TaskManager {
         // Header buttons tooltips
         document.getElementById('addTaskBtn').title = this.getLocalizedText('addTask');
         this.updateDateFormatControls();
+        this.updateSearchColumnControl();
         document.getElementById('exportBtn').title = this.getLocalizedText('downloadExport');
         document.getElementById('importBtn').title = this.getLocalizedText('uploadImport');
         document.getElementById('statisticsBtn').title = this.getLocalizedText('statistics');
@@ -174,7 +180,6 @@ class TaskManager {
         document.getElementById('thTags').textContent = this.getLocalizedText('tags');
         document.getElementById('thTaskContent').textContent = this.getLocalizedText('taskContent');
         document.getElementById('thStatus').textContent = this.getLocalizedText('status');
-        document.getElementById('thActions').textContent = this.getLocalizedText('actions');
         
         // Modal form labels
         document.getElementById('labelStartTime').textContent = this.getLocalizedText('startTime');
@@ -539,36 +544,9 @@ class TaskManager {
             this.hideModal();
         });
 
-        // Close modals when clicking background
-        document.getElementById('taskModal').addEventListener('click', (e) => {
-            if (e.target.id === 'taskModal') {
-                this.hideModal();
-            }
-        });
-
-        document.getElementById('settingsModal').addEventListener('click', (e) => {
-            if (e.target.id === 'settingsModal') {
-                this.hideSettingsModal();
-            }
-        });
-
-        document.getElementById('aboutModal').addEventListener('click', (e) => {
-            if (e.target.id === 'aboutModal') {
-                this.hideAboutModal();
-            }
-        });
-
-        document.getElementById('statisticsModal').addEventListener('click', (e) => {
-            if (e.target.id === 'statisticsModal') {
-                this.hideStatisticsModal();
-            }
-        });
-
-        document.getElementById('confirmModal').addEventListener('click', (e) => {
-            if (e.target.id === 'confirmModal') {
-                this.hideConfirmModal();
-            }
-        });
+        // 배경을 눌러도 닫히지 않는다. 작업 내용을 길게 쓰다가 바깥을 한 번
+        // 잘못 누르면 입력이 통째로 날아가기 때문이다. 닫는 방법은 X 버튼,
+        // 취소 버튼, ESC 세 가지로 충분하다.
 
         // Form submission
         document.getElementById('taskForm').addEventListener('submit', (e) => {
@@ -581,9 +559,53 @@ class TaskManager {
             this.updateRepeatVisibility();
         });
 
+        // 다중 선택
+        document.getElementById('selectAllTasks').addEventListener('change', (e) => {
+            this.toggleSelectAll(e.target.checked);
+        });
+        document.getElementById('tasksTable').addEventListener('change', (e) => {
+            const box = e.target.closest('.task-select');
+            if (box) this.toggleTaskSelection(box.dataset.taskId, box.checked);
+        });
+        document.querySelectorAll('[data-bulk]').forEach(button => {
+            button.addEventListener('click', () => this.runBulkAction(button.dataset.bulk));
+        });
+
+        // 편집이 선택 후 버튼 두 단계가 되었으니, 행을 더블클릭하면 바로 열리게 한다
+        document.getElementById('tasksBody').addEventListener('dblclick', (e) => {
+            const row = e.target.closest('tr');
+            const box = row && row.querySelector('.task-select');
+            if (box) this.editTask(box.dataset.taskId);
+        });
+
+        // 검색 대상 컬럼
+        document.getElementById('searchColumn').addEventListener('change', (e) => {
+            this.searchColumn = e.target.value;
+            this.currentPage = 1;
+            this.renderTasks();
+        });
+
         // 날짜 표시 형식
         document.getElementById('dateFormatSelect').addEventListener('change', (e) => {
             this.changeDateFormat(e.target.value);
+        });
+
+        // 날짜/시간 선택기
+        document.querySelectorAll('.datetime-pick-btn').forEach(button => {
+            button.addEventListener('click', () => this.openDateTimePicker(button.dataset.target));
+        });
+        document.getElementById('dtpPrevMonth').addEventListener('click', () => this.movePickerMonth(-1));
+        document.getElementById('dtpNextMonth').addEventListener('click', () => this.movePickerMonth(1));
+        document.getElementById('dtpApply').addEventListener('click', () => this.applyDateTimePicker());
+        document.getElementById('dtpCancel').addEventListener('click', () => this.closeDateTimePicker());
+
+        // 피커 바깥을 누르면 닫는다 (모달과 달리 선택기는 가벼운 팝오버다)
+        document.addEventListener('mousedown', (e) => {
+            const picker = document.getElementById('dateTimePicker');
+            if (this.pickerTarget && !picker.contains(e.target) && !e.target.closest('.datetime-pick-btn')) {
+                this.closeDateTimePicker();
+            }
+
         });
 
         // 표 안의 칩(태그·상태·반복)을 클릭하면 그 키워드로 검색한다.
@@ -612,29 +634,7 @@ class TaskManager {
                 const action = button.getAttribute('data-action');
                 
                 if (taskId && action) {
-                    switch (action) {
-                        case 'edit':
-                            this.editTask(taskId);
-                            break;
-                        case 'complete':
-                            this.completeTask(taskId);
-                            break;
-                        case 'delete':
-                            this.deleteTask(taskId);
-                            break;
-                        case 'highlight':
-                            this.toggleHighlight(taskId);
-                            break;
-                        case 'up':
-                            this.moveTask(taskId, 'up');
-                            break;
-                        case 'down':
-                            this.moveTask(taskId, 'down');
-                            break;
-                        case 'notification':
-                            this.toggleNotification(taskId);
-                            break;
-                    }
+                    this.runTaskAction(action, taskId);
                 }
             }
         });
@@ -990,6 +990,12 @@ class TaskManager {
                 'taskContentPlaceholder': 'Enter task content...',
                 'cancel': 'Cancel',
                 'save': 'Save',
+                'confirm': 'OK',
+                'historyImportElectronOnly': 'History import is only available in the desktop app',
+                'searchAllColumns': 'All columns',
+                'selectedCount': '{n} selected',
+                'selectTasksFirst': 'Select tasks first',
+                'moreActions': 'More actions',
                 'addNewTask': 'Add New Task',
                 'editTask': 'Edit Task',
                 // Completion and deletion
@@ -1140,6 +1146,12 @@ class TaskManager {
                 'taskContentPlaceholder': '작업 내용을 입력하세요...',
                 'cancel': '취소',
                 'save': '저장',
+                'confirm': '확인',
+                'historyImportElectronOnly': '이력 가져오기는 데스크톱 앱에서만 됩니다',
+                'searchAllColumns': '전체 컬럼',
+                'selectedCount': '{n}개 선택됨',
+                'selectTasksFirst': '먼저 작업을 선택하세요',
+                'moreActions': '추가 작업',
                 'addNewTask': '새 작업 추가',
                 'editTask': '작업 편집',
                 // Completion and deletion
@@ -1290,6 +1302,12 @@ class TaskManager {
                 'taskContentPlaceholder': '输入任务内容...',
                 'cancel': '取消',
                 'save': '保存',
+                'confirm': '确定',
+                'historyImportElectronOnly': '历史导入仅在桌面应用中可用',
+                'searchAllColumns': '所有列',
+                'selectedCount': '已选 {n} 项',
+                'selectTasksFirst': '请先选择任务',
+                'moreActions': '更多操作',
                 'addNewTask': '添加新任务',
                 'editTask': '编辑任务',
                 // Completion and deletion
@@ -1440,6 +1458,12 @@ class TaskManager {
                 'taskContentPlaceholder': 'タスク内容を入力...',
                 'cancel': 'キャンセル',
                 'save': '保存',
+                'confirm': 'OK',
+                'historyImportElectronOnly': '履歴の取り込みはデスクトップアプリのみ対応しています',
+                'searchAllColumns': 'すべての列',
+                'selectedCount': '{n}件を選択中',
+                'selectTasksFirst': '先にタスクを選択してください',
+                'moreActions': 'その他の操作',
                 'addNewTask': '新しいタスクを追加',
                 'editTask': 'タスクを編集',
                 // Completion and deletion
@@ -1590,6 +1614,12 @@ class TaskManager {
                 'taskContentPlaceholder': 'Ingrese el contenido de la tarea...',
                 'cancel': 'Cancelar',
                 'save': 'Guardar',
+                'confirm': 'Aceptar',
+                'historyImportElectronOnly': 'La importación del historial solo funciona en la aplicación de escritorio',
+                'searchAllColumns': 'Todas las columnas',
+                'selectedCount': '{n} seleccionadas',
+                'selectTasksFirst': 'Seleccione tareas primero',
+                'moreActions': 'Más acciones',
                 'addNewTask': 'Añadir Nueva Tarea',
                 'editTask': 'Editar Tarea',
                 // Completion and deletion
@@ -1725,6 +1755,296 @@ class TaskManager {
         return [task.tags || '', ...this.displayTagTexts(task)].join(' ').toLowerCase();
     }
 
+    runTaskAction(action, taskId) {
+        switch (action) {
+            case 'edit': this.editTask(taskId); break;
+            case 'complete': this.completeTask(taskId); break;
+            case 'delete': this.deleteTask(taskId); break;
+            case 'highlight': this.toggleHighlight(taskId); break;
+            case 'up': this.moveTask(taskId, 'up'); break;
+            case 'down': this.moveTask(taskId, 'down'); break;
+            case 'notification': this.toggleNotification(taskId); break;
+        }
+    }
+
+
+    // ---- 다중 선택 / 일괄 처리 ---------------------------------------------
+    // 행마다 있는 버튼은 그대로 두고, 여러 건을 한 번에 처리할 때만 쓴다.
+    // 선택이 없으면 바가 나타나지 않으므로 평소 화면은 달라지지 않는다.
+
+    toggleTaskSelection(taskId, selected) {
+        if (selected) {
+            this.selectedTaskIds.add(taskId);
+        } else {
+            this.selectedTaskIds.delete(taskId);
+        }
+        this.updateSelectionUI();
+    }
+
+    // 지금 화면에 보이는 행들 (검색·페이지 적용 후)
+    visibleTaskIds() {
+        return Array.from(document.querySelectorAll('#tasksBody .task-select'))
+            .map(box => box.dataset.taskId);
+    }
+
+    toggleSelectAll(selected) {
+        for (const id of this.visibleTaskIds()) {
+            if (selected) {
+                this.selectedTaskIds.add(id);
+            } else {
+                this.selectedTaskIds.delete(id);
+            }
+        }
+        document.querySelectorAll('#tasksBody .task-select').forEach(box => {
+            box.checked = selected;
+        });
+        this.updateSelectionUI();
+    }
+
+    clearSelection() {
+        this.selectedTaskIds.clear();
+        document.querySelectorAll('#tasksBody .task-select').forEach(box => {
+            box.checked = false;
+        });
+        this.updateSelectionUI();
+    }
+
+    updateSelectionUI() {
+        const summary = document.getElementById('selectionSummary');
+        const selectAll = document.getElementById('selectAllTasks');
+        if (!summary) return;
+
+        // 화면에서 사라진 항목(삭제·완료)은 선택에서도 빠져야 한다
+        const visible = new Set(this.visibleTaskIds());
+        for (const id of [...this.selectedTaskIds]) {
+            if (!this.tasks.some(t => t.id === id && !t.completed)) {
+                this.selectedTaskIds.delete(id);
+            }
+        }
+
+        const selected = this.selectedTaskIds.size;
+        // 선택이 없을 때 안내 문장을 띄우면 늘 잔소리처럼 남는다.
+        // 버튼이 이미 흐려져 있으니 개수만 필요할 때 보여주면 된다.
+        summary.textContent = selected > 0
+            ? this.getLocalizedText('selectedCount').replace('{n}', selected)
+            : '';
+        summary.classList.toggle('has-selection', selected > 0);
+
+        const singleOnly = new Set(['edit', 'up', 'down']);
+        document.querySelectorAll('[data-bulk]').forEach(button => {
+            const action = button.dataset.bulk;
+            button.disabled = singleOnly.has(action) ? selected !== 1 : selected === 0;
+        });
+
+        const tips = {
+            notification: 'notification', edit: 'edit', complete: 'complete',
+            delete: 'delete', highlight: 'highlight', up: 'moveUp', down: 'moveDown'
+        };
+        document.querySelectorAll('[data-bulk]').forEach(button => {
+            button.title = this.getLocalizedText(tips[button.dataset.bulk]);
+        });
+
+        if (selectAll) {
+            const shown = [...visible];
+            const allChosen = shown.length > 0 && shown.every(id => this.selectedTaskIds.has(id));
+            selectAll.checked = allChosen;
+            selectAll.indeterminate = !allChosen && shown.some(id => this.selectedTaskIds.has(id));
+        }
+    }
+
+    // 선택된 항목에 같은 동작을 순서대로 적용한다. 저장은 saveTasks가 직렬화하므로
+    // 중간에 서로 덮어쓰지 않는다.
+    async runBulkAction(action) {
+        const ids = [...this.selectedTaskIds];
+        if (ids.length === 0) return;
+
+        // 편집과 순서 이동은 대상이 하나여야 뜻이 통한다. 선택은 유지해서
+        // 위/아래를 연속으로 누를 수 있게 한다.
+        if (action === 'edit' || action === 'up' || action === 'down') {
+            if (ids.length !== 1) return;
+            this.runTaskAction(action, ids[0]);
+            return;
+        }
+
+        // 알림은 선택 전체를 같은 상태로 맞춘다
+        const turnOff = ids.some(id => {
+            const task = this.tasks.find(t => t.id === id);
+            return task && task.notificationEnabled !== false;
+        });
+
+        for (const id of ids) {
+            const task = this.tasks.find(t => t.id === id);
+            if (!task) continue;
+
+            if (action === 'complete') {
+                await this.doCompleteTask(id, null);
+            } else if (action === 'delete') {
+                await this.doDeleteTask(id, null);
+            } else if (action === 'highlight') {
+                await this.toggleHighlight(id);
+            } else if (action === 'notification') {
+                // 선택된 것들의 상태가 섞여 있을 때 각자 뒤집으면 결과가
+                // 뒤죽박죽이 된다. 하나라도 켜져 있으면 전부 끄고, 전부 꺼져
+                // 있으면 전부 켠다.
+                if (this.tasks.find(t => t.id === id).notificationEnabled !== false) {
+                    if (turnOff) await this.toggleNotification(id);
+                } else if (!turnOff) {
+                    await this.toggleNotification(id);
+                }
+            }
+        }
+
+        this.clearSelection();
+        this.renderTasks();
+    }
+
+    // ---- 날짜/시간 선택기 -------------------------------------------------
+    // 표시 형식이 설정에 따라 달라지므로 네이티브 datetime-local을 쓸 수 없다.
+    // 직접 만든 대신 확인/취소 버튼이 있어서, 고르고 딴 데를 눌러야 확정되던
+    // 네이티브 피커보다 무엇이 적용되는지 분명하다.
+
+    openDateTimePicker(inputId) {
+        const input = document.getElementById(inputId);
+        const picker = document.getElementById('dateTimePicker');
+        if (!input || !picker) return;
+
+        // 입력값이 형식에 맞으면 그 시각에서, 아니면 지금에서 시작한다
+        const current = parseWithPattern(input.value, this.dateFormat) || new Date();
+        this.pickerTarget = inputId;
+        this.pickerDate = new Date(current);
+        this.pickerMonth = new Date(current.getFullYear(), current.getMonth(), 1);
+
+        this.pickerHour = current.getHours();
+        this.pickerMinute = current.getMinutes();
+        document.getElementById('dtpCancel').textContent = this.getLocalizedText('cancel');
+        document.getElementById('dtpApply').textContent = this.getLocalizedText('confirm');
+
+        this.renderPickerCalendar();
+        this.renderPickerTime();
+
+        picker.style.display = 'block';
+        const box = input.getBoundingClientRect();
+        picker.style.top = `${box.bottom + 4}px`;
+        picker.style.left = `${box.left}px`;
+
+        // 화면 밖으로 나가면 끌어들인다
+        const shown = picker.getBoundingClientRect();
+        if (shown.right > window.innerWidth - 8) {
+            picker.style.left = `${Math.max(8, window.innerWidth - shown.width - 8)}px`;
+        }
+        if (shown.bottom > window.innerHeight - 8) {
+            picker.style.top = `${Math.max(8, box.top - shown.height - 4)}px`;
+        }
+    }
+
+    closeDateTimePicker() {
+        const picker = document.getElementById('dateTimePicker');
+        if (picker) picker.style.display = 'none';
+        this.pickerTarget = null;
+    }
+
+    renderPickerCalendar() {
+        const month = this.pickerMonth;
+        document.getElementById('dtpMonthLabel').textContent =
+            month.toLocaleDateString(this.locale, { year: 'numeric', month: 'long' });
+
+        const weekdays = document.getElementById('dtpWeekdays');
+        weekdays.innerHTML = '';
+        for (const name of this.getLocalizedText('weekdaysShort').split(',')) {
+            const cell = document.createElement('span');
+            cell.textContent = name;
+            weekdays.appendChild(cell);
+        }
+
+        const days = document.getElementById('dtpDays');
+        days.innerHTML = '';
+
+        const first = new Date(month.getFullYear(), month.getMonth(), 1);
+        const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+        const sameDay = (a, b) =>
+            a.getFullYear() === b.getFullYear() &&
+            a.getMonth() === b.getMonth() &&
+            a.getDate() === b.getDate();
+        const today = new Date();
+
+        // 1일이 오는 요일만큼 앞을 비운다
+        for (let i = 0; i < first.getDay(); i++) {
+            days.appendChild(document.createElement('span'));
+        }
+
+        for (let day = 1; day <= daysInMonth; day++) {
+            const date = new Date(month.getFullYear(), month.getMonth(), day);
+            const cell = document.createElement('button');
+            cell.type = 'button';
+            cell.className = 'dtp-day';
+            cell.textContent = day;
+            if (sameDay(date, this.pickerDate)) cell.classList.add('selected');
+            if (sameDay(date, today)) cell.classList.add('today');
+            cell.addEventListener('click', () => {
+                this.pickerDate = date;
+                this.renderPickerCalendar();
+            });
+            days.appendChild(cell);
+        }
+    }
+
+    // 시/분도 눌러서 고른다. 숫자 입력창은 피커 안에서 이질적이고, 몇 시인지
+    // 훑어보기도 어렵다. 분은 5분 단위로 두되 현재 값이 그 사이면 함께 넣어
+    // 09:07 같은 값이 고를 수 없게 사라지지 않도록 한다.
+    renderPickerTime() {
+        const hours = document.getElementById('dtpHours');
+        const minutes = document.getElementById('dtpMinutes');
+        if (!hours || !minutes) return;
+
+        const fill = (container, values, selected, onPick) => {
+            container.innerHTML = '';
+            for (const value of values) {
+                const cell = document.createElement('button');
+                cell.type = 'button';
+                cell.className = 'dtp-time-cell';
+                cell.dataset.value = value;
+                cell.textContent = String(value).padStart(2, '0');
+                if (value === selected) cell.classList.add('selected');
+                cell.addEventListener('click', () => {
+                    onPick(value);
+                    this.renderPickerTime();
+                });
+                container.appendChild(cell);
+            }
+            const active = container.querySelector('.selected');
+            if (active) container.scrollTop = active.offsetTop - container.clientHeight / 2 + 12;
+        };
+
+        const minuteValues = [...new Set(
+            [...Array.from({ length: 12 }, (_, i) => i * 5), this.pickerMinute]
+        )].sort((a, b) => a - b);
+
+        fill(hours, Array.from({ length: 24 }, (_, i) => i), this.pickerHour,
+            (value) => { this.pickerHour = value; });
+        fill(minutes, minuteValues, this.pickerMinute,
+            (value) => { this.pickerMinute = value; });
+    }
+
+    movePickerMonth(delta) {
+        this.pickerMonth = new Date(
+            this.pickerMonth.getFullYear(),
+            this.pickerMonth.getMonth() + delta,
+            1
+        );
+        this.renderPickerCalendar();
+    }
+
+    applyDateTimePicker() {
+        if (!this.pickerTarget) return;
+
+        const chosen = new Date(this.pickerDate);
+        chosen.setHours(this.pickerHour, this.pickerMinute, 0, 0);
+
+        document.getElementById(this.pickerTarget).value =
+            formatWithPattern(chosen, this.dateFormat);
+        this.closeDateTimePicker();
+    }
+
     // 날짜 형식 선택 목록. 형식 문자열과 그 형식으로 찍은 실제 예시를 함께 보여준다.
     updateDateFormatControls() {
         const label = document.getElementById('settingsDateFormatLabel');
@@ -1760,11 +2080,44 @@ class TaskManager {
         this.renderTasks();
     }
 
+    // 검색 대상 컬럼 목록. 라벨은 표 헤더와 같은 문구를 쓴다.
+    updateSearchColumnControl() {
+        const select = document.getElementById('searchColumn');
+        if (!select) return;
+
+        const columns = [
+            ['all', 'searchAllColumns'],
+            ['start', 'startTime'],
+            ['target', 'targetTime'],
+            ['tags', 'tags'],
+            ['content', 'taskContent'],
+            ['status', 'status'],
+            ['repeat', 'repeat']
+        ];
+
+        if (select.options.length !== columns.length) {
+            select.innerHTML = '';
+            for (const [value] of columns) {
+                const option = document.createElement('option');
+                option.value = value;
+                select.appendChild(option);
+            }
+        }
+        columns.forEach(([, key], index) => {
+            select.options[index].textContent = this.getLocalizedText(key);
+        });
+        select.value = this.searchColumn;
+    }
+
     // 칩 클릭 = 그 키워드로 검색. 검색창에도 값을 넣어 무슨 일이 일어났는지 보이게 하고,
     // 기존 지우기 버튼으로 그대로 되돌릴 수 있게 한다.
     applyChipFilter(value) {
         const input = document.getElementById('searchInput');
         if (input) input.value = value;
+
+        // 칩은 어느 컬럼에서 눌렀든 그 값을 찾는 것이므로 대상을 전체로 되돌린다
+        this.searchColumn = 'all';
+        this.updateSearchColumnControl();
 
         this.searchQuery = value.toLowerCase();
         this.currentPage = 1;
@@ -1861,21 +2214,22 @@ class TaskManager {
         // Apply search filter
         if (this.searchQuery) {
             activeTasks = activeTasks.filter(task => {
-                const content = task.content.toLowerCase();
-                const tags = this.searchableTags(task);
-                const startTime = this.formatDateTime(task.startDateTime).toLowerCase();
-                const targetTime = this.formatDateTime(task.targetDateTime).toLowerCase();
-                const status = this.getTaskStatus(task).text.toLowerCase();
-                // 반복 작업은 주기 설명과 '반복' 라벨로도 검색된다.
-                // '반복'으로 전부, '매주'로 주간 것만 뽑을 수 있다.
-                const repeat = this.describeRepeat(task).toLowerCase();
+                // 컬럼별 검색 대상. '전체'면 전부 훑는다.
+                const fields = {
+                    content: task.content.toLowerCase(),
+                    tags: this.searchableTags(task),
+                    start: this.formatDateTime(task.startDateTime).toLowerCase(),
+                    target: this.formatDateTime(task.targetDateTime).toLowerCase(),
+                    status: this.getTaskStatus(task).text.toLowerCase(),
+                    // 반복은 주기 설명과 '반복' 라벨로 찾을 수 있다
+                    repeat: this.describeRepeat(task).toLowerCase()
+                };
 
-                return content.includes(this.searchQuery) ||
-                       tags.includes(this.searchQuery) ||
-                       startTime.includes(this.searchQuery) ||
-                       targetTime.includes(this.searchQuery) ||
-                       status.includes(this.searchQuery) ||
-                       (repeat !== '' && repeat.includes(this.searchQuery));
+                const searched = this.searchColumn === 'all'
+                    ? Object.values(fields)
+                    : [fields[this.searchColumn] || ''];
+
+                return searched.some(value => value !== '' && value.includes(this.searchQuery));
             });
         }
 
@@ -1913,6 +2267,15 @@ class TaskManager {
             const taskStatus = this.getTaskStatus(task);
             const rule = task.ruleId ? this.rules.find(r => r.id === task.ruleId) : null;
             const repeatCadence = rule ? this.describeRuleCadence(rule) : '';
+            // 알림 버튼이 행에서 빠졌으므로, 꺼져 있다는 사실은 표시로 남겨야 한다.
+            // 켜짐이 기본값이라 꺼진 것만 보여주면 화면이 조용하다.
+            // 알림은 목표 시각을 기준으로 울리므로 목표 시간 칸에 표시한다.
+            // 작업 내용 칸은 white-space: pre-wrap이라 여기 끼워 넣으면
+            // 템플릿의 들여쓰기가 그대로 보여 정렬이 무너지기도 했다.
+            // 아이콘은 설정 모달의 '알림 끄기'와 같은 것(노란 종 + 빨간 빗금).
+            const notificationFlag = task.notificationEnabled === false
+                ? `<div class="row-flag" title="${this.getLocalizedText('notificationsOff')}"><svg width="13" height="13" viewBox="0 0 24 24" fill="transparent" stroke="#ffc107" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="m13.73 21a2 2 0 0 1-3.46 0"/><line x1="1" y1="1" x2="23" y2="23" stroke="#dc3545" stroke-width="3"/></svg></div>`
+                : '';
             // 주기는 시작 시간 아래 한 번만. 두 시각의 주기가 다를 수 없으므로
             // 양쪽에 쓰면 같은 문장이 한 줄 건너 반복될 뿐이다.
             // 다른 칩과 같은 규칙: 보이는 글자 그대로 걸러진다. '2일마다'를 눌렀는데
@@ -1942,59 +2305,19 @@ class TaskManager {
             }).join(' ') : '';
             
             row.innerHTML = `
+                <td class="select-col"><input type="checkbox" class="task-select" data-task-id="${task.id}"${this.selectedTaskIds.has(task.id) ? ' checked' : ''}></td>
                 <td>${actualPosition}</td>
                 <td>${this.formatDateTime(task.startDateTime)}${cadenceMarkup}</td>
-                <td>${this.formatDateTime(task.targetDateTime)}</td>
+                <td>${this.formatDateTime(task.targetDateTime)}${notificationFlag}</td>
                 <td class="task-tags">${displayTags}</td>
                 <td class="task-content">${plainContent}</td>
                 <td><span class="status ${taskStatus.status}" data-filter="${taskStatus.text}" title="${taskStatus.text}">${taskStatus.text}</span></td>
-                <td class="action-buttons">
-                    <button class="action-btn notification-btn" data-task-id="${task.id}" data-action="notification" title="${this.getLocalizedText('notification')}">
-                        ${task.notificationEnabled !== false ? 
-                            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="m13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor"/></svg>' : 
-                            '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="m13.73 21a2 2 0 0 1-3.46 0" stroke="currentColor"/><line x1="1" y1="1" x2="23" y2="23" stroke="#dc3545" stroke-width="3"/></svg>'
-                        }
-                    </button>
-                    <button class="action-btn edit-btn" data-task-id="${task.id}" data-action="edit" title="${this.getLocalizedText('edit')}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
-                            <path d="m18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
-                        </svg>
-                    </button>
-                    <button class="action-btn complete-btn" data-task-id="${task.id}" data-action="complete" title="${this.getLocalizedText('complete')}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20,6 9,17 4,12"/>
-                        </svg>
-                    </button>
-                    <button class="action-btn delete-btn" data-task-id="${task.id}" data-action="delete" title="${this.getLocalizedText('delete')}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="3,6 5,6 21,6"/>
-                            <path d="m19,6v14a2,2,0,0,1-2,2H7a2,2,0,0,1-2-2V6m3,0V4a2,2,0,0,1,2-2h4a2,2,0,0,1,2,2V6"/>
-                            <line x1="10" y1="11" x2="10" y2="17"/>
-                            <line x1="14" y1="11" x2="14" y2="17"/>
-                        </svg>
-                    </button>
-                    <button class="action-btn highlight-btn" data-task-id="${task.id}" data-action="highlight" title="${this.getLocalizedText('highlight')}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polygon points="13,2 3,14 12,14 11,22 21,10 12,10"/>
-                        </svg>
-                    </button>
-                    <button class="action-btn up-btn" data-task-id="${task.id}" data-action="up" title="${this.getLocalizedText('moveUp')}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="18,15 12,9 6,15"/>
-                        </svg>
-                    </button>
-                    <button class="action-btn down-btn" data-task-id="${task.id}" data-action="down" title="${this.getLocalizedText('moveDown')}">
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="6,9 12,15 18,9"/>
-                        </svg>
-                    </button>
-                </td>
             `;
             
             tbody.appendChild(row);
         });
 
+        this.updateSelectionUI();
         this.renderPagination(totalPages);
     }
 
@@ -2113,12 +2436,9 @@ class TaskManager {
             // (getTaskStatus는 {status, text} 객체다. 예전에는 이걸 문자열과
             // 비교해서 이 분기가 한 번도 참이 된 적이 없었다.)
             if (!task.highlighted) {
-                const { status } = this.getTaskStatus(task);
-                if (status === 'urgent') {
-                    li.classList.add('urgent');
-                } else if (status === 'overdue') {
-                    li.classList.add('overdue');
-                }
+                // 상태 이름을 그대로 클래스로 쓴다. 예전에는 urgent/overdue만
+                // 나열해서 '진행중'과 '대기'가 색 없이 남았다.
+                li.classList.add(this.getTaskStatus(task).status);
             }
 
             // 클릭 핸들러는 붙이지 않는다. 150px 창에서 편집 모달이 열리면
@@ -2985,6 +3305,92 @@ class TaskManager {
     }
 
     // Export functionality
+    // 백업에 함께 담을 화면 설정과 태그 프리셋. localStorage에만 사는 값들이라
+    // 여기서 모아주지 않으면 백업에 절대 포함되지 않는다.
+    collectPreferences() {
+        return {
+            tagPresets: this.tagPresets || [],
+            dateFormat: this.dateFormat,
+            selectedLanguage: localStorage.getItem('selectedLanguage'),
+            darkMode: this.darkMode,
+            defaultNotificationEnabled: this.defaultNotificationEnabled
+        };
+    }
+
+    // 백업의 설정을 적용한다. 없는 항목은 건드리지 않는다.
+    applyPreferences(preferences) {
+        if (!preferences || typeof preferences !== 'object') return;
+
+        if (Array.isArray(preferences.tagPresets)) {
+            this.tagPresets = preferences.tagPresets;
+            this.saveTagPresets();
+        }
+        if (DATE_FORMATS.includes(preferences.dateFormat)) {
+            this.dateFormat = preferences.dateFormat;
+            localStorage.setItem('dateFormat', preferences.dateFormat);
+        }
+        if (preferences.selectedLanguage) {
+            this.locale = preferences.selectedLanguage;
+            localStorage.setItem('selectedLanguage', preferences.selectedLanguage);
+        }
+        if (typeof preferences.darkMode === 'boolean') {
+            this.darkMode = preferences.darkMode;
+            localStorage.setItem('darkMode', String(preferences.darkMode));
+            this.applyTheme();
+        }
+        if (typeof preferences.defaultNotificationEnabled === 'boolean') {
+            this.defaultNotificationEnabled = preferences.defaultNotificationEnabled;
+            localStorage.setItem(
+                'defaultNotificationEnabled',
+                String(preferences.defaultNotificationEnabled)
+            );
+        }
+
+        this.updateUIText();
+    }
+
+    downloadFile(text, filename, mime) {
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(new Blob([text], { type: mime }));
+        link.download = filename;
+        link.click();
+        URL.revokeObjectURL(link.href);
+    }
+
+    // 날짜별 로그 파일을 한 장으로 합친다. 헤더는 한 번만 두고 날짜순으로 잇는다.
+    buildHistoryTsv(logFiles) {
+        if (!logFiles || Object.keys(logFiles).length === 0) return '';
+
+        const rows = [];
+        for (const name of Object.keys(logFiles).sort()) {
+            for (const line of String(logFiles[name]).split('\n')) {
+                // 파일마다 들어 있는 헤더와 빈 줄은 버린다
+                if (!line.trim() || line.startsWith('TIMESTAMP')) continue;
+                rows.push(line);
+            }
+        }
+        return rows.length ? `${LOG_HEADER}\n${rows.join('\n')}\n` : '';
+    }
+
+    // 합쳐진 TSV를 날짜별 로그 파일로 되돌린다. TIMESTAMP 앞 10자가 날짜다.
+    parseHistoryTsv(text) {
+        const files = {};
+
+        for (const line of String(text).split('\n')) {
+            if (!line.trim() || line.startsWith('TIMESTAMP')) continue;
+            const date = line.slice(0, 10);
+            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
+            const key = `${date}.tsv`;
+            (files[key] = files[key] || []).push(line);
+        }
+
+        const out = {};
+        for (const [name, rows] of Object.entries(files)) {
+            out[name] = `${LOG_HEADER}\n${rows.join('\n')}\n`;
+        }
+        return out;
+    }
+
     async exportData() {
         try {
             let data;
@@ -3000,25 +3406,60 @@ class TaskManager {
                 // Browser mode: use local data
                 data = {
                     tasks: this.tasks,
+                    rules: this.rules,
                     logs: this.logs,
                     exportDate: new Date().toISOString(),
-                    version: '1.0'
+                    version: '1.3'
                 };
             }
 
-            const dataStr = JSON.stringify(data, null, 2);
-            const dataBlob = new Blob([dataStr], { type: 'application/json' });
-            
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(dataBlob);
-            link.download = `tasklogger-backup-${new Date().toISOString().slice(0, 10)}.json`;
-            link.click();
-            
-            URL.revokeObjectURL(link.href);
+            // 태그 프리셋과 화면 설정은 localStorage에만 있어서 백업에서 빠져
+            // 있었다. 새 PC에서 복원하면 태그 색과 표시 설정을 처음부터 다시
+            // 만들어야 했다.
+            data.preferences = this.collectPreferences();
+
+            const stamp = formatWithPattern(new Date(), 'YYYY-MM-DD');
+            this.downloadFile(
+                JSON.stringify(data, null, 2),
+                `tasktory-backup-${stamp}.json`,
+                'application/json'
+            );
+
+            // 이력은 TSV로만 내보낸다. 백업 JSON에는 넣지 않으므로 파일에서
+            // 직접 읽어 온다.
+            const logFiles = this.isElectron && window.electronAPI.readLogFiles
+                ? await window.electronAPI.readLogFiles()
+                : data.logFiles;
+            const history = this.buildHistoryTsv(logFiles);
+            if (history) {
+                this.downloadFile(history, `tasktory-history-${stamp}.tsv`, 'text/tab-separated-values');
+            }
         } catch (error) {
             console.error('Export error:', error);
             alert('Failed to export data.');
         }
+    }
+
+    // 이력 TSV만 되돌린다. 작업 목록과 설정은 건드리지 않는다.
+    async importHistoryTsv(text) {
+        const logFiles = this.parseHistoryTsv(text);
+        if (Object.keys(logFiles).length === 0) {
+            alert(this.getLocalizedText('invalidFile'));
+            return;
+        }
+
+        if (!this.isElectron) {
+            alert(this.getLocalizedText('historyImportElectronOnly'));
+            return;
+        }
+
+        // tasks를 비워 보내면 작업 목록이 지워진다. 지금 것을 그대로 다시 넘긴다.
+        const success = await window.electronAPI.importData({
+            tasks: this.tasks,
+            rules: this.rules,
+            logFiles
+        });
+        alert(this.getLocalizedText(success ? 'dataImportSuccess' : 'invalidFile'));
     }
 
     async importData(file) {
@@ -3027,8 +3468,15 @@ class TaskManager {
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
+                // 이력만 담긴 TSV도 받는다. 백업 JSON과 파일이 나뉘어 있으니
+                // 가져오기도 둘 다 받을 수 있어야 한다.
+                if (/\.tsv$/i.test(file.name)) {
+                    await this.importHistoryTsv(e.target.result);
+                    return;
+                }
+
                 const data = JSON.parse(e.target.result);
-                
+
                 if (data.tasks) {
                     if (confirm(this.getLocalizedText('replaceDataConfirm'))) {
                         if (this.isElectron) {
@@ -3037,6 +3485,7 @@ class TaskManager {
                             if (success) {
                                 await this.loadTasks();
                                 await this.loadRules();
+                                this.applyPreferences(data.preferences);
                                 this.renderTasks();
                                 alert(this.getLocalizedText('dataImportSuccess'));
                             } else {
@@ -3047,6 +3496,7 @@ class TaskManager {
                             this.tasks = data.tasks;
                             if (data.logs) this.logs = data.logs;
                             this.rules = data.rules || [];
+                            this.applyPreferences(data.preferences);
                             await this.saveRules();
                             await this.saveTasks();
                             this.renderTasks();
@@ -3459,8 +3909,11 @@ class TaskManager {
         const taskIndex = this.tasks.findIndex(t => t.id === taskId);
         if (taskIndex !== -1) {
             const task = this.tasks[taskIndex];
-            task.notificationEnabled = !task.notificationEnabled;
-            
+            // 알림 판정은 어디서나 `!== false`, 즉 값이 없으면 켜진 것으로 본다.
+            // 그런데 !undefined 는 true라서, 값이 없던 작업은 첫 클릭이 "켜짐 →
+            // 켜짐"이 되어 아무 일도 일어나지 않았다. 실제 상태를 먼저 읽는다.
+            task.notificationEnabled = task.notificationEnabled === false;
+
             // 즉시 UI 업데이트 (사용자 반응성 개선)
             this.renderTasks();
             

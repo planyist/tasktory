@@ -7,6 +7,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     saveRules: (rules) => ipcRenderer.invoke('save-rules', rules),
     addLog: (logEntry) => ipcRenderer.invoke('add-log', logEntry),
     exportData: () => ipcRenderer.invoke('export-data'),
+    readLogFiles: () => ipcRenderer.invoke('read-log-files'),
     importData: (data) => ipcRenderer.invoke('import-data', data),
     getLogPath: () => ipcRenderer.invoke('get-log-path'),
     openLogFolder: () => ipcRenderer.invoke('open-log-folder'),

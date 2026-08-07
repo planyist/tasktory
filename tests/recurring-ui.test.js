@@ -362,8 +362,8 @@ describe('creating a repeating task', () => {
         // Both times share one rule, so printing it twice adds nothing.
         expect(cadences).toHaveLength(1)
         expect(cadences[0].textContent.trim()).toBe('Weekly Mon·Wed')
-        // Cell 1 is Start Time; the content cell must stay clean.
-        expect(row.cells[1].contains(cadences[0])).toBe(true)
+        // cells[0] select, cells[1] number, cells[2] Start Time.
+        expect(row.cells[2].contains(cadences[0])).toBe(true)
         expect(row.querySelector('.task-content .repeat-cadence')).toBeNull()
     })
 

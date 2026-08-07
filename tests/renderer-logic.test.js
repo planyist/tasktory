@@ -317,7 +317,8 @@ describe('toggleHighlight / toggleNotification persistence', () => {
         await new Promise((resolve) => setTimeout(resolve, 100))
 
         expect(persisted.find((t) => t.id === 'a').highlighted).toBe(true)
-        expect(persisted.find((t) => t.id === 'b').notificationEnabled).toBe(true)
+        // Toggling a task that never carried the flag turns notifications off.
+        expect(persisted.find((t) => t.id === 'b').notificationEnabled).toBe(false)
 
         delete window.electronAPI
     })

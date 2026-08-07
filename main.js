@@ -269,6 +269,17 @@ const readAllLogs = async () => {
     return logs
 }
 
+// 이력 파일 읽기 (TSV 내보내기용). 백업 JSON과 분리돼 있다.
+ipcMain.handle('read-log-files', async () => {
+    try {
+        await ensureDataDir()
+        return await readAllLogs()
+    } catch (error) {
+        console.error('Failed to read log files:', error)
+        return {}
+    }
+})
+
 // 데이터 내보내기 (Electron 모드용)
 ipcMain.handle('export-data', async () => {
     try {
@@ -278,13 +289,15 @@ ipcMain.handle('export-data', async () => {
 
         // 규칙을 함께 내보내지 않으면, 가져오기로 태스크만 복원됐을 때
         // 반복 작업이 통째로 사라진다.
-        // 브라우저 모드는 logs를 배열로 쓰므로, 파일 이력은 다른 키에 담는다
+        // 이력은 별도의 TSV로 내보낸다. 여기 함께 넣으면 탭과 줄바꿈이
+        // 이스케이프된 거대한 문자열이 되어 읽을 수도 엑셀에 붙일 수도 없고,
+        // 몇 년치가 쌓이면 백업 파일을 이것만으로 채운다.
+        // (가져오기는 예전 백업을 위해 logFiles를 계속 받는다)
         const exportData = {
             tasks: JSON.parse(tasksData),
             rules: JSON.parse(rulesData),
-            logFiles: await readAllLogs(),
             exportDate: new Date().toISOString(),
-            version: '1.2'
+            version: '1.3'
         }
 
         return exportData

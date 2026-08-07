@@ -258,30 +258,35 @@ describe('export-data / import-data', () => {
         const exported = await electron.__invoke('export-data')
 
         expect(exported.tasks).toEqual(tasks)
-        expect(exported.version).toBe('1.2')
+        expect(exported.version).toBe('1.3')
     })
 
     describe('log history', () => {
-        test('includes every dated log file in the backup', async () => {
+        // The logs go out as their own TSV now. Inside the JSON they were one
+        // escaped blob - unreadable, and eventually the bulk of the file.
+        test('are not carried inside the backup JSON', async () => {
+            await electron.__invoke('add-log', makeEntry('ADD'))
+
+            const exported = await electron.__invoke('export-data')
+
+            expect(exported.logFiles).toBeUndefined()
+        })
+
+        test('read-log-files returns every dated log', async () => {
             await electron.__invoke('add-log', makeEntry('ADD'))
             await fsp.writeFile(path.join(logsDir, '2025-07-26.log'), 'legacy content\n')
 
-            const exported = await electron.__invoke('export-data')
+            const logs = await electron.__invoke('read-log-files')
 
-            expect(Object.keys(exported.logFiles).sort()).toEqual([
-                '2025-07-26.log',
-                `${todayStr()}.tsv`
-            ])
-            expect(exported.logFiles['2025-07-26.log']).toBe('legacy content\n')
+            expect(Object.keys(logs).sort()).toEqual(['2025-07-26.log', `${todayStr()}.tsv`])
+            expect(logs['2025-07-26.log']).toBe('legacy content\n')
         })
 
-        test('ignores files that are not dated logs', async () => {
+        test('read-log-files ignores files that are not dated logs', async () => {
             await fsp.mkdir(logsDir, { recursive: true })
             await fsp.writeFile(path.join(logsDir, 'notes.txt'), 'nope')
 
-            const exported = await electron.__invoke('export-data')
-
-            expect(exported.logFiles).toEqual({})
+            await expect(electron.__invoke('read-log-files')).resolves.toEqual({})
         })
 
         test('restores log files on import', async () => {

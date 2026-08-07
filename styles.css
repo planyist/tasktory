@@ -196,6 +196,22 @@ body {
 .confetti:nth-child(9n) { background: #6c5ce7; }
 .confetti:nth-child(10n) { background: #a29bfe; }
 
+.search-column {
+    width: auto;
+    padding: 6px 8px;
+    font-size: 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    color: var(--text-primary);
+}
+
+body.dark-mode .search-column {
+    background: #3d3d3d;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
 /* Search container with X button */
 .search-container {
     position: relative;
@@ -251,6 +267,7 @@ body.collapsed-mode-body {
 }
 
 .container.collapsed-mode .table-controls,
+.container.collapsed-mode #taskActionBar,
 .container.collapsed-mode #paginationContainer,
 /* 접힘 상태에서는 미니 목록만 쓴다. 표 패널을 남겨두면 flex 열에서 자리를
    차지해 내용이 넘치고 스크롤바가 생긴다. */
@@ -366,14 +383,26 @@ body.collapsed-mode-body {
 }
 
 
+/* 표의 상태 색과 같은 값을 쓴다. 예전에는 urgent/overdue만 있어서
+   '진행중'과 '대기'는 접힘 상태에서 아무 색도 안 나왔다. */
+.collapsed-task-list li.pending {
+    background-color: var(--status-pending-bg) !important;
+    border-left: 2px solid var(--status-pending-border);
+}
+
+.collapsed-task-list li.inprogress {
+    background-color: var(--status-inprogress-bg) !important;
+    border-left: 2px solid var(--status-inprogress-border);
+}
+
 .collapsed-task-list li.urgent {
-    background-color: #cce5ff !important;
-    border-left: 2px solid #007bff;
+    background-color: var(--status-urgent-bg) !important;
+    border-left: 2px solid var(--status-urgent-border);
 }
 
 .collapsed-task-list li.overdue {
-    background-color: #f8d7da !important;
-    border-left: 2px solid #dc3545;
+    background-color: var(--status-overdue-bg) !important;
+    border-left: 2px solid var(--status-overdue-border);
 }
 
 .collapsed-task-list li.urgent:hover {
@@ -402,9 +431,15 @@ body.collapsed-mode-body {
     padding: 8px 12px;
     border: 1px solid #ddd;
     background: white;
+    /* 화살표 SVG가 stroke="currentColor"라, 글자색을 안 정하면 브라우저
+       기본값에 맡겨져 배경에 묻힌다. 명시한다. */
+    color: var(--text-primary);
     cursor: pointer;
     border-radius: 4px;
     font-size: 16px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .pagination-btn:hover:not(:disabled) {
@@ -425,6 +460,7 @@ body.collapsed-mode-body {
     padding: 8px 12px;
     border: 1px solid #ddd;
     background: white;
+    color: var(--text-primary);
     cursor: pointer;
     border-radius: 4px;
     min-width: 35px;
@@ -599,6 +635,315 @@ body.collapsed-mode-body {
 .notification-toggle {
     display: flex;
     gap: 10px;
+}
+
+/* 다중 선택 / 일괄 처리 */
+.select-col {
+    text-align: center;
+}
+
+.select-col input[type="checkbox"] {
+    width: auto;
+    margin: 0;
+    cursor: pointer;
+}
+
+/* 작업 바. 표 위에 항상 떠 있으므로 선택 여부로 표가 밀리지 않는다.
+   행마다 버튼을 두는 대신 여기 한 곳에 모아, 표의 16%를 차지하던
+   작업 컬럼을 없앴다. */
+.task-action-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 6px;
+    padding: 5px 8px;
+    background: var(--bg-tertiary);
+    border: 1px solid var(--border-light);
+    border-radius: 6px;
+}
+
+.selection-summary {
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+.selection-summary.has-selection {
+    color: #0b5ed7;
+    font-weight: 700;
+}
+
+.task-action-buttons {
+    display: flex;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+/* 행에 있던 아이콘 버튼의 생김새를 그대로 쓴다.
+   .btn 클래스는 일부러 붙이지 않는다. 붙이면 뒤에 선언된 .btn의 padding이
+   크기를 밀어내고, body.dark-mode .btn이 배경·테두리·글자색을 덮어써서
+   다크모드에서 아이콘 색이 사라지고 네모 테두리가 드러난다. */
+.bar-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    padding: 0;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+/* 비활성이어도 색은 남긴다. 완전히 흐리면 아이콘 구분이 사라진다. */
+.bar-btn:disabled {
+    opacity: 0.45;
+    cursor: default;
+}
+
+.bar-btn:not(:disabled):hover {
+    transform: scale(1.15);
+    background: transparent;
+}
+
+/* 색을 상시로 넣는다. 표 안에 있을 때는 행 배경이 맥락을 줬지만, 바깥으로
+   나오니 회색 아이콘만 늘어서서 무엇이 무엇인지 알아보기 어렵다. */
+.bar-btn.bar-notification { color: var(--color-warning); }   /* 설정의 종 아이콘과 같은 노랑 */
+.bar-btn.bar-highlight { color: var(--color-orange); }       /* 하이라이트 테두리와 같은 주황 */
+.bar-btn.bar-edit { color: #3498db; }
+.bar-btn.bar-complete { color: #27ae60; }
+.bar-btn.bar-delete { color: #e74c3c; }
+.bar-btn.bar-move { color: #42a5f5; }
+
+body.dark-mode .task-action-bar {
+    background: #2d2d2d;
+    border-color: #444;
+}
+
+body.dark-mode .selection-summary.has-selection {
+    color: #6ea8fe;
+}
+
+
+
+/* 알림이 꺼진 작업 표시. 목표 시간 아래에 놓아, 시작 시간 아래의 반복 주기와
+   짝을 이룬다. 아이콘 자체가 색을 들고 있으므로 여기서 색을 지정하지 않는다. */
+.row-flag {
+    display: flex;
+    justify-content: center;
+    margin-top: 3px;
+}
+
+/* 날짜/시간 선택기 */
+.datetime-field {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.datetime-field input[type="text"] {
+    flex: 1 1 auto;
+}
+
+.datetime-pick-btn {
+    flex: 0 0 auto;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    color: #555;
+    cursor: pointer;
+}
+
+.datetime-pick-btn:hover {
+    border-color: #007bff;
+    color: #007bff;
+}
+
+.datetime-picker {
+    position: fixed;
+    z-index: 3000;
+    width: 240px;
+    padding: 10px;
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.18);
+    font-size: 12px;
+}
+
+.dtp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+    font-weight: 700;
+}
+
+.dtp-header button {
+    width: 24px;
+    height: 24px;
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    font-size: 18px;
+    line-height: 1;
+    color: inherit;
+    border-radius: 4px;
+}
+
+.dtp-header button:hover {
+    background: #f0f0f0;
+}
+
+.dtp-weekdays,
+.dtp-days {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+}
+
+.dtp-weekdays {
+    margin-bottom: 4px;
+    color: #888;
+    font-size: 11px;
+    text-align: center;
+}
+
+.dtp-day {
+    padding: 5px 0;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    color: inherit;
+}
+
+.dtp-day:hover {
+    background: #eef2f7;
+}
+
+.dtp-day.today {
+    font-weight: 700;
+    box-shadow: inset 0 0 0 1px #adb5bd;
+}
+
+.dtp-day.selected {
+    background: #007bff;
+    color: #fff;
+    font-weight: 700;
+}
+
+.dtp-time {
+    display: flex;
+    align-items: stretch;
+    justify-content: center;
+    gap: 6px;
+    margin: 10px 0 8px;
+    padding-top: 8px;
+    border-top: 1px solid #eee;
+}
+
+.dtp-colon {
+    align-self: center;
+    font-weight: 700;
+    color: #888;
+}
+
+/* 시/분 목록. 높이를 고정해 스크롤되게 두면 팝오버가 길어지지 않는다. */
+.dtp-time-col {
+    width: 56px;
+    max-height: 104px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    scrollbar-width: thin;
+}
+
+.dtp-time-cell {
+    padding: 4px 0;
+    border: none;
+    background: transparent;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    color: inherit;
+    flex: 0 0 auto;
+}
+
+.dtp-time-cell:hover {
+    background: #eef2f7;
+}
+
+.dtp-time-cell.selected {
+    background: #007bff;
+    color: #fff;
+    font-weight: 700;
+}
+
+.dtp-actions {
+    display: flex;
+    gap: 6px;
+    justify-content: flex-end;
+}
+
+.dtp-btn {
+    padding: 6px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: inherit;
+    color: #444;
+}
+
+.dtp-primary {
+    background: #007bff;
+    border-color: #007bff;
+    color: #fff;
+    font-weight: 600;
+}
+
+body.dark-mode .datetime-pick-btn,
+body.dark-mode .dtp-btn {
+    background: #3d3d3d;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+body.dark-mode .datetime-picker {
+    background: #2d2d2d;
+    border-color: #555;
+    color: #e0e0e0;
+}
+
+body.dark-mode .dtp-header button:hover,
+body.dark-mode .dtp-day:hover,
+body.dark-mode .dtp-time-cell:hover {
+    background: #3d3d3d;
+}
+
+body.dark-mode .dtp-time {
+    border-top-color: #444;
+}
+
+body.dark-mode .dtp-primary {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: #fff;
 }
 
 /* 형식 문자열과 예시를 나란히 보여주므로 등폭 글꼴이 읽기 좋다 */
@@ -830,13 +1175,13 @@ th:last-child {
     border-right: none;
 }
 
-th:nth-child(1) { width: 6%; } /* # */
-th:nth-child(2) { width: 13%; } /* Start Time */
-th:nth-child(3) { width: 13%; } /* Target Time */
-th:nth-child(4) { width: 12%; } /* Tags */
-th:nth-child(5) { width: 30%; } /* Task Content */
-th:nth-child(6) { width: 10%; } /* Status */
-th:nth-child(7) { width: 16%; } /* Actions */
+th:nth-child(1) { width: 4%; } /* select */
+th:nth-child(2) { width: 5%; } /* # */
+th:nth-child(3) { width: 15%; } /* Start Time */
+th:nth-child(4) { width: 15%; } /* Target Time */
+th:nth-child(5) { width: 13%; } /* Tags */
+th:nth-child(6) { width: 36%; } /* Task Content */
+th:nth-child(7) { width: 12%; } /* Status */
 
 tbody tr {
     border-bottom: 1px solid #e0e0e0;
@@ -887,7 +1232,7 @@ td:last-child {
     border-right: none;
 }
 
-td:nth-child(1) {
+td:nth-child(2) {
     font-weight: 700;
     color: #555;
     font-size: 14px;
@@ -2139,6 +2484,18 @@ body.dark-mode .mini-index {
 
 body.dark-mode .collapsed-task-list li:hover {
     background-color: rgba(255, 255, 255, 0.1);
+}
+
+body.dark-mode .collapsed-task-list li.pending {
+    background-color: #4a412a !important;
+    border-left: 2px solid #ffc107;
+    color: #ffe08a;
+}
+
+body.dark-mode .collapsed-task-list li.inprogress {
+    background-color: #1f3f45 !important;
+    border-left: 2px solid #17a2b8;
+    color: #8ee3f0;
 }
 
 body.dark-mode .collapsed-task-list li.urgent {
