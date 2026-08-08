@@ -58,6 +58,10 @@
     --font-weight-heavy: 700;
     --line-height-base: 1.6;
     
+    /* 컨트롤 공통 높이. 검색창·선택·버튼이 제각각이면 한 줄에 놓았을 때
+       위아래가 어긋나 보인다. 새 컨트롤도 이 값을 쓴다. */
+    --control-height: 34px;
+
     /* Icon Sizes */
     --icon-sm: 14px;
     --icon-md: 16px;
@@ -198,7 +202,8 @@ body {
 
 .search-column {
     width: auto;
-    padding: 6px 8px;
+    height: var(--control-height);
+    padding: 0 8px;
     font-size: 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -428,7 +433,7 @@ body.collapsed-mode-body {
 }
 
 .pagination-btn {
-    padding: 8px 12px;
+    min-width: var(--control-height);
     border: 1px solid #ddd;
     background: white;
     /* 화살표 SVG가 stroke="currentColor"라, 글자색을 안 정하면 브라우저
@@ -637,6 +642,21 @@ body.collapsed-mode-body {
     gap: 10px;
 }
 
+/* textarea는 여러 줄이라 제외한다. 나머지 한 줄짜리 입력은 높이를 맞춘다. */
+.modal-content input[type="text"],
+.modal-content input[type="number"],
+.modal-content select {
+    height: var(--control-height);
+    padding: 0 8px;
+}
+
+/* 페이지네이션도 같은 높이로 */
+.pagination-btn,
+.page-number {
+    height: var(--control-height);
+    padding: 0 12px;
+}
+
 /* 입력 아래 붙는 짧은 설명 */
 .field-hint {
     margin-top: 5px;
@@ -697,8 +717,8 @@ body.collapsed-mode-body {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 28px;
-    height: 28px;
+    width: var(--control-height);
+    height: var(--control-height);
     padding: 0;
     border: none;
     background: transparent;
@@ -759,8 +779,8 @@ body.dark-mode .selection-summary.has-selection {
 
 .datetime-pick-btn {
     flex: 0 0 auto;
-    width: 36px;
-    height: 36px;
+    width: var(--control-height);
+    height: var(--control-height);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1017,8 +1037,8 @@ body.dark-mode .date-format-preview {
     background-color: var(--bg-tertiary);
     color: var(--text-secondary);
     border: 1px solid var(--border-dark);
-    width: 32px;
-    height: 32px;
+    width: var(--control-height);
+    height: var(--control-height);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -1043,8 +1063,8 @@ body.dark-mode .date-format-preview {
     background-color: var(--color-success);
     color: white;
     border-color: var(--color-success);
-    width: 36px;
-    height: 36px;
+    width: var(--control-height);
+    height: var(--control-height);
 }
 
 .add-btn svg {
@@ -1116,7 +1136,8 @@ main {
 
 .search-input {
     width: 200px;
-    padding: 6px 12px;
+    height: var(--control-height);
+    padding: 0 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 12px;
@@ -1521,8 +1542,8 @@ body.dark-mode .collapsed-task-list li.standing {
 }
 
 .lang-btn {
-    min-width: 32px;
-    height: 32px;
+    min-width: var(--control-height);
+    height: var(--control-height);
     border: 2px solid #ddd;
     background-color: transparent;
     border-radius: 6px;
@@ -1882,23 +1903,8 @@ body.dark-mode .icon-btn:hover {
     color: var(--text-secondary);
 }
 
-/* Pagination button styling */
-.pagination-btn {
-    width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border-medium);
-    background: var(--bg-secondary);
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-}
-
-.pagination-btn:hover {
-    background: var(--hover-bg);
-}
+/* .pagination-btn 은 위에서 한 번 정의한다. 여기 두 번째 정의가 있어서
+   폭·높이를 28px로 고정하고 앞의 색 지정까지 덮어쓰고 있었다. */
 
 .pagination-btn svg {
     width: var(--icon-sm);
@@ -2573,37 +2579,60 @@ body.dark-mode .collapsed-task-list li.overdue:hover {
 }
 
 /* 반응형 디자인 */
+/* 좁은 화면(휴대폰/PWA). 표는 7컬럼이라 어떻게 줄여도 폰 폭에 안 들어간다.
+   억지로 줄여 글자를 뭉개는 대신 가로로 스크롤시키고, 상단은 쌓는다. */
 @media (max-width: 768px) {
     .container {
-        padding: 15px;
+        padding: 10px;
     }
-    
+
     .table-controls {
         flex-wrap: wrap;
         gap: 8px;
     }
-    
+
+    /* 검색과 추가 버튼이 한 줄을 다 쓰게 해서 손가락으로 누르기 쉽게 */
+    .controls-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+
+    .search-container,
+    .search-input {
+        flex: 1 1 auto;
+        width: auto;
+        min-width: 0;
+    }
+
+    .header-buttons {
+        padding-left: 0;
+        border-left: none;
+    }
+
+    .table-container {
+        overflow-x: auto;
+    }
+
+    #tasksTable {
+        min-width: 720px;
+    }
+
     table {
         font-size: 12px;
     }
-    
+
     th, td {
         padding: 8px 5px;
     }
-    
+
     .modal-content {
         margin: 2% auto;
         width: 98%;
         padding: 15px;
         max-height: 90vh;
     }
-    
-    .action-buttons {
-        flex-direction: column;
-    }
-    
-    .btn {
-        width: 100%;
-        margin-bottom: 3px;
+
+    .datetime-picker {
+        width: 260px;
     }
 }

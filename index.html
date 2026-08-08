@@ -5,9 +5,10 @@
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tasktory</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="theme-color" content="#2c3e50">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" href="assets/icon-192.png">
+    <link rel="apple-touch-icon" href="assets/icon-192.png">
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -422,7 +423,7 @@
             
             <br><br>
             
-            <p><strong id="aboutVersionLabel">Version:</strong> 0.5.0</p>
+            <p><strong id="aboutVersionLabel">Version:</strong> 0.6.0</p>
             <p><strong id="aboutLicenseLabel">License:</strong> MIT</p>
             <p><strong id="aboutAuthorLabel">Author:</strong> Jeonghwan Yoo &lt;planyist@gmail.com&gt;</p>
         </div>
@@ -480,6 +481,7 @@
         </div>
     </div>
 
+    <script src="register-sw.js"></script>
     <script src="recurrence.js"></script>
     <script src="renderer.js"></script>
 </body>
