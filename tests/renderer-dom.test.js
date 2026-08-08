@@ -691,7 +691,10 @@ describe('multi-select', () => {
         expect(barBtn('complete').disabled).toBe(false)
     })
 
-    test('double-clicking a row opens it for editing', async () => {
+    // Editing goes through the bar. A double-click shortcut was never asked
+    // for, and with row clicks toggling selection it flickers the selection
+    // twice before opening the modal.
+    test('double-clicking a row does not open the modal', async () => {
         const manager = await boot([task('a')])
         jest.spyOn(manager, 'showModal').mockImplementation(() => {})
 
@@ -699,7 +702,7 @@ describe('multi-select', () => {
             .querySelector('#tasksBody tr')
             .dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
 
-        expect(manager.showModal).toHaveBeenCalled()
+        expect(manager.showModal).not.toHaveBeenCalled()
     })
 
     test('no element appears or disappears when the selection changes', async () => {

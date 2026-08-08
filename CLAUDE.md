@@ -58,7 +58,7 @@ This is the Todoist model, not the calendar model. It was chosen deliberately:
 
 ### 4. Task Management Features
 - **Add**: Add Task button to create new tasks
-- **Edit**: Select one row and use the bar, or double-click the row
+- **Edit**: Select one row and use the bar. Clicking anywhere in a row toggles its selection; chips are the exception and filter instead
 - **Done**: Completing a one-off hides it; completing a repeating task advances it to the next occurrence (see Recurring Tasks)
 - **Delete**: Removes without completing. Deleting a repeating row deletes its rule too
 - **Bulk**: Edit and reorder need exactly one selection; the rest apply to all selected. Notification toggling drives the whole selection to one state rather than flipping each

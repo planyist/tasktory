@@ -579,12 +579,6 @@ class TaskManager {
             button.addEventListener('click', () => this.runBulkAction(button.dataset.bulk));
         });
 
-        // 편집이 선택 후 버튼 두 단계가 되었으니, 행을 더블클릭하면 바로 열리게 한다
-        document.getElementById('tasksBody').addEventListener('dblclick', (e) => {
-            const row = e.target.closest('tr');
-            const box = row && row.querySelector('.task-select');
-            if (box) this.editTask(box.dataset.taskId);
-        });
 
         // 검색 대상 컬럼
         document.getElementById('searchColumn').addEventListener('change', (e) => {
