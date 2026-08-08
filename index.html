@@ -205,7 +205,7 @@
                 <div class="form-group">
                     <label for="targetDateTime" id="labelTargetTime">Target Time</label>
                     <div class="datetime-field">
-                        <input type="text" id="targetDateTime" required autocomplete="off">
+                        <input type="text" id="targetDateTime" autocomplete="off">
                         <button type="button" class="datetime-pick-btn" data-target="targetDateTime" title="Pick date">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <rect x="3" y="5" width="18" height="16" rx="2"/>
@@ -237,6 +237,11 @@
                 <div class="form-group">
                     <label for="taskContent" id="labelTaskContent">Task Content</label>
                     <textarea id="taskContent" rows="3" required placeholder=""></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="taskLeadMinutes" id="labelLeadMinutes">Reminders</label>
+                    <input type="text" id="taskLeadMinutes" placeholder="60, 15" autocomplete="off">
+                    <div class="field-hint" id="leadMinutesHint"></div>
                 </div>
                 <div class="form-group" id="repeatGroup">
                     <label for="taskRepeat" id="labelRepeat">Repeat</label>
@@ -305,6 +310,12 @@
                 </div>
             </div>
             
+            <div class="settings-group">
+                <label for="settingsLeadMinutes" id="settingsLeadMinutesLabel">Default Reminders</label>
+                <input type="text" id="settingsLeadMinutes" placeholder="60, 15" autocomplete="off">
+                <div class="field-hint" id="settingsLeadMinutesHint"></div>
+            </div>
+
             <div class="settings-group">
                 <label for="dateFormatSelect" id="settingsDateFormatLabel">Date Format</label>
                 <select id="dateFormatSelect"></select>
@@ -411,7 +422,7 @@
             
             <br><br>
             
-            <p><strong id="aboutVersionLabel">Version:</strong> 0.4.1</p>
+            <p><strong id="aboutVersionLabel">Version:</strong> 0.5.0</p>
             <p><strong id="aboutLicenseLabel">License:</strong> MIT</p>
             <p><strong id="aboutAuthorLabel">Author:</strong> Jeonghwan Yoo &lt;planyist@gmail.com&gt;</p>
         </div>

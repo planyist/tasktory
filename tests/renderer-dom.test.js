@@ -1177,3 +1177,136 @@ describe('notification history across restarts', () => {
         expect(manager.notifiedTasks.size).toBe(0)
     })
 })
+
+describe('reminder lead times', () => {
+    const at = (id) => document.getElementById(id)
+    const minutesFromNow = (m) => {
+        const d = new Date(Date.now() + m * 60 * 1000)
+        const p = (n) => String(n).padStart(2, '0')
+        return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
+    }
+
+    // The badge threshold and the notification times used to be separate
+    // hardcoded constants that merely happened to agree at 60 minutes.
+    test('the urgent badge follows the largest reminder', async () => {
+        const manager = await boot([
+            task('a', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(90) })
+        ])
+
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('inprogress')
+
+        manager.changeDefaultLeadMinutes('120, 30')
+
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('urgent')
+    })
+
+    test('a task can override the default', async () => {
+        const manager = await boot([
+            task('a', {
+                startDateTime: minutesFromNow(-300),
+                targetDateTime: minutesFromNow(90),
+                leadMinutes: [120]
+            })
+        ])
+
+        expect(manager.leadMinutesFor(manager.tasks[0])).toEqual([120])
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('urgent')
+    })
+
+    test('an empty override falls back to the default', async () => {
+        const manager = await boot([task('a', { leadMinutes: [] })])
+
+        expect(manager.leadMinutesFor(manager.tasks[0])).toEqual([60, 15])
+    })
+
+    test('discards nonsense and sorts widest first', async () => {
+        const manager = await boot([])
+
+        manager.changeDefaultLeadMinutes('15, abc, -5, 90, 15')
+
+        expect(manager.defaultLeadMinutes).toEqual([90, 15])
+    })
+
+    // An empty list would silently kill both the badge and the alerts.
+    test('refuses to end up with no reminders at all', async () => {
+        const manager = await boot([])
+
+        manager.changeDefaultLeadMinutes('   ')
+
+        expect(manager.defaultLeadMinutes).toEqual([60, 15])
+    })
+
+    test('fires one notification per reminder, once each', async () => {
+        const manager = await boot([
+            task('a', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(10) })
+        ])
+        manager.isElectron = true
+
+        await manager.checkUpcomingTasks()
+        await manager.checkUpcomingTasks()
+
+        // 60 and 15 are both inside the window; 10 minutes out, both have passed.
+        expect(electronAPI.showNotification).toHaveBeenCalledTimes(2)
+    })
+})
+
+describe('tasks with no deadline', () => {
+    const at = (id) => document.getElementById(id)
+
+    // Faking one with a daily repeat piles up an overdue entry for every day
+    // you were never going to do it.
+    test('reports an ongoing status rather than overdue', async () => {
+        const manager = await boot([
+            task('a', { startDateTime: '2020-01-01 09:00', targetDateTime: '' })
+        ])
+
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('standing')
+    })
+
+    test('is still pending before its start time', async () => {
+        const manager = await boot([
+            task('a', { startDateTime: '2099-01-01 09:00', targetDateTime: '' })
+        ])
+
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('pending')
+    })
+
+    test('never raises a notification', async () => {
+        const manager = await boot([
+            task('a', { startDateTime: '2020-01-01 09:00', targetDateTime: '' })
+        ])
+        manager.isElectron = true
+
+        await manager.checkUpcomingTasks()
+
+        expect(electronAPI.showNotification).not.toHaveBeenCalled()
+    })
+
+    test('saves with the target left blank', async () => {
+        const manager = await boot([])
+        at('startDateTime').value = '2026-09-10 09:00'
+        at('targetDateTime').value = ''
+        at('taskContent').value = 'keep an eye on the queue'
+        at('taskPosition').value = '1'
+
+        await manager.saveTask()
+        await settle()
+
+        expect(stored).toHaveLength(1)
+        expect(stored[0].targetDateTime).toBe('')
+    })
+
+    test('still rejects a malformed target when one is given', async () => {
+        jest.spyOn(window, 'alert').mockImplementation(() => {})
+        const manager = await boot([])
+        at('startDateTime').value = '2026-09-10 09:00'
+        at('targetDateTime').value = 'nonsense'
+        at('taskContent').value = 'x'
+        at('taskPosition').value = '1'
+
+        await manager.saveTask()
+        await settle()
+
+        expect(stored).toEqual([])
+    })
+})

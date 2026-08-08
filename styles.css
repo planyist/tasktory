@@ -637,6 +637,14 @@ body.collapsed-mode-body {
     gap: 10px;
 }
 
+/* 입력 아래 붙는 짧은 설명 */
+.field-hint {
+    margin-top: 5px;
+    font-size: 11px;
+    color: var(--text-muted);
+    line-height: 1.5;
+}
+
 /* 다중 선택 / 일괄 처리 */
 .select-col {
     text-align: center;
@@ -1392,6 +1400,29 @@ td:nth-child(2) {
     border: 1px solid #f1aeb5;
 }
 
+.status.standing {
+    background-color: #e7e3f5;
+    color: #4b3f78;
+    border: 1px solid #c5bce4;
+}
+
+body.dark-mode .status.standing {
+    background-color: #35304a;
+    color: #c4b5fd;
+    border-color: #574d80;
+}
+
+.collapsed-task-list li.standing {
+    background-color: #e7e3f5 !important;
+    border-left: 2px solid #7c6bb5;
+}
+
+body.dark-mode .collapsed-task-list li.standing {
+    background-color: #35304a !important;
+    border-left: 2px solid #7c6bb5;
+    color: #c4b5fd;
+}
+
 .status.completed {
     background-color: #d4edda;
     color: #0f5132;
@@ -1959,7 +1990,30 @@ body.dark-mode .status.overdue {
     font-weight: 700;
 }
 
-body.dark-mode .status.completed {
+body.dark-mode .status.standing {
+    background-color: #e7e3f5;
+    color: #4b3f78;
+    border: 1px solid #c5bce4;
+}
+
+body.dark-mode .status.standing {
+    background-color: #35304a;
+    color: #c4b5fd;
+    border-color: #574d80;
+}
+
+.collapsed-task-list li.standing {
+    background-color: #e7e3f5 !important;
+    border-left: 2px solid #7c6bb5;
+}
+
+body.dark-mode .collapsed-task-list li.standing {
+    background-color: #35304a !important;
+    border-left: 2px solid #7c6bb5;
+    color: #c4b5fd;
+}
+
+.status.completed {
     background-color: #2a4a2a;
     color: #66bb6a;
     border: 1px solid #3a5a3a;
