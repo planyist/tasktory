@@ -1218,6 +1218,16 @@ tbody tr {
     position: relative;
 }
 
+/* 행 전체가 선택 대상이므로 눌러도 되는 것처럼 보여야 한다 */
+#tasksBody tr {
+    cursor: pointer;
+}
+
+/* 칩은 선택이 아니라 검색이라 커서를 구분한다 */
+#tasksBody [data-filter] {
+    cursor: zoom-in;
+}
+
 tbody tr:hover {
     background-color: #f8f9fa;
 }
@@ -1944,7 +1954,17 @@ body.dark-mode tbody tr {
     border-bottom-color: #444;
 }
 
-body.dark-mode tbody tr:hover {
+body.dark-mode /* 행 전체가 선택 대상이므로 눌러도 되는 것처럼 보여야 한다 */
+#tasksBody tr {
+    cursor: pointer;
+}
+
+/* 칩은 선택이 아니라 검색이라 커서를 구분한다 */
+#tasksBody [data-filter] {
+    cursor: zoom-in;
+}
+
+tbody tr:hover {
     background-color: #3d3d3d;
 }
 

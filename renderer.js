@@ -620,7 +620,21 @@ class TaskManager {
         // 어떤 단어를 쳐야 하는지 몰라도 되고, 언어가 바뀌어도 보이는 것을 누르면 된다.
         document.getElementById('tasksTable').addEventListener('click', (e) => {
             const chip = e.target.closest('[data-filter]');
-            if (chip) this.applyChipFilter(chip.dataset.filter, chip.dataset.filterColumn);
+            if (chip) {
+                this.applyChipFilter(chip.dataset.filter, chip.dataset.filterColumn);
+                return;
+            }
+
+            // 행 어디를 눌러도 선택된다. 체크박스만 노리기에는 표적이 작다.
+            // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
+            if (e.target.closest('.task-select')) return;
+
+            const row = e.target.closest('#tasksBody tr');
+            const box = row && row.querySelector('.task-select');
+            if (!box) return;
+
+            box.checked = !box.checked;
+            this.toggleTaskSelection(box.dataset.taskId, box.checked);
         });
 
         // Confirmation form submission

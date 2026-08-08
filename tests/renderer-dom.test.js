@@ -1300,3 +1300,68 @@ describe('tasks with no deadline', () => {
         expect(stored).toEqual([])
     })
 })
+
+describe('selecting by clicking the row', () => {
+    const setup = () => [
+        task('a', { content: 'first', tags: '#work' }),
+        task('b', { content: 'second' })
+    ]
+    const rowOf = (id) =>
+        Array.from(document.querySelectorAll('#tasksBody tr')).find(
+            (r) => r.querySelector('.task-select')?.dataset.taskId === id
+        )
+    const boxOf = (id) => rowOf(id).querySelector('.task-select')
+
+    // The checkbox alone is a small target.
+    test('clicking anywhere in the row selects it', async () => {
+        const manager = await boot(setup())
+
+        rowOf('a').querySelector('.task-content').click()
+
+        expect(manager.selectedTaskIds.has('a')).toBe(true)
+        expect(boxOf('a').checked).toBe(true)
+    })
+
+    test('clicking again deselects', async () => {
+        const manager = await boot(setup())
+        const cell = rowOf('a').querySelector('.task-content')
+
+        cell.click()
+        cell.click()
+
+        expect(manager.selectedTaskIds.size).toBe(0)
+        expect(boxOf('a').checked).toBe(false)
+    })
+
+    // Chips search; they must not also flip the selection underneath.
+    test('clicking a chip filters without selecting the row', async () => {
+        const manager = await boot(setup())
+
+        document.querySelector('#tasksBody .tag').click()
+
+        expect(manager.selectedTaskIds.size).toBe(0)
+        expect(manager.searchColumn).toBe('tags')
+    })
+
+    // The checkbox raises its own change event; the row handler must not
+    // double-toggle on top of it.
+    // A click on the box both flips it and bubbles to the row handler. If the
+    // row handler did not stand aside, the two would cancel out.
+    test('clicking the checkbox itself toggles exactly once', async () => {
+        const manager = await boot(setup())
+        const box = boxOf('a')
+
+        box.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+
+        expect(box.checked).toBe(true)
+        expect(manager.selectedTaskIds.has('a')).toBe(true)
+    })
+
+    test('the empty-state row is not selectable', async () => {
+        await boot([])
+
+        document.querySelector('#tasksBody .empty-message').click()
+
+        expect(document.querySelectorAll('.task-select')).toHaveLength(0)
+    })
+})
