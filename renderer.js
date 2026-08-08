@@ -620,7 +620,7 @@ class TaskManager {
         // 어떤 단어를 쳐야 하는지 몰라도 되고, 언어가 바뀌어도 보이는 것을 누르면 된다.
         document.getElementById('tasksTable').addEventListener('click', (e) => {
             const chip = e.target.closest('[data-filter]');
-            if (chip) this.applyChipFilter(chip.dataset.filter);
+            if (chip) this.applyChipFilter(chip.dataset.filter, chip.dataset.filterColumn);
         });
 
         // Confirmation form submission
@@ -2134,12 +2134,13 @@ class TaskManager {
 
     // 칩 클릭 = 그 키워드로 검색. 검색창에도 값을 넣어 무슨 일이 일어났는지 보이게 하고,
     // 기존 지우기 버튼으로 그대로 되돌릴 수 있게 한다.
-    applyChipFilter(value) {
+    // 칩을 누르면 그 칩이 속한 컬럼으로 대상까지 맞춘다. '지연'을 눌렀는데
+    // 전체 컬럼으로 찾으면 작업 내용에 '지연'이 들어간 것까지 딸려 나온다.
+    applyChipFilter(value, column) {
         const input = document.getElementById('searchInput');
         if (input) input.value = value;
 
-        // 칩은 어느 컬럼에서 눌렀든 그 값을 찾는 것이므로 대상을 전체로 되돌린다
-        this.searchColumn = 'all';
+        this.searchColumn = column || 'all';
         this.updateSearchColumnControl();
 
         this.searchQuery = value.toLowerCase();
@@ -2315,7 +2316,7 @@ class TaskManager {
             // 다른 칩과 같은 규칙: 보이는 글자 그대로 걸러진다. '2일마다'를 눌렀는데
             // 반복 전체가 나오면 누른 것과 결과가 어긋난다.
             const cadenceMarkup = repeatCadence ? `
-                <div class="repeat-cadence" data-filter="${repeatCadence}" title="${repeatCadence}">
+                <div class="repeat-cadence" data-filter="${repeatCadence}" data-filter-column="repeat" title="${repeatCadence}">
                     <span class="repeat-badge">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <polyline points="17,1 21,5 17,9"/><path d="M3,11V9a4,4,0,0,1,4-4H21"/>
@@ -2335,7 +2336,7 @@ class TaskManager {
             // Tags from the tags field with color support
             const displayTags = task.tags ? task.tags.split(/\s+/).filter(tag => tag.startsWith('#')).map(tag => {
                 const parsed = this.parseTagWithColor(tag);
-                return `<span class="tag" data-filter="${parsed.content}" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
+                return `<span class="tag" data-filter="${parsed.content}" data-filter-column="tags" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
             }).join(' ') : '';
             
             row.innerHTML = `
@@ -2345,7 +2346,7 @@ class TaskManager {
                 <td>${this.formatDateTime(task.targetDateTime)}${notificationFlag}</td>
                 <td class="task-tags">${displayTags}</td>
                 <td class="task-content">${plainContent}</td>
-                <td><span class="status ${taskStatus.status}" data-filter="${taskStatus.text}" title="${taskStatus.text}">${taskStatus.text}</span></td>
+                <td><span class="status ${taskStatus.status}" data-filter="${taskStatus.text}" data-filter-column="status" title="${taskStatus.text}">${taskStatus.text}</span></td>
             `;
             
             tbody.appendChild(row);

@@ -959,15 +959,43 @@ describe('column-scoped search', () => {
         expect(document.getElementById('tasksBody').textContent).toContain('urgent call')
     })
 
-    test('clicking a chip resets the scope so the match is not hidden', async () => {
+    // Clicking a chip should search the column the chip came from. Falling
+    // back to every column drags in rows that merely mention the word.
+    test('clicking a tag chip scopes the search to tags', async () => {
         const manager = await boot(setup())
-        search(manager, 'zzz', 'content')
+        // Start scoped elsewhere so the switch is what the assertion catches.
+        search(manager, '', 'content')
 
-        document.querySelector('#tasksBody .empty-message')
-        manager.applyChipFilter('#home')
+        document.querySelector('#tasksBody .tag').click()
 
-        expect(manager.searchColumn).toBe('all')
+        expect(manager.searchColumn).toBe('tags')
+        expect(document.getElementById('searchColumn').value).toBe('tags')
         expect(rowCount()).toBe(1)
+    })
+
+    test('clicking a status chip scopes the search to status', async () => {
+        const manager = await boot(setup())
+
+        document.querySelector('#tasksBody .status').click()
+
+        expect(manager.searchColumn).toBe('status')
+        expect(document.getElementById('searchColumn').value).toBe('status')
+    })
+
+    test('a status word that also appears in content matches only the status', async () => {
+        const manager = await boot([
+            task('a', { content: 'plain' }),
+            task('b', { content: 'chase the overdue invoice' })
+        ])
+        const label = document.querySelector('#tasksBody .status').textContent
+
+        document.querySelector('#tasksBody .status').click()
+
+        expect(manager.searchQuery).toBe(label.toLowerCase())
+        expect(manager.searchColumn).toBe('status')
+        // Both share a status here, so both stay - the point is that the
+        // content-only match is not what selected them.
+        expect(rowCount()).toBe(2)
     })
 
     test('is labelled in the selected language', async () => {
