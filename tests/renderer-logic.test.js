@@ -18,7 +18,6 @@ const makeManager = (overrides = {}) =>
         logs: [],
         locale: 'en',
         dateFormat: 'YYYY-MM-DD HH:mm',
-        defaultLeadMinutes: [60, 15],
         isElectron: false,
         searchQuery: '',
         currentPage: 1,

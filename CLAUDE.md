@@ -128,7 +128,7 @@ This is a complete Electron application with the following structure:
 - **Collapse Mode**: 150px side strip, read-only, dynamic height. 80px could not fit four Korean characters
 - **Date format**: chosen in settings; the table and the modal share one pattern string, which generates both the output and the parsing regex so they cannot disagree. Storage stays `YYYY-MM-DD HH:mm` whatever the display setting
 - **Date/time picker**: our own, because `datetime-local` cannot follow a custom format. It has a confirm button, unlike the native one
-- **Reminders**: one list of lead times per task (default in settings). The largest doubles as the "due soon" threshold, so the badge and the alerts cannot drift apart
+- **Reminders**: one `LEAD_MINUTES` list drives both the notifications and the "due soon" badge, so they cannot drift apart. Not user-configurable — the earlier settings and per-task fields were removed as unnecessary
 - **Chips filter on click**: tags, status and repeat cadence. No hidden keyword to guess, and it works in any UI language
 - **Tag System**: Colored tag presets with GitHub-style color schemes
 - **Daily completion counter**: Animated counter with confetti celebrations

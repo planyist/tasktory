@@ -1179,7 +1179,6 @@ describe('notification history across restarts', () => {
 })
 
 describe('reminder lead times', () => {
-    const at = (id) => document.getElementById(id)
     const minutesFromNow = (m) => {
         const d = new Date(Date.now() + m * 60 * 1000)
         const p = (n) => String(n).padStart(2, '0')
@@ -1187,53 +1186,16 @@ describe('reminder lead times', () => {
     }
 
     // The badge threshold and the notification times used to be separate
-    // hardcoded constants that merely happened to agree at 60 minutes.
-    test('the urgent badge follows the largest reminder', async () => {
+    // hardcoded constants that merely happened to agree at 60 minutes. They
+    // read one list now, so they cannot drift apart.
+    test('the urgent badge starts at the widest reminder', async () => {
         const manager = await boot([
-            task('a', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(90) })
+            task('early', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(90) }),
+            task('due', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(45) })
         ])
 
         expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('inprogress')
-
-        manager.changeDefaultLeadMinutes('120, 30')
-
-        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('urgent')
-    })
-
-    test('a task can override the default', async () => {
-        const manager = await boot([
-            task('a', {
-                startDateTime: minutesFromNow(-300),
-                targetDateTime: minutesFromNow(90),
-                leadMinutes: [120]
-            })
-        ])
-
-        expect(manager.leadMinutesFor(manager.tasks[0])).toEqual([120])
-        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('urgent')
-    })
-
-    test('an empty override falls back to the default', async () => {
-        const manager = await boot([task('a', { leadMinutes: [] })])
-
-        expect(manager.leadMinutesFor(manager.tasks[0])).toEqual([60, 15])
-    })
-
-    test('discards nonsense and sorts widest first', async () => {
-        const manager = await boot([])
-
-        manager.changeDefaultLeadMinutes('15, abc, -5, 90, 15')
-
-        expect(manager.defaultLeadMinutes).toEqual([90, 15])
-    })
-
-    // An empty list would silently kill both the badge and the alerts.
-    test('refuses to end up with no reminders at all', async () => {
-        const manager = await boot([])
-
-        manager.changeDefaultLeadMinutes('   ')
-
-        expect(manager.defaultLeadMinutes).toEqual([60, 15])
+        expect(manager.getTaskStatus(manager.tasks[1]).status).toBe('urgent')
     })
 
     test('fires one notification per reminder, once each', async () => {

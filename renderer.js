@@ -15,19 +15,11 @@ const DATE_FORMATS = [
 
 const STORAGE_FORMAT = 'YYYY-MM-DD HH:mm';
 
-// 목표 시각 기준 알림 시점(분). 가장 큰 값이 곧 '임박' 판정 기준이 된다.
-// 예전에는 상태 배지의 1시간과 알림의 60분·15분이 서로 모르는 상수로
-// 흩어져 있어서, 한쪽만 바꾸면 표시와 알림이 어긋났다.
-const DEFAULT_LEAD_MINUTES = [60, 15];
-
-// '60, 15' 같은 입력을 정리한다. 잘못된 값은 버리고 큰 순서로 돌려준다.
-const parseLeadMinutes = (text) => {
-    const minutes = String(text)
-        .split(',')
-        .map(part => parseInt(part.trim(), 10))
-        .filter(value => Number.isFinite(value) && value > 0 && value <= 60 * 24 * 7);
-    return [...new Set(minutes)].sort((a, b) => b - a);
-};
+// 목표 시각 기준 알림 시점(분). 가장 큰 값이 곧 '임박' 판정 기준이다.
+// 상태 배지와 알림이 같은 목록을 읽으므로 둘이 어긋날 수 없다.
+// 예전에는 getTaskStatus의 1시간과 checkUpcomingTasks의 60·15분이 서로 모르는
+// 상수라, 한쪽만 바꾸면 표시와 알림이 따로 놀았다.
+const LEAD_MINUTES = [60, 15];
 
 // main.js가 로그 파일에 쓰는 헤더와 같아야 한다
 const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT';
@@ -110,9 +102,6 @@ class TaskManager {
         this.currentPage = 1;
         this.tasksPerPage = 10;
         this.defaultNotificationEnabled = localStorage.getItem('defaultNotificationEnabled') !== 'false';
-        this.defaultLeadMinutes = parseLeadMinutes(
-            localStorage.getItem('defaultLeadMinutes') || DEFAULT_LEAD_MINUTES.join(',')
-        );
         this.tagPresets = this.loadTagPresets();
         this.actionThrottleMap = new Map(); // 스로틀링을 위한 맵
         this.init();
@@ -180,7 +169,6 @@ class TaskManager {
         document.getElementById('addTaskBtn').title = this.getLocalizedText('addTask');
         this.updateDateFormatControls();
         this.updateSearchColumnControl();
-        this.updateReminderControls();
         document.getElementById('exportBtn').title = this.getLocalizedText('downloadExport');
         document.getElementById('importBtn').title = this.getLocalizedText('uploadImport');
         document.getElementById('statisticsBtn').title = this.getLocalizedText('statistics');
@@ -598,11 +586,6 @@ class TaskManager {
             if (box) this.editTask(box.dataset.taskId);
         });
 
-        // 기본 알림 시점
-        document.getElementById('settingsLeadMinutes').addEventListener('change', (e) => {
-            this.changeDefaultLeadMinutes(e.target.value);
-        });
-
         // 검색 대상 컬럼
         document.getElementById('searchColumn').addEventListener('change', (e) => {
             this.searchColumn = e.target.value;
@@ -1017,9 +1000,6 @@ class TaskManager {
                 'save': 'Save',
                 'confirm': 'OK',
                 'standing': 'Ongoing',
-                'reminders': 'Reminders',
-                'remindersHint': 'Minutes before the target time, comma separated. The largest also marks the task as due soon.',
-                'defaultReminders': 'Default Reminders',
                 'leadMinutes': '{n} minutes remaining!',
                 'leadHours': '{n} hour(s) remaining!',
                 'historyImportElectronOnly': 'History import is only available in the desktop app',
@@ -1179,9 +1159,6 @@ class TaskManager {
                 'save': '저장',
                 'confirm': '확인',
                 'standing': '상시',
-                'reminders': '알림 시점',
-                'remindersHint': '목표 시각 기준 분 단위, 쉼표로 구분. 가장 큰 값부터 임박으로 표시됩니다.',
-                'defaultReminders': '기본 알림 시점',
                 'leadMinutes': '{n}분 남았습니다',
                 'leadHours': '{n}시간 남았습니다',
                 'historyImportElectronOnly': '이력 가져오기는 데스크톱 앱에서만 됩니다',
@@ -1341,9 +1318,6 @@ class TaskManager {
                 'save': '保存',
                 'confirm': '确定',
                 'standing': '常态',
-                'reminders': '提醒时间',
-                'remindersHint': '距目标时间的分钟数，用逗号分隔。最大值同时用于“即将到期”标记。',
-                'defaultReminders': '默认提醒时间',
                 'leadMinutes': '还剩 {n} 分钟',
                 'leadHours': '还剩 {n} 小时',
                 'historyImportElectronOnly': '历史导入仅在桌面应用中可用',
@@ -1503,9 +1477,6 @@ class TaskManager {
                 'save': '保存',
                 'confirm': 'OK',
                 'standing': '常時',
-                'reminders': '通知タイミング',
-                'remindersHint': '目標時刻の何分前か。カンマ区切り。最大値が「期限間近」の基準にもなります。',
-                'defaultReminders': '既定の通知タイミング',
                 'leadMinutes': '残り {n} 分です',
                 'leadHours': '残り {n} 時間です',
                 'historyImportElectronOnly': '履歴の取り込みはデスクトップアプリのみ対応しています',
@@ -1665,9 +1636,6 @@ class TaskManager {
                 'save': 'Guardar',
                 'confirm': 'Aceptar',
                 'standing': 'Continua',
-                'reminders': 'Recordatorios',
-                'remindersHint': 'Minutos antes de la hora objetivo, separados por comas. El mayor marca la tarea como próxima.',
-                'defaultReminders': 'Recordatorios por defecto',
                 'leadMinutes': '¡Quedan {n} minutos!',
                 'leadHours': '¡Queda(n) {n} hora(s)!',
                 'historyImportElectronOnly': 'La importación del historial solo funciona en la aplicación de escritorio',
@@ -2135,34 +2103,6 @@ class TaskManager {
         this.renderTasks();
     }
 
-    updateReminderControls() {
-        const hint = this.getLocalizedText('remindersHint');
-        const pairs = [
-            ['labelLeadMinutes', 'reminders'],
-            ['settingsLeadMinutesLabel', 'defaultReminders']
-        ];
-        for (const [id, key] of pairs) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = this.getLocalizedText(key);
-        }
-        for (const id of ['leadMinutesHint', 'settingsLeadMinutesHint']) {
-            const el = document.getElementById(id);
-            if (el) el.textContent = hint;
-        }
-        const settings = document.getElementById('settingsLeadMinutes');
-        if (settings) settings.value = this.defaultLeadMinutes.join(', ');
-    }
-
-    changeDefaultLeadMinutes(text) {
-        const parsed = parseLeadMinutes(text);
-        // 전부 지웠거나 알아볼 수 없으면 기본값으로 되돌린다. 빈 목록이면
-        // 알림도 임박 표시도 사라져서 조용히 기능이 죽는다.
-        this.defaultLeadMinutes = parsed.length ? parsed : DEFAULT_LEAD_MINUTES;
-        localStorage.setItem('defaultLeadMinutes', this.defaultLeadMinutes.join(','));
-        this.updateReminderControls();
-        this.renderTasks();
-    }
-
     // 검색 대상 컬럼 목록. 라벨은 표 헤더와 같은 문구를 쓴다.
     updateSearchColumnControl() {
         const select = document.getElementById('searchColumn');
@@ -2244,12 +2184,6 @@ class TaskManager {
         return `${this.getLocalizedText('repeating')} ${this.describeRuleCadence(rule)}`.trim();
     }
 
-    // 이 작업의 알림 시점. 작업에 지정된 값이 없으면 전역 기본값을 쓴다.
-    leadMinutesFor(task) {
-        const own = Array.isArray(task.leadMinutes) ? parseLeadMinutes(task.leadMinutes.join(',')) : [];
-        return own.length ? own : this.defaultLeadMinutes;
-    }
-
     getTaskStatus(task) {
         const now = new Date();
         const startDate = new Date(task.startDateTime);
@@ -2267,8 +2201,7 @@ class TaskManager {
 
         const targetDate = new Date(task.targetDateTime);
         // 임박 기준은 알림 시점 중 가장 이른 것. 두 값을 따로 두면 어긋난다.
-        const lead = this.leadMinutesFor(task);
-        const urgentFrom = new Date(targetDate.getTime() - (lead[0] || 0) * 60 * 1000);
+        const urgentFrom = new Date(targetDate.getTime() - LEAD_MINUTES[0] * 60 * 1000);
 
         if (now > targetDate) {
             return { status: 'overdue', text: this.getLocalizedText('overdue') };
@@ -2932,9 +2865,6 @@ class TaskManager {
             positionInput.value = currentIndex + 1;
             positionInput.max = this.tasks.filter(t => !t.completed).length;
             
-            document.getElementById('taskLeadMinutes').value =
-                Array.isArray(task.leadMinutes) ? task.leadMinutes.join(', ') : '';
-
             this.editingTaskId = task.id;
 
             // 편집에서도 반복 설정을 그대로 보여주고 고칠 수 있게 한다
@@ -2961,8 +2891,6 @@ class TaskManager {
             positionInput.value = activeTasksCount + 1;
             positionInput.max = activeTasksCount + 1;
             
-            document.getElementById('taskLeadMinutes').value = '';
-
             this.editingTaskId = null;
         }
         
@@ -3290,7 +3218,6 @@ class TaskManager {
             tags,
             completed: false,
             highlighted: false,
-            leadMinutes: parseLeadMinutes(document.getElementById('taskLeadMinutes').value),
             notificationEnabled: this.editingTaskId ? 
                 this.tasks.find(t => t.id === this.editingTaskId).notificationEnabled : 
                 this.defaultNotificationEnabled,
@@ -3667,7 +3594,7 @@ class TaskManager {
             const targetDate = new Date(task.targetDateTime);
 
             // 상태 배지와 같은 목록을 쓴다
-            for (const minutes of this.leadMinutesFor(task)) {
+            for (const minutes of LEAD_MINUTES) {
                 const key = `${task.id}-lead${minutes}`;
                 const fireFrom = new Date(targetDate.getTime() - minutes * 60 * 1000);
 
