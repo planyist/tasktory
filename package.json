@@ -67,8 +67,11 @@
       "styles.css",
       "recurrence.js",
       "register-sw.js",
+      "service-worker.js",
       "manifest.json",
-      "assets/**",
+      "assets/*.png",
+      "assets/*.ico",
+      "assets/*.icns",
       "package.json"
     ],
     "win": {

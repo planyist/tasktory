@@ -13,6 +13,9 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 - **Run tests**: `npm test` (Jest)
 - **Package the app**: `npm run build` (electron-builder), or `build:win` / `build:mac` / `build:linux` for a single target. Output goes to `dist/`.
 
+> **Adding a source file? Add it to `build.files` in package.json.** That list is an allowlist, not a filter. `recurrence.js` was missing from it for two releases: the packaged app 404'd on the script tag, `Recurrence` stayed undefined, and every guard fell through silently, so repeat rules did nothing once installed. Running from source hides this entirely. After a build, check the packaged contents:
+> `npx asar list dist/win-unpacked/resources/app.asar`
+
 ## Recurring Tasks
 
 **A recurring task is one row, and that row is the rule.** Completing it does not remove it — the dates advance to the next occurrence and the row stays. Rules live in `<userData>/data/rules.json` via the `load-rules` / `save-rules` IPC pair, deliberately separate from `tasks.json` (whose top level is a bare array); the row carries `ruleId`.
@@ -49,19 +52,17 @@ This is the Todoist model, not the calendar model. It was chosen deliberately:
 - Current implementation uses Electron (JavaScript), which provides cross-platform support
 
 ### 3. Compact Interface
-- Displays tasks in a table format with columns:
-  - Start Time
-  - Target Time
-  - Task Content
-  - Status
-  - Actions (Edit, Done, Delete)
-- Designed for small window size (600x400) for corner placement
+- Displays tasks in a table format with columns: select, #, Start Time, Target Time, Tags, Task Content, Status
+- **Rows carry no action buttons.** They used to, and the column cost 16% of the table for buttons repeated on every row. Actions live in a permanent bar above the table and apply to whatever is ticked. The bar never appears or disappears - buttons dim instead - so the table does not shift when a selection changes.
+- Designed for a small window, corner placement
 
 ### 4. Task Management Features
 - **Add**: Add Task button to create new tasks
-- **Edit**: Modify existing task details
-- **Done**: Complete button that removes tasks from active list and logs them
-- **Delete**: Remove tasks without completing them
+- **Edit**: Select one row and use the bar, or double-click the row
+- **Done**: Completing a one-off hides it; completing a repeating task advances it to the next occurrence (see Recurring Tasks)
+- **Delete**: Removes without completing. Deleting a repeating row deletes its rule too
+- **Bulk**: Edit and reorder need exactly one selection; the rest apply to all selected. Notification toggling drives the whole selection to one state rather than flipping each
+- **Target time is optional.** A task saved without one is *ongoing*: never overdue or due soon, raises no notifications, and cannot carry a repeat rule
 
 ### 5. Comprehensive Logging System
 - Logs all user actions (add, complete, edit, delete) to persistent files
@@ -83,6 +84,8 @@ This is a complete Electron application with the following structure:
 - **preload.js**: Security bridge between main and renderer processes
 - **package.json**: Node.js project configuration with Electron dependency
 - **recurrence.js**: Pure recurring-task engine, loaded via `<script>` before `renderer.js` (see Recurring Tasks below)
+- **manifest.json**, **service-worker.js**, **register-sw.js**: PWA support, so the app installs to a phone home screen and opens offline. Registration is skipped under `file://`, where Electron runs
+- **docs/sync-architecture.md**: design proposal for multi-device sync. Not implemented
 - **tasktory-standalone.html**: Self-contained single-file browser build with its own, simpler copy of `TaskManager` (localStorage only, no IPC). Independent of `renderer.js` — changes do not propagate between the two.
 - **tests/**, **`__mocks__/`**: Jest suite and the manual `electron` mock (see Testing below)
 - **create-icons.js**, **generate-basic-icon.js**, **setup-icons.js**: one-off scripts for generating the app icons in `assets/`
@@ -116,13 +119,17 @@ This is a complete Electron application with the following structure:
 - Complete CRUD operations for tasks
 - Comprehensive logging system
 
-### UI/UX Features (v0.2.x)
+### UI/UX Features
 - **SVG Icon System**: Consistent vector icons replacing emojis for professional appearance
 - **Dark Mode Support**: Comprehensive dark theme with proper color variables
 - **Modal dialogs**: Task creation/editing with inline help text
 - **Status indicators**: Pending, In Progress, Due Soon, Overdue, Completed
-- **Action buttons**: Edit, Complete, Delete, Highlight, Move Up/Down, Notifications
-- **Collapse Mode**: Ultra-compact 80px width view with dynamic height
+- **Action bar**: Notification, Edit, Complete, Delete, Highlight, Move Up/Down - applied to the current selection
+- **Collapse Mode**: 150px side strip, read-only, dynamic height. 80px could not fit four Korean characters
+- **Date format**: chosen in settings; the table and the modal share one pattern string, which generates both the output and the parsing regex so they cannot disagree. Storage stays `YYYY-MM-DD HH:mm` whatever the display setting
+- **Date/time picker**: our own, because `datetime-local` cannot follow a custom format. It has a confirm button, unlike the native one
+- **Reminders**: one list of lead times per task (default in settings). The largest doubles as the "due soon" threshold, so the badge and the alerts cannot drift apart
+- **Chips filter on click**: tags, status and repeat cadence. No hidden keyword to guess, and it works in any UI language
 - **Tag System**: Colored tag presets with GitHub-style color schemes
 - **Daily completion counter**: Animated counter with confetti celebrations
 - **Internationalization**: Support for English, Korean, Chinese, Japanese, Spanish
