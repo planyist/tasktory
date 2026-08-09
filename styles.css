@@ -1228,8 +1228,10 @@ tbody tr {
     cursor: zoom-in;
 }
 
+/* 호버는 홀/짝 어느 행에서든 같은 세기여야 한다. 예전에는 홀수 행이 1.05,
+   짝수 행이 1.12로 두 배 차이가 나서 짝수 행만 확 어두워졌다. */
 tbody tr:hover {
-    background-color: #f8f9fa;
+    background-color: #f6f8fb;
 }
 
 /* 작업 내용이 여러 줄이면 행이 꽤 높아진다. 그때 왼쪽 번호에서 오른쪽 버튼까지
@@ -1240,7 +1242,7 @@ tbody tr:nth-child(even) {
 }
 
 tbody tr:nth-child(even):hover {
-    background-color: #dbe1e8;
+    background-color: #e3e8ef;
 }
 
 /* 하이라이트는 행 전체에 건다. 작업 내용 칸에만 칠하면 좁은 표에서 눈에 잘

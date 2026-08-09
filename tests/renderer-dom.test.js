@@ -758,15 +758,71 @@ describe('multi-select', () => {
         expect(manager.tasks.map((t) => t.id)).toEqual(['a', 'c'])
     })
 
-    test('the selection clears after a bulk action', async () => {
+    test('the selection clears after completing or deleting', async () => {
         const manager = await boot([task('a'), task('b')])
         pick('a')
 
-        await barBtn('highlight').click()
+        await barBtn('complete').click()
         await settle()
 
         expect(manager.selectedTaskIds.size).toBe(0)
         expect(barBtn('complete').disabled).toBe(true)
+    })
+
+    // Clearing after a toggle meant undoing it needed the rows picked again,
+    // so a second press looked like it did nothing at all.
+    test('the selection survives a toggle so it can be pressed again', async () => {
+        const manager = await boot([task('a'), task('b')])
+        pick('a')
+        pick('b')
+
+        await barBtn('highlight').click()
+        await settle()
+        expect(manager.selectedTaskIds.size).toBe(2)
+
+        await barBtn('highlight').click()
+        await settle()
+
+        expect(manager.tasks.every((t) => !t.highlighted)).toBe(true)
+    })
+
+    // Inverting each task independently gave a result nobody could predict
+    // before pressing. Both toggles now gather the selection onto the marked
+    // state - highlighted for one, muted for the other.
+    test('highlighting a mixed selection marks all of them', async () => {
+        const manager = await boot([task('a', { highlighted: true }), task('b')])
+        pick('a')
+        pick('b')
+
+        await barBtn('highlight').click()
+        await settle()
+
+        expect(manager.tasks.map((t) => !!t.highlighted)).toEqual([true, true])
+    })
+
+    test('highlighting again only clears once every one is marked', async () => {
+        const manager = await boot([
+            task('a', { highlighted: true }),
+            task('b', { highlighted: true }),
+        ])
+        pick('a')
+        pick('b')
+
+        await barBtn('highlight').click()
+        await settle()
+
+        expect(manager.tasks.map((t) => !!t.highlighted)).toEqual([false, false])
+    })
+
+    test('muting a mixed selection silences all of them', async () => {
+        const manager = await boot([task('a', { notificationEnabled: false }), task('b')])
+        pick('a')
+        pick('b')
+
+        await barBtn('notification').click()
+        await settle()
+
+        expect(manager.tasks.map((t) => t.notificationEnabled)).toEqual([false, false])
     })
 
     test('unticking select-all drops the selection without touching the tasks', async () => {

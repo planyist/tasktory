@@ -61,7 +61,8 @@ This is the Todoist model, not the calendar model. It was chosen deliberately:
 - **Edit**: Select one row and use the bar. Clicking anywhere in a row toggles its selection; chips are the exception and filter instead
 - **Done**: Completing a one-off hides it; completing a repeating task advances it to the next occurrence (see Recurring Tasks)
 - **Delete**: Removes without completing. Deleting a repeating row deletes its rule too
-- **Bulk**: Edit and reorder need exactly one selection; the rest apply to all selected. Notification toggling drives the whole selection to one state rather than flipping each
+- **Bulk**: Edit and reorder need exactly one selection; the rest apply to all selected
+- **Bulk toggles gather onto the marked state.** Highlight and notification never flip each task independently — a mixed selection would then land somewhere nobody could predict before pressing. If any selected task is *not* marked, all become marked; only when every one is already marked does the press undo it. Marked means highlighted for one and muted for the other, so the two look opposite but follow the same rule: go to whichever state the user deliberately sets. The selection survives a toggle (unlike complete and delete, whose rows leave the list) — otherwise undoing would need the rows picked again, and the second press looked like a no-op. Neither toggle is throttled: with row buttons gone there are no duplicate events to absorb, and a throttle only swallows the deliberate press-and-undo
 - **Target time is optional.** A task saved without one is *ongoing*: never overdue or due soon, raises no notifications, and cannot carry a repeat rule
 
 ### 5. Comprehensive Logging System

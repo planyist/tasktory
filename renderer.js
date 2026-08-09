@@ -1897,35 +1897,33 @@ class TaskManager {
             return;
         }
 
-        // 알림은 선택 전체를 같은 상태로 맞춘다
-        const turnOff = ids.some(id => {
-            const task = this.tasks.find(t => t.id === id);
-            return task && task.notificationEnabled !== false;
-        });
+        // 토글은 선택 전체를 같은 상태로 맞춘다. 각자 뒤집으면 상태가 섞여
+        // 있을 때 결과가 뒤죽박죽이 되고, 누르기 전에 무엇이 될지 알 수 없다.
+        // 규칙은 "표시된 쪽으로 모은다": 하나라도 표시되지 않은 것이 있으면
+        // 전부 표시하고, 전부 표시되어 있을 때만 전부 해제한다. 강조는
+        // 강조됨이, 알림은 금지됨이 표시된 상태다.
+        const picked = ids.map(id => this.tasks.find(t => t.id === id)).filter(Boolean);
+        const highlightTo = picked.some(t => !t.highlighted);
+        const notifyTo = picked.every(t => t.notificationEnabled === false);
 
-        for (const id of ids) {
-            const task = this.tasks.find(t => t.id === id);
-            if (!task) continue;
-
+        for (const task of picked) {
             if (action === 'complete') {
-                await this.doCompleteTask(id, null);
+                await this.doCompleteTask(task.id, null);
             } else if (action === 'delete') {
-                await this.doDeleteTask(id, null);
+                await this.doDeleteTask(task.id, null);
             } else if (action === 'highlight') {
-                await this.toggleHighlight(id);
+                if (!task.highlighted !== !highlightTo) await this.toggleHighlight(task.id);
             } else if (action === 'notification') {
-                // 선택된 것들의 상태가 섞여 있을 때 각자 뒤집으면 결과가
-                // 뒤죽박죽이 된다. 하나라도 켜져 있으면 전부 끄고, 전부 꺼져
-                // 있으면 전부 켠다.
-                if (this.tasks.find(t => t.id === id).notificationEnabled !== false) {
-                    if (turnOff) await this.toggleNotification(id);
-                } else if (!turnOff) {
-                    await this.toggleNotification(id);
+                if ((task.notificationEnabled !== false) !== notifyTo) {
+                    await this.toggleNotification(task.id);
                 }
             }
         }
 
-        this.clearSelection();
+        // 완료와 삭제는 대상이 목록에서 사라지므로 선택을 비운다. 토글은
+        // 되돌리려면 한 번 더 눌러야 하는데, 여기서 비우면 다시 고르기 전에는
+        // 누를 수가 없어 "한 번 더 눌러도 그대로"로 보인다.
+        if (action === 'complete' || action === 'delete') this.clearSelection();
         this.renderTasks();
     }
 
@@ -2649,10 +2647,10 @@ class TaskManager {
     }
 
 
+    // 스로틀은 걸지 않는다. 행마다 있던 버튼이 사라져 중복 이벤트가 날 곳이
+    // 없어졌고, 남은 것은 막대 버튼 한 번에 한 번뿐이다. 반면 켰다 바로 끄는
+    // 연타는 정상적인 조작이라 스로틀이 있으면 그쪽만 조용히 삼켜진다.
     async toggleHighlight(taskId) {
-        // 스로틀링 체크 (100ms)
-        if (this.isActionThrottled(`highlight_${taskId}`, 100)) return;
-        
         const task = this.tasks.find(t => t.id === taskId);
         if (task) {
             const wasHighlighted = task.highlighted;
@@ -3975,10 +3973,8 @@ class TaskManager {
         this.tasks = [...activeTasks, ...completedTasks];
     }
 
+    // toggleHighlight와 같은 이유로 스로틀 없음
     async toggleNotification(taskId) {
-        // 스로틀링 체크 (100ms)
-        if (this.isActionThrottled(`notification_${taskId}`, 100)) return;
-        
         const taskIndex = this.tasks.findIndex(t => t.id === taskId);
         if (taskIndex !== -1) {
             const task = this.tasks[taskIndex];
