@@ -93,7 +93,9 @@ body {
     transition: all 0.3s ease;
 }
 
+/* 카운터에 마우스를 올리면 오늘 끝낸 목록이 떠야 하므로 기준점이 된다 */
 .completion-counter {
+    position: relative;
     font-size: 16px;
     font-weight: var(--font-weight-bold);
     color: var(--text-primary);
@@ -278,7 +280,7 @@ body.collapsed-mode-body {
 .container.collapsed-mode .table-controls,
 .container.collapsed-mode #taskActionBar,
 .container.collapsed-mode #paginationContainer,
-.container.collapsed-mode .filter-bar,
+.container.collapsed-mode .quick-filters,
 /* 150px에는 7열 격자가 안 들어간다. 접힘 달력은 오늘 하루를 미니 목록 자리에
    세워서 보여주므로 격자 자체는 숨긴다. */
 .container.collapsed-mode #calendarView,
@@ -1494,6 +1496,74 @@ body.dark-mode .collapsed-task-list li.standing {
     border: 1px solid #a3cfbb;
 }
 
+/* ---- 오늘 완료 목록 ----------------------------------------------------
+   "오늘 7개"는 뿌듯하지만 무엇이었는지 기억나지 않으면 회고에도 보고에도 쓸 수
+   없다. 카운터 위에 올리면 그 일곱 개가 무엇인지 보여준다. */
+.completed-list {
+    display: none;
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 60;
+    min-width: 220px;
+    max-width: 340px;
+    max-height: 260px;
+    overflow-y: auto;
+    padding: 6px;
+    background-color: #ffffff;
+    border: 1px solid #d8dee6;
+    border-radius: 6px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
+    font-size: 12px;
+    font-weight: 500;
+    /* 카운터는 굵고 크다. 목록까지 그 크기를 물려받으면 읽히지 않는다. */
+    color: #2c3e50;
+    text-align: left;
+    cursor: default;
+}
+
+.completion-counter:hover .completed-list {
+    display: block;
+}
+
+.completed-row {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    padding: 3px 4px;
+    border-radius: 3px;
+}
+
+.completed-row:nth-child(even) {
+    background-color: #f4f6f9;
+}
+
+.completed-time {
+    flex: 0 0 auto;
+    font-size: 11px;
+    font-weight: 700;
+    color: #7b8794;
+    font-variant-numeric: tabular-nums;
+}
+
+/* 여러 줄 메모도 한 줄로 접는다. 폭이 들쭉날쭉하면 훑기 어렵다. */
+.completed-text {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.completed-empty,
+.completed-more {
+    padding: 4px;
+    color: #868e96;
+    font-size: 11px;
+    font-style: italic;
+    text-align: center;
+}
+
 /* ---- 달력 보기 --------------------------------------------------------
    보기 전용이라 눌러야 할 것이 칸 안에 없다. 그래서 커서도, 호버 강조도
    두지 않는다 - 눌러도 아무 일이 없는데 눌릴 것처럼 보이면 안 된다. */
@@ -1665,35 +1735,104 @@ body.dark-mode .collapsed-task-list li.standing {
     font-weight: 700;
 }
 
-/* 접힘(150px)의 날짜 머리. 격자가 안 들어가는 폭이라 하루만 세운다. */
-.collapsed-cal-date {
+/* ---- 접힘(150px)의 미니 달력 ------------------------------------------
+   칸당 19px이라 글자는 못 넣는다. 숫자와 점으로 "언제 몰려 있는가"만 보이고,
+   무엇인지는 아래 목록이 맡는다. 격자가 없으면 날짜만 얹은 목록으로 보인다. */
+.collapsed-cal-month {
     font-size: 11px;
     font-weight: 700;
     text-align: center;
     color: #4a5568;
-    padding: 2px 0 4px;
+    padding-bottom: 2px;
 }
 
-body:not(.calendar-mode) .collapsed-cal-date {
+.collapsed-cal-weekdays,
+.collapsed-cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+}
+
+.collapsed-cal-weekdays > div {
+    font-size: 8px;
+    font-weight: 700;
+    color: #98a2b3;
+    text-align: center;
+    line-height: 1.4;
+}
+
+.mini-cal-day {
+    position: relative;
+    height: 17px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9px;
+    font-weight: 600;
+    color: #4a5568;
+    line-height: 1;
+}
+
+.mini-cal-day.outside {
+    color: #c8cdd5;
+}
+
+/* 오늘은 동그라미로, 아래 목록이 가리키는 날은 옅은 채움으로 구분한다.
+   둘이 다를 수 있다 - 오늘이 비면 일이 있는 다음 날을 세우기 때문이다. */
+.mini-cal-day.today > span {
+    background-color: #3498db;
+    color: #ffffff;
+    border-radius: 50%;
+    width: 13px;
+    height: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.mini-cal-day.shown:not(.today) > span {
+    box-shadow: inset 0 0 0 1px #3498db;
+    border-radius: 50%;
+    width: 13px;
+    height: 13px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* 그날 가장 급한 상태 하나만 점으로. 칸에 색 두 개를 넣을 자리가 없다. */
+/* 점 하나(4x3)는 이 크기에서 거의 안 보였다. 숫자 아래 밑줄로 깐다. */
+.mini-cal-dot {
+    position: absolute;
+    bottom: 1px;
+    width: 9px;
+    height: 2px;
+    border-radius: 1px;
+}
+
+.mini-cal-dot.pending { background-color: #d0a800; }
+.mini-cal-dot.inprogress { background-color: #2196f3; }
+.mini-cal-dot.urgent { background-color: #0d6efd; }
+.mini-cal-dot.overdue { background-color: #dc3545; }
+.mini-cal-dot.standing { background-color: #7c6bb5; }
+.mini-cal-dot.completed { background-color: #198754; }
+
+.collapsed-cal-date {
+    font-size: 10px;
+    font-weight: 700;
+    text-align: center;
+    color: #4a5568;
+    padding: 4px 0 3px;
+    margin-top: 3px;
+    border-top: 1px solid #e4e8ee;
+}
+
+body:not(.calendar-mode) .collapsed-cal {
     display: none;
 }
 
 /* ---- 빠른 필터 --------------------------------------------------------
    표 안의 칩과 같은 일을 하지만 늘 같은 자리에 있다. 칩 색은 표의 상태
    배지와 맞춰서, 여기서 누른 것과 표에 뜬 것이 같은 물건임을 색으로 잇는다. */
-/* 보기 전환 + 빠른 필터 한 줄. 전환 버튼은 줄이 여러 줄로 늘어나도 맨 앞에
-   붙어 있어야 하므로 줄바꿈은 필터 쪽에만 준다. */
-.filter-bar {
-    display: flex;
-    align-items: flex-start;
-    gap: 6px;
-    padding: 6px 2px 0;
-}
-
-.view-toggle {
-    flex: 0 0 auto;
-}
-
 .quick-filters {
     display: flex;
     flex-wrap: wrap;
@@ -2385,7 +2524,12 @@ body.dark-mode .cal-chip.highlighted {
     border-left-color: #fd7e14;
 }
 
-body.dark-mode .collapsed-cal-date { color: #cbd5e0; }
+body.dark-mode .collapsed-cal-date,
+body.dark-mode .collapsed-cal-month { color: #cbd5e0; }
+body.dark-mode .collapsed-cal-date { border-top-color: #3f444b; }
+body.dark-mode .mini-cal-day { color: #cbd5e0; }
+body.dark-mode .mini-cal-day.outside { color: #5c636d; }
+body.dark-mode .collapsed-cal-weekdays > div { color: #7b8794; }
 
 /* 빠른 필터도 다크에서 상태 배지와 같은 색을 쓴다 */
 body.dark-mode .quick-chip {

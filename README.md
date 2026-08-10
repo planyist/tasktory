@@ -36,7 +36,8 @@ meant to do — and you forget what you already did. Tasktory keeps both.
 
 - Every action is logged — added, completed, edited, deleted, and more
 - One tab-separated file per day, so a spreadsheet opens it directly
-- A **daily completion counter**, and a 30-day chart of completion trends
+- A **daily completion counter** — hover it to see *what* you finished today
+- A 30-day chart of completion trends
 - **Export/import** for backup, or for moving to another machine
 
 ### The rest
@@ -111,7 +112,7 @@ Set a repeat in the task's edit form. The row then *is* the rule:
 
 ### Calendar view
 
-Toggle it with the button under the search box.
+Toggle it with the calendar button at the top right, next to collapse.
 
 - A task appears on **every day it spans** — started Monday, due Wednesday means
   it is in hand on Tuesday too
@@ -121,8 +122,11 @@ Toggle it with the button under the search box.
 - Colours match the table's status badges
 - **View-only.** Nothing in a cell is clickable — the list does all of that
 
-Collapsed, the calendar narrows to a single day: today, or the next day with
-work if today is clear.
+Collapsed, it becomes a mini month grid — 150px is too narrow for task names,
+so each day shows its number and a coloured underline for its most pressing
+status, with that day's items listed underneath. Today is a filled circle. If
+today is clear the strip rolls forward to the next day with work, and that day
+gets a ring so you can see the two are different.
 
 ### Search and filters
 

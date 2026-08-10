@@ -14,6 +14,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     setUnfocusedOpacity: (opacity) => ipcRenderer.invoke('set-unfocused-opacity', opacity),
     showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body),
     getCompletedTasksCount: (dateStr) => ipcRenderer.invoke('get-completed-tasks-count', dateStr),
+    getCompletedTasks: (dateStr) => ipcRenderer.invoke('get-completed-tasks', dateStr),
     resizeWindow: (width, height) => ipcRenderer.invoke('resize-window', width, height),
     resizeAndPositionWindow: (width, height, position) => ipcRenderer.invoke('resize-and-position-window', width, height, position),
     // 정보 창의 버전은 손으로 적혀 있었고 0.6.4에서 멈춰 있었다. package.json을

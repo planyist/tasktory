@@ -295,6 +295,50 @@ class TaskManager {
         const aboutCloseModal = document.getElementById('aboutCloseModal');
         if (aboutCloseModal) aboutCloseModal.textContent = this.getLocalizedText('closeModalShortcut');
         
+        // 뒤에 붙인 절들은 표로 묶어 돌린다. 위쪽처럼 한 줄씩 늘어놓으면 번역
+        // 키가 늘 때마다 세 줄씩 붙고, 새로 넣은 항목을 여기 등록하는 걸 잊기
+        // 쉽다 - 실제로 잊어서 영어로 고정돼 있었다.
+        // ':'가 붙는 쪽은 <strong> 제목이다.
+        const aboutText = {
+            aboutViewsTitle: 'views',
+            aboutSearchTitle: 'searchAndFilters',
+            aboutRepeatTitle: 'repeatingTasks',
+            aboutSelectDesc: 'aboutSelectDesc',
+            aboutListViewDesc: 'aboutListViewDesc',
+            aboutCalendarViewDesc: 'aboutCalendarViewDesc',
+            aboutCollapsedViewDesc: 'aboutCollapsedViewDesc',
+            aboutSearchColumnDesc: 'aboutSearchColumnDesc',
+            aboutChipFilterDesc: 'aboutChipFilterDesc',
+            aboutQuickFilterDesc: 'aboutQuickFilterDesc',
+            aboutRepeatRowDesc: 'aboutRepeatRowDesc',
+            aboutRepeatStepDesc: 'aboutRepeatStepDesc',
+            aboutRepeatDeleteDesc: 'aboutRepeatDeleteDesc',
+            aboutRepeatTargetDesc: 'aboutRepeatTargetDesc',
+            aboutStandingStatus: 'standing',
+            aboutStandingStatusDesc: 'aboutStandingStatusDesc'
+        };
+        const aboutHeadings = {
+            aboutSelectTitle: 'aboutSelectTitle',
+            aboutListViewTitle: 'listView',
+            aboutCalendarViewTitle: 'calendarView',
+            aboutCollapsedViewTitle: 'sideStrip',
+            aboutSearchColumnTitle: 'aboutSearchColumnTitle',
+            aboutChipFilterTitle: 'aboutChipFilterTitle',
+            aboutQuickFilterTitle: 'aboutQuickFilterTitle',
+            aboutRepeatRowTitle: 'aboutRepeatRowTitle',
+            aboutRepeatStepTitle: 'aboutRepeatStepTitle',
+            aboutRepeatDeleteTitle: 'aboutRepeatDeleteTitle',
+            aboutRepeatTargetTitle: 'aboutRepeatTargetTitle'
+        };
+        for (const [id, key] of Object.entries(aboutText)) {
+            const element = document.getElementById(id);
+            if (element) element.textContent = this.getLocalizedText(key);
+        }
+        for (const [id, key] of Object.entries(aboutHeadings)) {
+            const element = document.getElementById(id);
+            if (element) element.textContent = this.getLocalizedText(key) + ':';
+        }
+
         const aboutVersionLabel = document.getElementById('aboutVersionLabel');
         if (aboutVersionLabel) aboutVersionLabel.textContent = this.getLocalizedText('version') + ':';
         
@@ -661,6 +705,12 @@ class TaskManager {
             const now = new Date();
             this.calendarMonth = new Date(now.getFullYear(), now.getMonth(), 1);
             this.renderTasks();
+        });
+
+        // 완료 목록은 열 때마다 읽는다. 미리 채워두면 다른 창에서 완료한 것이나
+        // 자정을 넘긴 뒤의 목록이 낡은 채로 뜬다.
+        document.getElementById('completionCounter').addEventListener('mouseenter', () => {
+            this.renderCompletedList();
         });
 
         // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
@@ -1062,6 +1112,32 @@ class TaskManager {
                 'completeDetails': 'Completion notes (optional)',
                 'completedAt': 'Completed at',
                 'showAll': 'All',
+                'views': 'Views',
+                'searchAndFilters': 'Search and Filters',
+                'repeatingTasks': 'Repeating Tasks',
+                'sideStrip': 'Side strip',
+                'aboutListViewDesc': 'The table. Everything you can do to a task happens here',
+                'aboutCalendarViewDesc': 'A month grid, toggled from the buttons at the top right. A task shows on every day it spans, and one with no target time sits at the top of its start day. The time shown is the target time. View-only - nothing in a cell is clickable',
+                'aboutCollapsedViewDesc': 'Ctrl+M. Read-only, always on top. In calendar view it stands up a single day - today, or the next day with work if today is clear',
+                'aboutSearchColumnTitle': 'Search a column',
+                'aboutSearchColumnDesc': 'The dropdown beside the search box narrows the search to one column',
+                'aboutChipFilterTitle': 'Chips',
+                'aboutChipFilterDesc': 'Click a tag, status or repeat chip in the table to filter by it. The column follows automatically',
+                'aboutQuickFilterTitle': 'Quick filters',
+                'aboutQuickFilterDesc': 'The row under the search box lists the statuses and tags actually in use, up to fifteen. All clears the search and the column',
+                'aboutRepeatRowTitle': 'One row is the rule',
+                'aboutRepeatRowDesc': 'Set a repeat in the task edit form. Completing it does not remove the row - the dates move to the next occurrence',
+                'aboutRepeatStepTitle': 'One step at a time',
+                'aboutRepeatStepDesc': 'A task overdue by five occurrences takes five presses, and each is logged. To skip ahead, edit the date',
+                'aboutRepeatDeleteTitle': 'Deleting',
+                'aboutRepeatDeleteDesc': 'Deleting the row deletes the repeat rule with it',
+                'aboutRepeatTargetTitle': 'Target time required',
+                'aboutRepeatTargetDesc': 'A task with no target time cannot repeat',
+                'aboutSelectTitle': 'Select',
+                'aboutSelectDesc': 'Click anywhere in a row. Tags and status chips are the exception - they filter instead',
+                'aboutStandingStatusDesc': 'No target time. Never overdue or due soon, and raises no notifications',
+                'nothingCompletedYet': 'Nothing completed yet today',
+                'completedToday': 'Completed today',
                 'moreTags': 'More tags exist; search to reach them',
                 'nothingScheduled': 'Nothing scheduled',
                 'calendarView': 'Calendar view',
@@ -1229,6 +1305,32 @@ class TaskManager {
                 'completeDetails': '완료 메모 (선택사항)',
                 'completedAt': '완료 시각',
                 'showAll': '전체',
+                'views': '보기',
+                'searchAndFilters': '검색과 필터',
+                'repeatingTasks': '반복 작업',
+                'sideStrip': '측면 스트립',
+                'aboutListViewDesc': '표. 작업에 할 수 있는 일은 모두 여기서 한다',
+                'aboutCalendarViewDesc': '월간 격자. 오른쪽 위 버튼으로 전환한다. 작업은 걸쳐 있는 모든 날에 나타나고, 목표 시각이 없는 작업은 시작한 날 맨 위에 놓인다. 표시되는 시각은 목표 시각이다. 보기 전용이라 칸 안에는 누를 것이 없다',
+                'aboutCollapsedViewDesc': 'Ctrl+M. 읽기 전용이며 항상 위에 뜬다. 달력 보기에서는 하루만 세운다 - 오늘, 오늘이 비어 있으면 일이 있는 다음 날',
+                'aboutSearchColumnTitle': '컬럼 지정 검색',
+                'aboutSearchColumnDesc': '검색창 옆 선택 상자로 검색 대상을 한 컬럼으로 좁힌다',
+                'aboutChipFilterTitle': '칩',
+                'aboutChipFilterDesc': '표 안의 태그·상태·반복 칩을 누르면 그 값으로 검색한다. 검색 대상 컬럼도 따라 바뀐다',
+                'aboutQuickFilterTitle': '빠른 필터',
+                'aboutQuickFilterDesc': '검색창 아래 줄에 실제로 쓰이고 있는 상태와 태그가 최대 열다섯 개까지 나온다. 전체를 누르면 검색어와 대상 컬럼이 함께 초기화된다',
+                'aboutRepeatRowTitle': '한 행이 곧 규칙',
+                'aboutRepeatRowDesc': '작업 편집 창에서 반복을 설정한다. 완료해도 행은 사라지지 않고 날짜가 다음 회차로 넘어간다',
+                'aboutRepeatStepTitle': '한 번에 한 회차',
+                'aboutRepeatStepDesc': '다섯 회차가 밀렸다면 다섯 번 눌러야 하고, 각각이 이력에 남는다. 건너뛰려면 날짜를 직접 고친다',
+                'aboutRepeatDeleteTitle': '삭제',
+                'aboutRepeatDeleteDesc': '행을 지우면 반복 규칙도 함께 지워진다',
+                'aboutRepeatTargetTitle': '목표 시각 필요',
+                'aboutRepeatTargetDesc': '목표 시각이 없는 작업은 반복할 수 없다',
+                'aboutSelectTitle': '선택',
+                'aboutSelectDesc': '행 어디를 눌러도 선택된다. 태그와 상태 칩만 예외로, 누르면 검색이 된다',
+                'aboutStandingStatusDesc': '목표 시각이 없다. 지연도 임박도 되지 않고 알림도 울리지 않는다',
+                'nothingCompletedYet': '오늘 완료한 작업이 없습니다',
+                'completedToday': '오늘 완료',
                 'moreTags': '태그가 더 있습니다. 검색으로 찾으세요',
                 'nothingScheduled': '예정된 일정 없음',
                 'calendarView': '달력 보기',
@@ -1396,6 +1498,32 @@ class TaskManager {
                 'completeDetails': '完成备注（可选）',
                 'completedAt': '完成时间',
                 'showAll': '全部',
+                'views': '视图',
+                'searchAndFilters': '搜索与筛选',
+                'repeatingTasks': '重复任务',
+                'sideStrip': '侧边栏',
+                'aboutListViewDesc': '表格。对任务的所有操作都在这里进行',
+                'aboutCalendarViewDesc': '月历网格，用右上角的按钮切换。任务会出现在它跨越的每一天；没有目标时间的任务位于开始日的顶部。显示的时间为目标时间。仅供查看，格子内无可点击项',
+                'aboutCollapsedViewDesc': 'Ctrl+M。只读，始终置顶。在日历视图中只显示一天——今天，若今天没有任务则显示下一个有任务的日期',
+                'aboutSearchColumnTitle': '按列搜索',
+                'aboutSearchColumnDesc': '搜索框旁的下拉框可将搜索范围限定为某一列',
+                'aboutChipFilterTitle': '标记',
+                'aboutChipFilterDesc': '点击表格中的标签、状态或重复标记即可按其筛选，搜索列会自动跟随',
+                'aboutQuickFilterTitle': '快速筛选',
+                'aboutQuickFilterDesc': '搜索框下方一行列出实际在用的状态与标签，最多十五个。点击“全部”会同时清除搜索词和搜索列',
+                'aboutRepeatRowTitle': '一行即规则',
+                'aboutRepeatRowDesc': '在任务编辑窗口设置重复。完成后该行不会消失，日期会移到下一次',
+                'aboutRepeatStepTitle': '一次前进一步',
+                'aboutRepeatStepDesc': '若积压了五次，就要按五次，每次都会记入历史。想跳过请直接修改日期',
+                'aboutRepeatDeleteTitle': '删除',
+                'aboutRepeatDeleteDesc': '删除该行会同时删除重复规则',
+                'aboutRepeatTargetTitle': '需要目标时间',
+                'aboutRepeatTargetDesc': '没有目标时间的任务无法重复',
+                'aboutSelectTitle': '选择',
+                'aboutSelectDesc': '点击行内任意位置即可选中。标签与状态标记除外——点击它们会进行筛选',
+                'aboutStandingStatusDesc': '没有目标时间。不会逾期或临近，也不会发出通知',
+                'nothingCompletedYet': '今天还没有完成的任务',
+                'completedToday': '今日完成',
                 'moreTags': '还有更多标签，请使用搜索',
                 'nothingScheduled': '没有安排',
                 'calendarView': '日历视图',
@@ -1563,6 +1691,32 @@ class TaskManager {
                 'completeDetails': '完了メモ（オプション）',
                 'completedAt': '完了時刻',
                 'showAll': 'すべて',
+                'views': '表示',
+                'searchAndFilters': '検索とフィルター',
+                'repeatingTasks': '繰り返しタスク',
+                'sideStrip': 'サイドストリップ',
+                'aboutListViewDesc': '表。タスクに対する操作はすべてここで行う',
+                'aboutCalendarViewDesc': '月間グリッド。右上のボタンで切り替える。タスクはまたがるすべての日に表示され、目標時刻のないものは開始日の先頭に置かれる。表示される時刻は目標時刻。閲覧専用で、セル内に押せるものはない',
+                'aboutCollapsedViewDesc': 'Ctrl+M。読み取り専用で常に最前面。カレンダー表示では一日だけを立てる - 今日、今日が空なら次に予定のある日',
+                'aboutSearchColumnTitle': '列を指定して検索',
+                'aboutSearchColumnDesc': '検索ボックス横のドロップダウンで対象を1列に絞る',
+                'aboutChipFilterTitle': 'チップ',
+                'aboutChipFilterDesc': '表内のタグ・状態・繰り返しチップを押すとその値で絞り込む。対象列も自動で合わせる',
+                'aboutQuickFilterTitle': 'クイックフィルター',
+                'aboutQuickFilterDesc': '検索ボックスの下の行に、実際に使われている状態とタグが最大15件まで並ぶ。「すべて」を押すと検索語と対象列がまとめて解除される',
+                'aboutRepeatRowTitle': '1行がルールそのもの',
+                'aboutRepeatRowDesc': 'タスク編集画面で繰り返しを設定する。完了しても行は消えず、日付が次回に進む',
+                'aboutRepeatStepTitle': '一度に1回分',
+                'aboutRepeatStepDesc': '5回分たまっていれば5回押す必要があり、それぞれが履歴に残る。飛ばしたいときは日付を直接直す',
+                'aboutRepeatDeleteTitle': '削除',
+                'aboutRepeatDeleteDesc': '行を削除すると繰り返しルールも一緒に消える',
+                'aboutRepeatTargetTitle': '目標時刻が必要',
+                'aboutRepeatTargetDesc': '目標時刻のないタスクは繰り返せない',
+                'aboutSelectTitle': '選択',
+                'aboutSelectDesc': '行のどこを押しても選択される。タグと状態チップだけは例外で、押すと絞り込みになる',
+                'aboutStandingStatusDesc': '目標時刻がない。遅延にも間近にもならず、通知も鳴らない',
+                'nothingCompletedYet': '今日はまだ完了したタスクがありません',
+                'completedToday': '今日の完了',
                 'moreTags': 'タグは他にもあります。検索してください',
                 'nothingScheduled': '予定なし',
                 'calendarView': 'カレンダー表示',
@@ -1730,6 +1884,32 @@ class TaskManager {
                 'completeDetails': 'Notas de finalización (opcional)',
                 'completedAt': 'Completado a las',
                 'showAll': 'Todas',
+                'views': 'Vistas',
+                'searchAndFilters': 'Búsqueda y filtros',
+                'repeatingTasks': 'Tareas repetidas',
+                'sideStrip': 'Franja lateral',
+                'aboutListViewDesc': 'La tabla. Todo lo que puede hacer con una tarea ocurre aquí',
+                'aboutCalendarViewDesc': 'Una cuadrícula mensual, que se activa con los botones de arriba a la derecha. Una tarea aparece en todos los días que abarca, y una sin hora objetivo se coloca al principio de su día de inicio. La hora mostrada es la hora objetivo. Solo lectura: nada dentro de una celda es pulsable',
+                'aboutCollapsedViewDesc': 'Ctrl+M. Solo lectura, siempre visible. En vista de calendario muestra un único día: hoy, o el siguiente día con trabajo si hoy está libre',
+                'aboutSearchColumnTitle': 'Buscar en una columna',
+                'aboutSearchColumnDesc': 'El desplegable junto al cuadro de búsqueda limita la búsqueda a una columna',
+                'aboutChipFilterTitle': 'Etiquetas',
+                'aboutChipFilterDesc': 'Pulse una etiqueta, un estado o una pauta de repetición en la tabla para filtrar por ella. La columna se ajusta sola',
+                'aboutQuickFilterTitle': 'Filtros rápidos',
+                'aboutQuickFilterDesc': 'La fila bajo el cuadro de búsqueda muestra los estados y etiquetas realmente en uso, hasta quince. Todas borra la búsqueda y la columna',
+                'aboutRepeatRowTitle': 'Una fila es la regla',
+                'aboutRepeatRowDesc': 'Configure la repetición en el formulario de edición. Al completarla la fila no desaparece: las fechas pasan a la siguiente vez',
+                'aboutRepeatStepTitle': 'Un paso cada vez',
+                'aboutRepeatStepDesc': 'Una tarea con cinco repeticiones atrasadas requiere cinco pulsaciones, y cada una queda registrada. Para saltar, edite la fecha',
+                'aboutRepeatDeleteTitle': 'Eliminar',
+                'aboutRepeatDeleteDesc': 'Al eliminar la fila se elimina también su regla de repetición',
+                'aboutRepeatTargetTitle': 'Se requiere hora objetivo',
+                'aboutRepeatTargetDesc': 'Una tarea sin hora objetivo no puede repetirse',
+                'aboutSelectTitle': 'Seleccionar',
+                'aboutSelectDesc': 'Pulse en cualquier parte de la fila. Las etiquetas y los estados son la excepción: filtran',
+                'aboutStandingStatusDesc': 'Sin hora objetivo. Nunca vence ni está por vencer, y no genera avisos',
+                'nothingCompletedYet': 'Aún no ha completado nada hoy',
+                'completedToday': 'Completadas hoy',
                 'moreTags': 'Hay más etiquetas; búsquelas',
                 'nothingScheduled': 'Nada programado',
                 'calendarView': 'Vista de calendario',
@@ -2408,12 +2588,79 @@ class TaskManager {
         return { key: todayKey, tasks: [] };
     }
 
+    // 하루 안에서 가장 급한 상태. 미니 격자의 점은 칸 하나에 색 하나뿐이라
+    // 그날을 대표할 상태를 하나 골라야 한다.
+    static get STATUS_SEVERITY() {
+        return ['overdue', 'urgent', 'inprogress', 'pending', 'standing', 'completed'];
+    }
+
+    worstStatus(tasks) {
+        const order = TaskManager.STATUS_SEVERITY;
+        let worst = null;
+        for (const task of tasks) {
+            const status = this.getTaskStatus(task).status;
+            if (worst === null || order.indexOf(status) < order.indexOf(worst)) worst = status;
+        }
+        return worst;
+    }
+
+    // 접힘 폭에서는 칸에 글자를 넣을 수 없다. 숫자와 점만으로 "언제 몰려 있는가"를
+    // 보여주고, 무엇인지는 아래 목록이 맡는다. 격자가 없으면 날짜만 얹은 목록으로
+    // 보여서 달력으로 읽히지 않는다.
+    renderCollapsedMiniGrid(shownKey) {
+        const grid = document.getElementById('collapsedCalGrid');
+        const label = document.getElementById('collapsedCalMonth');
+        const weekdays = document.getElementById('collapsedCalWeekdays');
+        if (!grid) return;
+
+        // 보여주는 날이 속한 달을 띄운다. 오늘이 비어 다음 달로 넘어갔다면
+        // 그 달이 나와야 아래 목록과 격자가 어긋나지 않는다.
+        const shown = new Date(`${shownKey}T00:00:00`);
+        const month = new Date(shown.getFullYear(), shown.getMonth(), 1);
+        label.textContent = formatWithPattern(month, 'YYYY-MM');
+
+        // 첫 글자만 쓴다. 한중일은 원래 한 글자고, 영어·스페인어는 잘라 쓴다.
+        weekdays.innerHTML = this.getLocalizedText('weekdayNames').split(',')
+            .map(name => `<div>${this.escapeHtml(name.trim().charAt(0))}</div>`).join('');
+
+        const byDay = this.tasksByDay(this.tasks.filter(t => !t.completed));
+        const todayKey = this.dayKey(new Date());
+
+        const cursor = new Date(month);
+        cursor.setDate(1 - ((month.getDay() + 6) % 7)); // 월요일 시작
+
+        const cells = [];
+        for (let i = 0; i < 42; i++) {
+            const key = this.dayKey(cursor);
+            const outside = cursor.getMonth() !== month.getMonth();
+            const status = this.worstStatus(byDay.get(key) || []);
+
+            const classes = ['mini-cal-day'];
+            if (outside) classes.push('outside');
+            if (key === todayKey) classes.push('today');
+            if (key === shownKey) classes.push('shown');
+
+            cells.push(
+                `<div class="${classes.join(' ')}"><span>${cursor.getDate()}</span>` +
+                (status ? `<i class="mini-cal-dot ${status}"></i>` : '') +
+                '</div>'
+            );
+            cursor.setDate(cursor.getDate() + 1);
+
+            // 남은 칸이 전부 다음 달이면 그 줄은 그리지 않는다
+            if (i % 7 === 6 && i >= 27 && cursor.getMonth() !== month.getMonth()) break;
+        }
+
+        grid.innerHTML = cells.join('');
+    }
+
     renderCollapsedCalendar() {
         const list = document.getElementById('collapsedMiniTasksBody');
         const header = document.getElementById('collapsedCalDate');
         list.innerHTML = '';
 
         const { key, tasks } = this.collapsedCalendarDay();
+        this.renderCollapsedMiniGrid(key);
         if (header) header.textContent = key.slice(5); // MM-DD
 
         if (tasks.length === 0) {
@@ -2479,6 +2726,53 @@ class TaskManager {
             button.title = this.getLocalizedText(calendar ? 'listView' : 'calendarView');
         }
         document.body.classList.toggle('calendar-mode', calendar);
+    }
+
+    // ---- 오늘 완료 목록 -----------------------------------------------------
+    // 카운터에 마우스를 올리면 무엇을 끝냈는지 보여준다. "오늘 7개"는 뿌듯하지만
+    // 무엇이었는지 기억나지 않으면 회고에도 보고에도 쓸모가 없다.
+    // 목록은 로그 파일에서 읽는다. 완료한 작업은 활성 목록에서 사라지고, 반복
+    // 작업은 다음 회차로 넘어가 버려서 메모리에는 남아 있지 않기 때문이다.
+    static get COMPLETED_LIST_LIMIT() { return 12; }
+
+    async loadCompletedToday() {
+        if (!this.isElectron || !window.electronAPI.getCompletedTasks) return [];
+        const today = formatWithPattern(new Date(), 'YYYY-MM-DD');
+        try {
+            return await window.electronAPI.getCompletedTasks(today) || [];
+        } catch (error) {
+            console.error('Failed to read completed tasks:', error);
+            return [];
+        }
+    }
+
+    async renderCompletedList() {
+        const box = document.getElementById('completedList');
+        if (!box) return;
+
+        const entries = await this.loadCompletedToday();
+        if (entries.length === 0) {
+            box.innerHTML = `<div class="completed-empty">${this.getLocalizedText('nothingCompletedYet')}</div>`;
+            return;
+        }
+
+        // 최근 완료가 위로 오게 뒤집는다. 로그는 시간순으로 쌓이지만, 방금 끝낸
+        // 것이 궁금해서 올려다보는 경우가 대부분이다.
+        const recent = [...entries].reverse();
+        const shown = recent.slice(0, TaskManager.COMPLETED_LIST_LIMIT);
+        const rows = shown.map(entry => {
+            // 로그 본문은 "내용 (completed) at ... 메모" 형태다. 앞의 내용만 뗀다.
+            const label = entry.content.replace(/\s*\(completed\).*$/, '') || entry.content;
+            const time = entry.timestamp.slice(11, 16); // HH:mm
+            return `<div class="completed-row"><span class="completed-time">${this.escapeHtml(time)}</span>` +
+                `<span class="completed-text">${this.escapeHtml(label)}</span></div>`;
+        });
+
+        if (recent.length > shown.length) {
+            rows.push(`<div class="completed-more">+${recent.length - shown.length}</div>`);
+        }
+
+        box.innerHTML = rows.join('');
     }
 
     // 검색창 아래의 빠른 필터. 표 안의 칩과 같은 일을 하지만, 원하는 칩이 걸린
@@ -2998,8 +3292,6 @@ class TaskManager {
             tableElement.style.display = 'none';
             collapsedElement.style.display = 'none';
             miniLayout.style.display = 'flex';
-            
-            this.resizeCollapsedWindow();
         } else {
             // Exit collapsed mode - return to normal view
             container.classList.remove('collapsed-mode');
@@ -3017,6 +3309,8 @@ class TaskManager {
 
         this.applyViewMode();
         this.renderTasks();
+        // 높이는 그려진 뒤에 잰다. 그리기 전에 재면 이전 내용의 높이가 나온다.
+        if (this.isCollapsed) this.resizeCollapsedWindow();
     }
 
     // 접힘 창 높이는 실제로 그려질 줄 수를 따라간다. 달력 보기는 오늘 하루만
@@ -3025,21 +3319,23 @@ class TaskManager {
         const active = this.tasks.filter(t => !t.completed);
         if (this.viewMode !== 'calendar') return active.length;
 
-        // 날짜 머리 한 줄 + 그날의 작업들. 비었을 때도 안내 문구가 두 줄까지
-        // 접히므로 최소 두 줄은 잡는다.
-        return Math.max(2, this.collapsedCalendarDay().tasks.length) + 1;
+        // 미니 격자(달 이름 + 요일 + 여섯 줄 + 날짜 머리)가 대략 여섯 줄어치를
+        // 차지한다. 그 아래에 그날의 작업들이 붙는다. 비었을 때도 안내 문구가
+        // 두 줄까지 접히므로 최소 두 줄은 잡는다.
+        return Math.max(2, this.collapsedCalendarDay().tasks.length) + 7;
     }
 
     resizeCollapsedWindow() {
         if (!this.isElectron || !window.electronAPI) return;
 
-        const baseHeight = 80; // Expand button + completion counter + padding
-        const taskHeight = 22; // Height per task item
-        const paddingHeight = 30; // Bottom padding
-        const height = Math.max(
-            150,
-            baseHeight + this.collapsedRowCount() * taskHeight + paddingHeight
-        );
+        // 그려진 것을 그대로 잰다. 줄 수를 세어 추정하던 방식은 내용이 바뀔
+        // 때마다 계수를 다시 맞춰야 했고, 달력 격자가 들어오자 곧바로 어긋나
+        // 목록이 창 밖으로 밀렸다. (jsdom에는 레이아웃이 없어 0이 나오므로
+        // 그때만 줄 수 추정으로 되돌아간다.)
+        const layout = document.getElementById('collapsedMiniLayout');
+        const measured = layout ? layout.scrollHeight : 0;
+        const estimated = 80 + this.collapsedRowCount() * 22;
+        const height = Math.max(150, (measured || estimated) + 30);
 
         this.resizeAndPositionWindow(COLLAPSED_WIDTH, height, 'top-right-150');
     }

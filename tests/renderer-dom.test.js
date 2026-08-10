@@ -1824,7 +1824,8 @@ describe('calendar view', () => {
                 task('next-month', { startDateTime: at(1, '09:00'), targetDateTime: at(1, '10:00') })
             ])
 
-            expect(manager.collapsedRowCount()).toBe(3) // two rows minimum plus the date header
+            // two rows minimum, plus the mini grid's share
+            expect(manager.collapsedRowCount()).toBe(9)
         })
     })
 })
@@ -1889,13 +1890,14 @@ describe('quick filter presentation', () => {
 describe('view toggle', () => {
     const button = () => document.getElementById('viewModeBtn')
 
-    // It sits under the search box, not among the export/settings icons at the
-    // far right where it read as just another tool.
-    test('sits in the filter bar under the search box', async () => {
+    // It belongs with the other screen-mode switch, not beside the quick
+    // filters, where it read as one more filter chip.
+    test('sits with collapse in the header buttons', async () => {
         await boot([task('a')])
 
-        expect(button().closest('.filter-bar')).not.toBeNull()
-        expect(button().closest('.header-buttons')).toBeNull()
+        expect(button().closest('.header-buttons')).not.toBeNull()
+        expect(button().nextElementSibling.id).toBe('collapseBtn')
+        expect(button().closest('#quickFilters')).toBeNull()
     })
 
     // The icon shows what you get, not what you have - same rule as collapse.

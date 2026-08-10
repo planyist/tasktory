@@ -26,6 +26,8 @@
             <div class="table-controls">
                 <div id="completionCounter" class="completion-counter">
                     <span id="completionCounterText"></span> <span id="completionCount" class="completion-count">0</span>
+                    <!-- 오늘 무엇을 끝냈는지. 숫자만으로는 기억을 되살릴 수 없다 -->
+                    <div id="completedList" class="completed-list"></div>
                 </div>
                 <!-- 검색과 빠른 필터는 한 덩어리다. 필터가 화면 왼쪽 끝에서
                      시작하면 검색과 무관한 별도 버튼처럼 보인다. -->
@@ -48,10 +50,7 @@
                         </svg>
                     </button>
                 </div>
-                <div class="filter-bar">
-                    <button type="button" id="viewModeBtn" class="btn icon-btn view-toggle"></button>
-                    <div id="quickFilters" class="quick-filters"></div>
-                </div>
+                <div id="quickFilters" class="quick-filters"></div>
                 </div>
                     <div class="header-buttons">
                         <button id="exportBtn" class="btn icon-btn" title="Export Data">
@@ -88,6 +87,9 @@
                                 <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
                             </svg>
                         </button>
+                        <!-- 보기 전환은 다른 화면 전환(접기)과 나란히 둔다. 빠른 필터
+                             옆에 두었더니 필터 칩 하나처럼 보였다. -->
+                        <button type="button" id="viewModeBtn" class="btn icon-btn view-toggle"></button>
                         <button id="collapseBtn" class="btn icon-btn" title="Collapse view (Ctrl+M)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="14,4 14,10 20,10"/>
@@ -198,7 +200,14 @@
                     </svg>
                 </button>
                 <div id="collapsedCompletionCounter" class="collapsed-completion-counter">0</div>
-                <div id="collapsedCalDate" class="collapsed-cal-date"></div>
+                <!-- 150px에 7열을 넣으면 칸당 19px. 숫자와 점만 들어가지만 격자가
+                     있어야 달력으로 읽힌다. 그 아래에 그날의 목록을 세운다. -->
+                <div id="collapsedCalendar" class="collapsed-cal">
+                    <div id="collapsedCalMonth" class="collapsed-cal-month"></div>
+                    <div id="collapsedCalWeekdays" class="collapsed-cal-weekdays"></div>
+                    <div id="collapsedCalGrid" class="collapsed-cal-grid"></div>
+                    <div id="collapsedCalDate" class="collapsed-cal-date"></div>
+                </div>
                 <div class="collapsed-task-list">
                     <ul id="collapsedMiniTasksBody">
                         <!-- Mini collapsed task items -->

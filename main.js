@@ -386,40 +386,53 @@ ipcMain.handle('show-notification', async (event, title, body) => {
 })
 
 // Count COMPLETE actions in a TSV log (ACTION is the second tab-separated column)
-const countCompletedTsv = (logData) => {
+// 완료 항목을 뽑아낸다. 개수와 목록이 같은 함수에서 나와야 둘이 어긋날 수 없다.
+// 카운터에는 5가 뜨는데 목록에는 4개만 보이는 일이 생기면 어느 쪽이 맞는지
+// 알 수가 없다.
+const completedFromTsv = (logData) => {
     return logData.split('\n')
         .filter(line => line.trim() && !line.startsWith('TIMESTAMP\tACTION\tSTATUS'))
-        .filter(line => {
-            const columns = line.split('\t');
-            return columns.length >= 2 && columns[1].trim() === 'COMPLETE';
-        })
-        .length;
+        .map(line => line.split('\t'))
+        .filter(columns => columns.length >= 2 && columns[1].trim() === 'COMPLETE')
+        .map(columns => ({
+            timestamp: (columns[0] || '').trim(),
+            content: (columns[7] || '').trim()
+        }));
 }
 
-// v0.2.5 이하의 로그는 고정폭 포맷이라 ACTION이 25~40번째 문자에 위치한다
-const countCompletedLegacy = (logData) => {
+// v0.2.5 이하의 로그는 고정폭 포맷이라 ACTION이 25~40번째 문자에 위치한다.
+// 내용은 그 시절에도 마지막 탭 뒤에 있었다.
+const completedFromLegacy = (logData) => {
     return logData.split('\n')
         .filter(line => line.trim() && !line.startsWith('TIMESTAMP'))
         .filter(line => line.substring(25, 40).trim() === 'COMPLETE')
-        .length;
+        .map(line => ({
+            timestamp: line.substring(0, 25).trim(),
+            content: line.split('\t').pop().trim()
+        }));
+}
+
+// 하루치 완료 목록. .tsv를 먼저 보고, 없으면 v0.2.6 이전의 .log를 읽는다
+// (업그레이드 후 기록 유실 방지).
+const readCompleted = async (dateStr) => {
+    try {
+        return completedFromTsv(await fs.readFile(path.join(logsDir, `${dateStr}.tsv`), 'utf8'));
+    } catch (error) {
+        try {
+            return completedFromLegacy(await fs.readFile(path.join(logsDir, `${dateStr}.log`), 'utf8'));
+        } catch (legacyError) {
+            // 해당 날짜의 로그가 아예 없음
+            return [];
+        }
+    }
 }
 
 // Get completed tasks count for a specific date from TSV log file
 ipcMain.handle('get-completed-tasks-count', async (event, dateStr) => {
-    try {
-        const logData = await fs.readFile(path.join(logsDir, `${dateStr}.tsv`), 'utf8');
-        return countCompletedTsv(logData);
-    } catch (error) {
-        // .tsv가 없으면 v0.2.6 이전에 쌓인 .log 파일을 읽는다 (업그레이드 후 기록 유실 방지)
-        try {
-            const legacyData = await fs.readFile(path.join(logsDir, `${dateStr}.log`), 'utf8');
-            return countCompletedLegacy(legacyData);
-        } catch (legacyError) {
-            // 해당 날짜의 로그가 아예 없음
-            return 0;
-        }
-    }
+    return (await readCompleted(dateStr)).length;
 })
+
+ipcMain.handle('get-completed-tasks', async (event, dateStr) => readCompleted(dateStr))
 
 // Resize window for collapsed mode
 ipcMain.handle('resize-window', async (event, width, height) => {
