@@ -102,6 +102,10 @@ class TaskManager {
         this.currentPage = 1;
         this.tasksPerPage = 10;
         this.defaultNotificationEnabled = localStorage.getItem('defaultNotificationEnabled') !== 'false';
+        // 창이 포커스를 잃었을 때의 투명도. main.js는 이 값을 메모리에만 들고
+        // 있어서, 여기서 저장해 두고 시작할 때 다시 밀어주지 않으면 재시작마다
+        // 1.0으로 돌아간다.
+        this.unfocusedOpacity = this.loadUnfocusedOpacity();
         this.tagPresets = this.loadTagPresets();
         this.actionThrottleMap = new Map(); // 스로틀링을 위한 맵
         this.init();
@@ -160,6 +164,10 @@ class TaskManager {
         const importBtn = document.getElementById('importBtn');
         if (exportBtn) exportBtn.style.display = 'inline-block';
         if (importBtn) importBtn.style.display = 'inline-block';
+
+        // main.js는 투명도를 메모리에만 두므로 시작할 때마다 다시 알려줘야 한다
+        this.updateOpacityControl();
+        if (this.isElectron) window.electronAPI.setUnfocusedOpacity(this.unfocusedOpacity);
     }
 
     updateUIText() {
@@ -631,6 +639,18 @@ class TaskManager {
             this.toggleTaskSelection(box.dataset.taskId, box.checked);
         });
 
+        // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
+        document.getElementById('quickFilters').addEventListener('click', (e) => {
+            const chip = e.target.closest('.quick-chip');
+            if (!chip) return;
+
+            if (chip.hasAttribute('data-quick-all')) {
+                this.clearSearch();
+            } else {
+                this.applyChipFilter(chip.dataset.quick, chip.dataset.quickColumn);
+            }
+        });
+
         // Confirmation form submission
         document.getElementById('confirmForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -659,14 +679,9 @@ class TaskManager {
         // 형식을 보장하고, 값은 'T'로 구분된다. 예전 검증은 텍스트 입력 시절의
         // 공백 구분 형식을 기대해서 정상 입력에도 항상 빨간 테두리를 씌웠다.
 
-        // Settings modal opacity slider (Electron only)
-        if (this.isElectron) {
-            document.getElementById('settingsOpacitySlider').addEventListener('input', (e) => {
-                const opacity = parseFloat(e.target.value);
-                document.getElementById('opacityValue').textContent = opacity;
-                window.electronAPI.setUnfocusedOpacity(opacity);
-            });
-        }
+        document.getElementById('settingsOpacitySlider').addEventListener('input', (e) => {
+            this.changeUnfocusedOpacity(parseFloat(e.target.value));
+        });
 
         // Language toggle buttons
         document.querySelectorAll('.lang-btn').forEach(btn => {
@@ -1021,6 +1036,8 @@ class TaskManager {
                 'completeTask': 'Complete Task',
                 'deleteTask': 'Delete Task',
                 'completeDetails': 'Completion notes (optional)',
+                'completedAt': 'Completed at',
+                'showAll': 'All',
                 'deleteReason': 'Reason for deletion (optional)',
                 'confirmComplete': 'Confirm completion',
                 'confirmDelete': 'Confirm deletion',
@@ -1180,6 +1197,8 @@ class TaskManager {
                 'completeTask': '작업 완료',
                 'deleteTask': '작업 삭제',
                 'completeDetails': '완료 메모 (선택사항)',
+                'completedAt': '완료 시각',
+                'showAll': '전체',
                 'deleteReason': '삭제 사유 (선택사항)',
                 'confirmComplete': '완료 확인',
                 'confirmDelete': '삭제 확인',
@@ -1339,6 +1358,8 @@ class TaskManager {
                 'completeTask': '完成任务',
                 'deleteTask': '删除任务',
                 'completeDetails': '完成备注（可选）',
+                'completedAt': '完成时间',
+                'showAll': '全部',
                 'deleteReason': '删除原因（可选）',
                 'confirmComplete': '确认完成',
                 'confirmDelete': '确认删除',
@@ -1498,6 +1519,8 @@ class TaskManager {
                 'completeTask': 'タスク完了',
                 'deleteTask': 'タスク削除',
                 'completeDetails': '完了メモ（オプション）',
+                'completedAt': '完了時刻',
+                'showAll': 'すべて',
                 'deleteReason': '削除理由（オプション）',
                 'confirmComplete': '完了確認',
                 'confirmDelete': '削除確認',
@@ -1657,6 +1680,8 @@ class TaskManager {
                 'completeTask': 'Completar Tarea',
                 'deleteTask': 'Eliminar Tarea',
                 'completeDetails': 'Notas de finalización (opcional)',
+                'completedAt': 'Completado a las',
+                'showAll': 'Todas',
                 'deleteReason': 'Razón para la eliminación (opcional)',
                 'confirmComplete': 'Confirmar finalización',
                 'confirmDelete': 'Confirmar eliminación',
@@ -1897,6 +1922,14 @@ class TaskManager {
             return;
         }
 
+        // 완료와 삭제는 확인 모달을 거친다. 행마다 버튼이 있던 시절에는
+        // completeTask/deleteTask가 모달을 열었는데, 막대로 옮기면서 여기서
+        // doCompleteTask를 직접 부르는 바람에 확인 절차가 통째로 끊겼었다.
+        if (action === 'complete' || action === 'delete') {
+            this.showConfirmModal(action, ids);
+            return;
+        }
+
         // 토글은 선택 전체를 같은 상태로 맞춘다. 각자 뒤집으면 상태가 섞여
         // 있을 때 결과가 뒤죽박죽이 되고, 누르기 전에 무엇이 될지 알 수 없다.
         // 규칙은 "표시된 쪽으로 모은다": 하나라도 표시되지 않은 것이 있으면
@@ -1907,11 +1940,7 @@ class TaskManager {
         const notifyTo = picked.every(t => t.notificationEnabled === false);
 
         for (const task of picked) {
-            if (action === 'complete') {
-                await this.doCompleteTask(task.id, null);
-            } else if (action === 'delete') {
-                await this.doDeleteTask(task.id, null);
-            } else if (action === 'highlight') {
+            if (action === 'highlight') {
                 if (!task.highlighted !== !highlightTo) await this.toggleHighlight(task.id);
             } else if (action === 'notification') {
                 if ((task.notificationEnabled !== false) !== notifyTo) {
@@ -1920,10 +1949,9 @@ class TaskManager {
             }
         }
 
-        // 완료와 삭제는 대상이 목록에서 사라지므로 선택을 비운다. 토글은
-        // 되돌리려면 한 번 더 눌러야 하는데, 여기서 비우면 다시 고르기 전에는
-        // 누를 수가 없어 "한 번 더 눌러도 그대로"로 보인다.
-        if (action === 'complete' || action === 'delete') this.clearSelection();
+        // 선택은 남긴다. 되돌리려면 한 번 더 눌러야 하는데, 여기서 비우면 다시
+        // 고르기 전에는 누를 수가 없어 "한 번 더 눌러도 그대로"로 보인다.
+        // (완료·삭제는 위에서 모달로 빠지고, 확정된 뒤에 선택을 비운다.)
         this.renderTasks();
     }
 
@@ -2109,6 +2137,27 @@ class TaskManager {
         this.renderTasks();
     }
 
+    // 슬라이더 범위(0.3~1) 밖의 값은 무시한다. 0에 가까우면 창이 사실상
+    // 사라져서 되돌릴 방법이 없다.
+    loadUnfocusedOpacity() {
+        const saved = parseFloat(localStorage.getItem('unfocusedOpacity'));
+        return saved >= 0.3 && saved <= 1 ? saved : 1;
+    }
+
+    changeUnfocusedOpacity(opacity) {
+        this.unfocusedOpacity = opacity;
+        localStorage.setItem('unfocusedOpacity', String(opacity));
+        this.updateOpacityControl();
+        if (this.isElectron) window.electronAPI.setUnfocusedOpacity(opacity);
+    }
+
+    updateOpacityControl() {
+        const slider = document.getElementById('settingsOpacitySlider');
+        const value = document.getElementById('opacityValue');
+        if (slider) slider.value = String(this.unfocusedOpacity);
+        if (value) value.textContent = String(this.unfocusedOpacity);
+    }
+
     // 검색 대상 컬럼 목록. 라벨은 표 헤더와 같은 문구를 쓴다.
     updateSearchColumnControl() {
         const select = document.getElementById('searchColumn');
@@ -2145,6 +2194,9 @@ class TaskManager {
     applyChipFilter(value, column) {
         const input = document.getElementById('searchInput');
         if (input) input.value = value;
+        // 값을 코드로 넣으면 input 이벤트가 안 나서 지우기 버튼이 숨은 채였다
+        const clearBtn = document.getElementById('clearSearchBtn');
+        if (clearBtn) clearBtn.style.display = 'block';
 
         this.searchColumn = column || 'all';
         this.updateSearchColumnControl();
@@ -2152,6 +2204,51 @@ class TaskManager {
         this.searchQuery = value.toLowerCase();
         this.currentPage = 1;
         this.renderTasks();
+    }
+
+    // 검색창 아래의 빠른 필터. 표 안의 칩과 같은 일을 하지만, 원하는 칩이 걸린
+    // 행을 먼저 찾아 헤맬 필요가 없다. 지금 목록에 실제로 있는 상태와 태그만
+    // 내보낸다 - 하나도 없는 조건을 눌러 빈 표를 보는 건 의미가 없다.
+    quickFilterOptions() {
+        const active = this.tasks.filter(task => !task.completed);
+        const statuses = new Map();
+        const tags = new Map();
+
+        for (const task of active) {
+            const status = this.getTaskStatus(task);
+            if (!statuses.has(status.text)) {
+                statuses.set(status.text, { value: status.text, column: 'status', kind: status.status });
+            }
+            for (const tag of this.displayTagTexts(task)) {
+                if (!tags.has(tag)) tags.set(tag, { value: tag, column: 'tags', kind: 'tag' });
+            }
+        }
+
+        return [...statuses.values(), ...tags.values()];
+    }
+
+    renderQuickFilters() {
+        const bar = document.getElementById('quickFilters');
+        if (!bar) return;
+
+        // '전체'는 어떤 필터가 걸렸든 늘 첫 칸에 있어야 빠져나올 길이 보인다
+        const cleared = !this.searchQuery;
+        const chips = [
+            `<button type="button" class="quick-chip quick-all${cleared ? ' active' : ''}" data-quick-all>` +
+            `${this.getLocalizedText('showAll')}</button>`
+        ];
+
+        for (const option of this.quickFilterOptions()) {
+            const active = this.searchQuery === option.value.toLowerCase()
+                && this.searchColumn === option.column;
+            chips.push(
+                `<button type="button" class="quick-chip quick-${option.kind}${active ? ' active' : ''}" ` +
+                `data-quick="${option.value}" data-quick-column="${option.column}" ` +
+                `title="${option.value}">${option.value}</button>`
+            );
+        }
+
+        bar.innerHTML = chips.join('');
     }
 
     // 반복 주기를 사람이 읽는 문장으로. 반복이 아니면 빈 문자열.
@@ -2226,8 +2323,9 @@ class TaskManager {
             this.renderMiniCollapsedTasks();
         } else {
             this.renderExpandedTasks();
+            this.renderQuickFilters();
         }
-        
+
         // Always update completion counter
         this.updateCompletionCounter();
         this.updateCollapsedCompletionCounter();
@@ -3130,31 +3228,48 @@ class TaskManager {
         return statisticsData;
     }
 
-    showConfirmModal(action, taskId) {
+    // 완료와 삭제는 되돌릴 수 없어서 한 번 묻는다. 선택한 것 전체에 한 번만
+    // 물어보므로 taskIds는 배열이다. 행마다 묻던 시절의 단일 id를 그대로 두면
+    // 열 개를 지울 때 모달이 열 번 뜬다.
+    showConfirmModal(action, taskIds) {
         const modal = document.getElementById('confirmModal');
         const title = document.getElementById('confirmModalTitle');
         const label = document.getElementById('confirmDetailsLabel');
         const actionBtn = document.getElementById('confirmActionBtn');
         const detailsTextarea = document.getElementById('confirmDetails');
-        
+        const completedGroup = document.getElementById('confirmCompletedAtGroup');
+        const completedInput = document.getElementById('confirmCompletedAt');
+
         this.pendingConfirmAction = action;
-        this.pendingConfirmTaskId = taskId;
-        
+        this.pendingConfirmTaskIds = [...taskIds];
+
+        const count = this.pendingConfirmTaskIds.length;
+        const suffix = count > 1 ? ` (${this.getLocalizedText('selectedCount').replace('{n}', count)})` : '';
+
         if (action === 'complete') {
-            title.textContent = this.getLocalizedText('completeTask');
+            title.textContent = this.getLocalizedText('completeTask') + suffix;
             label.textContent = this.getLocalizedText('completeDetails');
             actionBtn.textContent = this.getLocalizedText('confirmComplete');
             actionBtn.className = 'btn complete-btn';
         } else if (action === 'delete') {
-            title.textContent = this.getLocalizedText('deleteTask');
+            title.textContent = this.getLocalizedText('deleteTask') + suffix;
             label.textContent = this.getLocalizedText('deleteReason');
             actionBtn.textContent = this.getLocalizedText('confirmDelete');
             actionBtn.className = 'btn delete-btn';
         }
-        
+
+        // 완료 시각은 지금으로 채워두되 고칠 수 있게 둔다. 어제 끝낸 일을
+        // 오늘 체크하는 일이 흔하고, 그때 기록이 오늘로 남으면 이력이 어긋난다.
+        completedGroup.style.display = action === 'complete' ? '' : 'none';
+        if (action === 'complete') {
+            document.getElementById('confirmCompletedAtLabel').textContent =
+                this.getLocalizedText('completedAt');
+            completedInput.value = this.formatDateTimeLocal(new Date());
+        }
+
         detailsTextarea.value = '';
         modal.style.display = 'block';
-        
+
         // Focus on textarea
         setTimeout(() => {
             detailsTextarea.focus();
@@ -3165,19 +3280,28 @@ class TaskManager {
         const modal = document.getElementById('confirmModal');
         modal.style.display = 'none';
         this.pendingConfirmAction = null;
-        this.pendingConfirmTaskId = null;
+        this.pendingConfirmTaskIds = [];
     }
 
     async handleConfirmAction() {
         const details = document.getElementById('confirmDetails').value.trim();
-        
+        const ids = this.pendingConfirmTaskIds || [];
+
         if (this.pendingConfirmAction === 'complete') {
-            await this.doCompleteTask(this.pendingConfirmTaskId, details);
+            const typed = document.getElementById('confirmCompletedAt').value.trim();
+            const completedAt = typed ? this.parseInputDateTime(typed) : null;
+            if (typed && !completedAt) {
+                alert(`${this.getLocalizedText('invalidDateFormat')}\n${this.dateFormat}`);
+                return;
+            }
+            for (const id of ids) await this.doCompleteTask(id, details, completedAt);
         } else if (this.pendingConfirmAction === 'delete') {
-            await this.doDeleteTask(this.pendingConfirmTaskId, details);
+            for (const id of ids) await this.doDeleteTask(id, details);
         }
-        
+
         this.hideConfirmModal();
+        this.clearSelection();
+        this.renderTasks();
     }
 
     async saveTask() {
@@ -3292,15 +3416,21 @@ class TaskManager {
     }
 
     async completeTask(taskId) {
-        this.showConfirmModal('complete', taskId);
+        this.showConfirmModal('complete', [taskId]);
     }
 
-    async doCompleteTask(taskId, details) {
+    // completedAt은 저장 형식('YYYY-MM-DD HH:mm')이거나 null(=지금)이다
+    async doCompleteTask(taskId, details, completedAt) {
         const taskIndex = this.tasks.findIndex(t => t.id === taskId);
         if (taskIndex !== -1) {
             const task = this.tasks[taskIndex];
 
-            const logDetails = details ? `${task.content} (completed) ${details}` : `${task.content} (completed)`;
+            // 사용자가 고른 완료 시각은 로그 본문에 남긴다. TIMESTAMP는 어디까지나
+            // "이 조작을 언제 했는가"라서, 소급해 체크한 시각으로 덮으면 안 된다.
+            const parts = [`${task.content} (completed)`];
+            if (completedAt) parts.push(`at ${completedAt}`);
+            if (details) parts.push(details);
+            const logDetails = parts.join(' ');
             // 로그는 완료 상태로 남긴다. 반복이면 태스크 자체는 다음 회차로
             // 넘어가지만, 이번 회차를 해냈다는 기록은 그대로 있어야 한다.
             await this.addLog('COMPLETE', { ...task, completed: true }, logDetails);
@@ -3309,7 +3439,7 @@ class TaskManager {
             // 없애버리면 반복을 다시 볼 방법이 없어진다.
             if (!this.advanceRecurringTask(task)) {
                 task.completed = true;
-                task.completedAt = new Date().toISOString();
+                task.completedAt = completedAt || formatWithPattern(new Date(), STORAGE_FORMAT);
             }
 
             await this.saveTasks();
@@ -3322,7 +3452,7 @@ class TaskManager {
     }
 
     async deleteTask(taskId) {
-        this.showConfirmModal('delete', taskId);
+        this.showConfirmModal('delete', [taskId]);
     }
 
     async doDeleteTask(taskId, details) {
@@ -3354,7 +3484,8 @@ class TaskManager {
             dateFormat: this.dateFormat,
             selectedLanguage: localStorage.getItem('selectedLanguage'),
             darkMode: this.darkMode,
-            defaultNotificationEnabled: this.defaultNotificationEnabled
+            defaultNotificationEnabled: this.defaultNotificationEnabled,
+            unfocusedOpacity: this.unfocusedOpacity
         };
     }
 
@@ -3385,6 +3516,9 @@ class TaskManager {
                 'defaultNotificationEnabled',
                 String(preferences.defaultNotificationEnabled)
             );
+        }
+        if (preferences.unfocusedOpacity >= 0.3 && preferences.unfocusedOpacity <= 1) {
+            this.changeUnfocusedOpacity(preferences.unfocusedOpacity);
         }
 
         this.updateUIText();
@@ -3744,6 +3878,10 @@ class TaskManager {
         if (searchInput && clearBtn) {
             searchInput.value = '';
             this.searchQuery = '';
+            // 대상 컬럼도 되돌린다. 칩을 눌러 '상태'로 좁혀둔 채 검색어만
+            // 비우면, 다음에 친 단어가 조용히 상태 컬럼에서만 찾아진다.
+            this.searchColumn = 'all';
+            this.updateSearchColumnControl();
             this.currentPage = 1; // Reset to first page
             clearBtn.style.display = 'none';
             this.renderTasks();

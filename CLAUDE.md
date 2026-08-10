@@ -63,6 +63,7 @@ This is the Todoist model, not the calendar model. It was chosen deliberately:
 - **Delete**: Removes without completing. Deleting a repeating row deletes its rule too
 - **Bulk**: Edit and reorder need exactly one selection; the rest apply to all selected
 - **Bulk toggles gather onto the marked state.** Highlight and notification never flip each task independently — a mixed selection would then land somewhere nobody could predict before pressing. If any selected task is *not* marked, all become marked; only when every one is already marked does the press undo it. Marked means highlighted for one and muted for the other, so the two look opposite but follow the same rule: go to whichever state the user deliberately sets. The selection survives a toggle (unlike complete and delete, whose rows leave the list) — otherwise undoing would need the rows picked again, and the second press looked like a no-op. Neither toggle is throttled: with row buttons gone there are no duplicate events to absorb, and a throttle only swallows the deliberate press-and-undo
+- **Complete and delete ask first, once for the whole selection.** `showConfirmModal(action, taskIds)` takes an array — asking per row would open ten modals to delete ten rows. Moving the actions to the bar once cut the modal off entirely: `runBulkAction` called `doCompleteTask` directly and nothing ever asked. The completion time is editable and defaults to now, because yesterday's work gets ticked off today; it lands in `completedAt` and in the log body, never in the log `TIMESTAMP`, which records when the action was taken
 - **Target time is optional.** A task saved without one is *ongoing*: never overdue or due soon, raises no notifications, and cannot carry a repeat rule
 
 ### 5. Comprehensive Logging System
@@ -131,6 +132,8 @@ This is a complete Electron application with the following structure:
 - **Date/time picker**: our own, because `datetime-local` cannot follow a custom format. It has a confirm button, unlike the native one
 - **Reminders**: one `LEAD_MINUTES` list drives both the notifications and the "due soon" badge, so they cannot drift apart. Not user-configurable — the earlier settings and per-task fields were removed as unnecessary
 - **Chips filter on click**: tags, status and repeat cadence. No hidden keyword to guess, and it works in any UI language
+- **Quick filters** sit under the search box and do the same job from a fixed place, so you need not hunt for a row carrying the chip you want. Only statuses and tags actually present are listed — a filter that matches nothing is a button that empties the table. `All` clears the search *and* resets the search column; leaving the column narrowed meant the next word typed was quietly searched in that one column
+- **Unfocused opacity** lives in `localStorage` and is pushed to main on every start-up. `main.js` keeps it in a plain variable, so without that it reset to 1.0 on every launch — and it was missing from backups for the same reason
 - **Tag System**: Colored tag presets with GitHub-style color schemes
 - **Daily completion counter**: Animated counter with confetti celebrations
 - **Internationalization**: Support for English, Korean, Chinese, Japanese, Spanish

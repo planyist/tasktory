@@ -736,26 +736,57 @@ describe('multi-select', () => {
         expect(document.getElementById('selectAllTasks').indeterminate).toBe(true)
     })
 
-    test('completing in bulk applies to every selected task', async () => {
+    // Complete and delete cannot be undone, so they ask first. Moving the
+    // actions to the bar once bypassed the modal entirely: runBulkAction
+    // called doCompleteTask directly and nothing ever asked.
+    const confirmOpen = () =>
+        document.getElementById('confirmModal').style.display === 'block'
+    const submitConfirm = async () => {
+        document
+            .getElementById('confirmForm')
+            .dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true }))
+        await settle()
+    }
+
+    test('completing in bulk asks once, then applies to every selected task', async () => {
         const manager = await boot([task('a'), task('b'), task('c')])
         pick('a')
         pick('c')
 
         await barBtn('complete').click()
         await settle()
+        expect(confirmOpen()).toBe(true)
+        expect(manager.tasks.every((t) => !t.completed)).toBe(true)
+
+        await submitConfirm()
 
         expect(manager.tasks.filter((t) => t.completed).map((t) => t.id)).toEqual(['a', 'c'])
         expect(manager.tasks.find((t) => t.id === 'b').completed).toBe(false)
     })
 
-    test('deleting in bulk removes only the selected rows', async () => {
+    test('deleting in bulk asks once, then removes only the selected rows', async () => {
         const manager = await boot([task('a'), task('b'), task('c')])
         pick('b')
 
         await barBtn('delete').click()
         await settle()
+        expect(confirmOpen()).toBe(true)
+
+        await submitConfirm()
 
         expect(manager.tasks.map((t) => t.id)).toEqual(['a', 'c'])
+    })
+
+    test('cancelling the confirmation leaves everything alone', async () => {
+        const manager = await boot([task('a'), task('b')])
+        pick('a')
+
+        await barBtn('delete').click()
+        document.getElementById('confirmCancelBtn').click()
+        await settle()
+
+        expect(manager.tasks.map((t) => t.id)).toEqual(['a', 'b'])
+        expect(manager.selectedTaskIds.size).toBe(1)
     })
 
     test('the selection clears after completing or deleting', async () => {
@@ -763,10 +794,37 @@ describe('multi-select', () => {
         pick('a')
 
         await barBtn('complete').click()
-        await settle()
+        await submitConfirm()
 
         expect(manager.selectedTaskIds.size).toBe(0)
         expect(barBtn('complete').disabled).toBe(true)
+    })
+
+    // Yesterday's work gets ticked off today all the time. Recording it as
+    // today would put the history a day out.
+    test('the completion time defaults to now but can be backdated', async () => {
+        const manager = await boot([task('a')])
+        pick('a')
+
+        await barBtn('complete').click()
+        await settle()
+        const field = document.getElementById('confirmCompletedAt')
+        expect(field.value).toBe(manager.formatDateTimeLocal(new Date()))
+
+        field.value = '2026-08-01 09:00'
+        await submitConfirm()
+
+        expect(manager.tasks[0].completedAt).toBe('2026-08-01 09:00')
+    })
+
+    test('the completion time is hidden when deleting', async () => {
+        await boot([task('a')])
+        pick('a')
+
+        await barBtn('delete').click()
+        await settle()
+
+        expect(document.getElementById('confirmCompletedAtGroup').style.display).toBe('none')
     })
 
     // Clearing after a toggle meant undoing it needed the rows picked again,
@@ -1422,5 +1480,128 @@ describe('selecting by clicking the row', () => {
         document.querySelector('#tasksBody .empty-message').click()
 
         expect(document.querySelectorAll('.task-select')).toHaveLength(0)
+    })
+})
+
+// A chip only reaches you once you have found a row carrying it. The quick
+// filters put the same handles in a fixed place above the table.
+describe('quick filters', () => {
+    const chips = () =>
+        Array.from(document.querySelectorAll('#quickFilters .quick-chip')).map(
+            (c) => c.textContent
+        )
+    const chip = (text) =>
+        Array.from(document.querySelectorAll('#quickFilters .quick-chip')).find(
+            (c) => c.textContent === text
+        )
+
+    test('offers the statuses and tags actually present, plus an escape hatch', async () => {
+        await boot([
+            task('a', { tags: '#meeting' }),
+            task('b', { tags: '#meeting #urgent' })
+        ])
+
+        expect(chips()[0]).toBe('All')
+        expect(chips()).toContain('#meeting')
+        expect(chips()).toContain('#urgent')
+        // Listed once however many rows carry it.
+        expect(chips().filter((c) => c === '#meeting')).toHaveLength(1)
+    })
+
+    // Offering a filter that matches nothing is just a button that empties
+    // the table.
+    test('lists nothing for a status no task is in', async () => {
+        await boot([task('a', { tags: '#meeting' })])
+
+        expect(chips()).not.toContain('Completed')
+    })
+
+    test('a chip filters, and the column follows it', async () => {
+        const manager = await boot([
+            task('a', { tags: '#meeting' }),
+            task('b', { tags: '#urgent' })
+        ])
+
+        chip('#meeting').click()
+
+        expect(manager.searchQuery).toBe('#meeting')
+        expect(manager.searchColumn).toBe('tags')
+        expect(document.getElementById('searchInput').value).toBe('#meeting')
+        expect(rows()).toHaveLength(1)
+    })
+
+    test('the active chip is marked so the current filter is visible', async () => {
+        await boot([task('a', { tags: '#meeting' }), task('b', { tags: '#urgent' })])
+
+        chip('#meeting').click()
+
+        expect(chip('#meeting').className).toContain('active')
+        expect(chip('All').className).not.toContain('active')
+    })
+
+    test('All clears the search and goes back to every row', async () => {
+        const manager = await boot([
+            task('a', { tags: '#meeting' }),
+            task('b', { tags: '#urgent' })
+        ])
+        chip('#meeting').click()
+
+        chip('All').click()
+
+        expect(manager.searchQuery).toBe('')
+        expect(rows()).toHaveLength(2)
+    })
+
+    // Leaving the column narrowed after a clear meant the next word typed was
+    // quietly searched in that one column only.
+    test('clearing resets the column back to all', async () => {
+        const manager = await boot([task('a', { tags: '#meeting' })])
+        chip('#meeting').click()
+
+        chip('All').click()
+
+        expect(manager.searchColumn).toBe('all')
+        expect(document.getElementById('searchColumn').value).toBe('all')
+    })
+})
+
+// main.js holds the opacity in a plain variable, so nothing survived a restart
+// unless the renderer stores it and pushes it back on start-up.
+describe('unfocused opacity', () => {
+    test('is restored and re-applied on start-up', async () => {
+        localStorage.setItem('unfocusedOpacity', '0.5')
+
+        const manager = await boot([task('a')])
+
+        expect(manager.unfocusedOpacity).toBe(0.5)
+        expect(electronAPI.setUnfocusedOpacity).toHaveBeenCalledWith(0.5)
+        expect(document.getElementById('settingsOpacitySlider').value).toBe('0.5')
+    })
+
+    test('moving the slider stores the value', async () => {
+        const manager = await boot([task('a')])
+        const slider = document.getElementById('settingsOpacitySlider')
+
+        slider.value = '0.7'
+        slider.dispatchEvent(new window.Event('input', { bubbles: true }))
+
+        expect(localStorage.getItem('unfocusedOpacity')).toBe('0.7')
+        expect(manager.unfocusedOpacity).toBe(0.7)
+    })
+
+    // A value near zero makes the window invisible with no way back.
+    test('ignores a stored value outside the slider range', async () => {
+        localStorage.setItem('unfocusedOpacity', '0')
+
+        const manager = await boot([task('a')])
+
+        expect(manager.unfocusedOpacity).toBe(1)
+    })
+
+    test('travels in the backup', async () => {
+        const manager = await boot([task('a')])
+        manager.changeUnfocusedOpacity(0.6)
+
+        expect(manager.collectPreferences().unfocusedOpacity).toBe(0.6)
     })
 })
