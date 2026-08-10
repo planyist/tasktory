@@ -274,6 +274,10 @@ body.collapsed-mode-body {
 .container.collapsed-mode .table-controls,
 .container.collapsed-mode #taskActionBar,
 .container.collapsed-mode #paginationContainer,
+.container.collapsed-mode #quickFilters,
+/* 150px에는 7열 격자가 안 들어간다. 접힘 달력은 오늘 하루를 미니 목록 자리에
+   세워서 보여주므로 격자 자체는 숨긴다. */
+.container.collapsed-mode #calendarView,
 /* 접힘 상태에서는 미니 목록만 쓴다. 표 패널을 남겨두면 flex 열에서 자리를
    차지해 내용이 넘치고 스크롤바가 생긴다. */
 .container.collapsed-mode .table-container {
@@ -1461,6 +1465,179 @@ body.dark-mode .collapsed-task-list li.standing {
     border: 1px solid #a3cfbb;
 }
 
+/* ---- 달력 보기 --------------------------------------------------------
+   보기 전용이라 눌러야 할 것이 칸 안에 없다. 그래서 커서도, 호버 강조도
+   두지 않는다 - 눌러도 아무 일이 없는데 눌릴 것처럼 보이면 안 된다. */
+.calendar-view {
+    display: flex;
+    flex-direction: column;
+    /* 표와 마찬가지로 남는 높이를 전부 쓴다. min-height가 없으면 flex 자식이
+       내용만큼만 차지하고 아래가 비어버린다. */
+    flex: 1;
+    min-height: 0;
+}
+
+.calendar-header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 2px 8px;
+}
+
+.calendar-label {
+    font-size: 14px;
+    font-weight: 700;
+    color: #2c3e50;
+    min-width: 90px;
+    text-align: center;
+}
+
+.calendar-nav,
+.calendar-today {
+    height: var(--control-height);
+    padding: 0 10px;
+    border: 1px solid #d8dee6;
+    border-radius: 4px;
+    background-color: #ffffff;
+    color: #4a5568;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.calendar-nav:hover,
+.calendar-today:hover {
+    background-color: #f1f4f8;
+}
+
+.calendar-weekdays,
+.calendar-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 1px;
+}
+
+.cal-weekday {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 700;
+    color: #6b7280;
+    padding: 4px 0;
+}
+
+.calendar-grid {
+    flex: 1;
+    min-height: 0;
+    background-color: #d8dee6;
+    border: 1px solid #d8dee6;
+    /* 6주 격자가 창보다 길어지면 안쪽에서만 스크롤한다. 최소 높이를 크게 잡으면
+       기본 500px 창에서 셋째 주부터 잘려서, 달력을 켠 목적인 "한눈에"가 사라진다. */
+    overflow-y: auto;
+    grid-auto-rows: minmax(60px, 1fr);
+}
+
+.cal-day {
+    background-color: #ffffff;
+    padding: 3px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* 이번 달이 아닌 날. 지우지 않고 흐리게만 둔다 - 주의 시작과 끝이 보여야
+   달 경계에 걸친 일정이 어디로 이어지는지 알 수 있다. */
+.cal-day.outside {
+    background-color: #f4f6f9;
+}
+
+.cal-day.outside .cal-date {
+    color: #b0b7c3;
+}
+
+.cal-day.today .cal-date {
+    background-color: #3498db;
+    color: #ffffff;
+    border-radius: 50%;
+}
+
+.cal-date {
+    font-size: 11px;
+    font-weight: 700;
+    color: #4a5568;
+    width: 18px;
+    height: 18px;
+    line-height: 18px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+/* 하루에 열 건이 몰려도 그 줄만 스크롤한다. 잘라내면 "다 봤다"고 오해한다. */
+.cal-day-body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+.cal-chip {
+    display: flex;
+    gap: 3px;
+    align-items: baseline;
+    font-size: 10px;
+    line-height: 1.4;
+    padding: 1px 3px;
+    border-radius: 2px;
+    border-left: 2px solid transparent;
+    overflow: hidden;
+}
+
+.cal-chip-time {
+    font-weight: 700;
+    flex-shrink: 0;
+    font-variant-numeric: tabular-nums;
+}
+
+.cal-chip-text {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* 상태색은 표의 배지, 접힘 줄과 같은 색을 쓴다. 같은 상태가 화면마다 다른
+   색이면 색으로 상태를 읽는 습관이 안 붙는다. */
+.cal-chip.pending { background-color: #fff3cd; color: #664d03; border-left-color: #d0a800; }
+.cal-chip.inprogress { background-color: #e7f3ff; color: #0066cc; border-left-color: #2196f3; }
+.cal-chip.urgent { background-color: #cce5ff; color: #003d6b; border-left-color: #0d6efd; }
+.cal-chip.overdue { background-color: #f8d7da; color: #58151c; border-left-color: #dc3545; }
+.cal-chip.standing { background-color: #e7e3f5; color: #4b3f78; border-left-color: #7c6bb5; }
+.cal-chip.completed { background-color: #d4edda; color: #0f5132; border-left-color: #198754; }
+
+.cal-chip.highlighted {
+    background-color: #fff2e6;
+    color: #bf6900;
+    border-left-color: #fd7e14;
+    font-weight: 700;
+}
+
+/* 접힘(150px)의 날짜 머리. 격자가 안 들어가는 폭이라 하루만 세운다. */
+.collapsed-cal-date {
+    font-size: 11px;
+    font-weight: 700;
+    text-align: center;
+    color: #4a5568;
+    padding: 2px 0 4px;
+}
+
+body:not(.calendar-mode) .collapsed-cal-date {
+    display: none;
+}
+
 /* ---- 빠른 필터 --------------------------------------------------------
    표 안의 칩과 같은 일을 하지만 늘 같은 자리에 있다. 칩 색은 표의 상태
    배지와 맞춰서, 여기서 누른 것과 표에 뜬 것이 같은 물건임을 색으로 잇는다. */
@@ -2095,6 +2272,48 @@ body.dark-mode .tag {
     border: 1px solid #2a4a6a;
     font-weight: 600;
 }
+
+/* 달력도 다크에서 표와 같은 색 체계를 따른다 */
+body.dark-mode .calendar-label { color: #e0e0e0; }
+
+body.dark-mode .calendar-nav,
+body.dark-mode .calendar-today {
+    background-color: #3a3f46;
+    border-color: #4a5058;
+    color: #cbd5e0;
+}
+
+body.dark-mode .calendar-nav:hover,
+body.dark-mode .calendar-today:hover {
+    background-color: #474d55;
+}
+
+body.dark-mode .cal-weekday { color: #9aa5b1; }
+
+body.dark-mode .calendar-grid {
+    background-color: #444;
+    border-color: #444;
+}
+
+body.dark-mode .cal-day { background-color: #2d2d2d; }
+body.dark-mode .cal-day.outside { background-color: #252525; }
+body.dark-mode .cal-day.outside .cal-date { color: #6b7280; }
+body.dark-mode .cal-date { color: #cbd5e0; }
+
+body.dark-mode .cal-chip.pending { background-color: #4a3f1a; color: #ffd54f; border-left-color: #ffc107; }
+body.dark-mode .cal-chip.inprogress { background-color: #1a3550; color: #64b5f6; border-left-color: #2196f3; }
+body.dark-mode .cal-chip.urgent { background-color: #1e4060; color: #90caf9; border-left-color: #42a5f5; }
+body.dark-mode .cal-chip.overdue { background-color: #4a1f24; color: #ef9a9a; border-left-color: #e57373; }
+body.dark-mode .cal-chip.standing { background-color: #35304a; color: #c4b5fd; border-left-color: #7c6bb5; }
+body.dark-mode .cal-chip.completed { background-color: #1e3a28; color: #81c784; border-left-color: #4caf50; }
+
+body.dark-mode .cal-chip.highlighted {
+    background-color: #4a3a2a;
+    color: #fd7e14;
+    border-left-color: #fd7e14;
+}
+
+body.dark-mode .collapsed-cal-date { color: #cbd5e0; }
 
 /* 빠른 필터도 다크에서 상태 배지와 같은 색을 쓴다 */
 body.dark-mode .quick-chip {

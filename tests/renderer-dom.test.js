@@ -1605,3 +1605,226 @@ describe('unfocused opacity', () => {
         expect(manager.collectPreferences().unfocusedOpacity).toBe(0.6)
     })
 })
+
+// A list answers "what is there"; a calendar answers "when does it pile up".
+// View-only on purpose - nothing in a cell is clickable.
+describe('calendar view', () => {
+    const at = (day, time) => `2026-08-${String(day).padStart(2, '0')} ${time}`
+    const cells = () => Array.from(document.querySelectorAll('#calGrid .cal-day'))
+    const cellFor = (day) =>
+        cells().find(
+            (c) =>
+                c.querySelector('.cal-date').textContent === String(day) &&
+                !c.classList.contains('outside')
+        )
+    const chipsIn = (day) =>
+        Array.from(cellFor(day).querySelectorAll('.cal-chip')).map((c) => c.textContent)
+
+    const openCalendar = async (tasks) => {
+        const manager = await boot(tasks)
+        manager.calendarMonth = new Date(2026, 7, 1)
+        manager.viewMode = 'calendar'
+        manager.applyViewMode()
+        manager.renderTasks()
+        return manager
+    }
+
+    test('hides the table, the action bar and pagination', async () => {
+        await openCalendar([task('a')])
+
+        expect(document.getElementById('calendarView').style.display).not.toBe('none')
+        expect(document.querySelector('.table-container').style.display).toBe('none')
+        expect(document.getElementById('taskActionBar').style.display).toBe('none')
+        expect(document.getElementById('paginationContainer').style.display).toBe('none')
+    })
+
+    test('lays a task on its own day', async () => {
+        await openCalendar([
+            task('a', { startDateTime: at(12, '09:00'), targetDateTime: at(12, '18:00') })
+        ])
+
+        expect(chipsIn(12)).toEqual(['09:00task a'])
+        expect(chipsIn(13)).toEqual([])
+    })
+
+    // Something started on the 12th and due on the 14th is work in hand on the
+    // 13th too - showing it only on its first day hides that.
+    test('spans a task across every day it covers', async () => {
+        await openCalendar([
+            task('a', { startDateTime: at(12, '09:00'), targetDateTime: at(14, '18:00') })
+        ])
+
+        expect(chipsIn(12)).toHaveLength(1)
+        expect(chipsIn(13)).toHaveLength(1)
+        expect(chipsIn(14)).toHaveLength(1)
+        expect(chipsIn(15)).toHaveLength(0)
+    })
+
+    test('orders a day by start time', async () => {
+        await openCalendar([
+            task('late', { startDateTime: at(12, '15:00'), targetDateTime: at(12, '16:00') }),
+            task('early', { startDateTime: at(12, '09:00'), targetDateTime: at(12, '10:00') })
+        ])
+
+        expect(chipsIn(12)).toEqual(['09:00task early', '15:00task late'])
+    })
+
+    // A task with no target has no length to draw. It goes at the top of the
+    // day with no time, the way an all-day entry does.
+    test('puts an ongoing task first and without a time', async () => {
+        await openCalendar([
+            task('timed', { startDateTime: at(12, '09:00'), targetDateTime: at(12, '10:00') }),
+            task('ongoing', { startDateTime: at(12, '14:00'), targetDateTime: '' })
+        ])
+
+        expect(chipsIn(12)).toEqual(['task ongoing', '09:00task timed'])
+    })
+
+    test('carries the same status class the table and the strip use', async () => {
+        const manager = await openCalendar([
+            task('a', { startDateTime: at(12, '09:00'), targetDateTime: at(12, '18:00') })
+        ])
+
+        const chip = cellFor(12).querySelector('.cal-chip')
+        expect(chip.className).toContain(manager.getTaskStatus(manager.tasks[0]).status)
+    })
+
+    test('marks a highlighted task instead of its status', async () => {
+        await openCalendar([
+            task('a', {
+                highlighted: true,
+                startDateTime: at(12, '09:00'),
+                targetDateTime: at(12, '18:00')
+            })
+        ])
+
+        expect(cellFor(12).querySelector('.cal-chip').className).toContain('highlighted')
+    })
+
+    test('marks today and greys the days outside the month', async () => {
+        await openCalendar([task('a')])
+
+        expect(document.querySelectorAll('#calGrid .cal-day.outside').length).toBeGreaterThan(0)
+        // August 2026 opens on a Saturday, so a Monday-first grid starts on 27 July.
+        expect(cells()[0].querySelector('.cal-date').textContent).toBe('27')
+    })
+
+    test('the arrows move a month at a time', async () => {
+        const manager = await openCalendar([task('a')])
+
+        document.getElementById('calNext').click()
+        expect(document.getElementById('calLabel').textContent).toBe('2026-09')
+
+        document.getElementById('calPrev').click()
+        document.getElementById('calPrev').click()
+        expect(manager.calendarMonth.getMonth()).toBe(6)
+    })
+
+    test('the search still narrows what the calendar shows', async () => {
+        const manager = await openCalendar([
+            task('a', {
+                content: 'buy milk',
+                startDateTime: at(12, '09:00'),
+                targetDateTime: at(12, '10:00')
+            }),
+            task('b', {
+                content: 'write report',
+                startDateTime: at(12, '11:00'),
+                targetDateTime: at(12, '12:00')
+            })
+        ])
+
+        manager.searchQuery = 'milk'
+        manager.renderTasks()
+
+        expect(chipsIn(12)).toEqual(['09:00buy milk'])
+    })
+
+    // The cells are assembled as an HTML string, so a task titled with a tag
+    // would otherwise break the grid open.
+    test('escapes task content', async () => {
+        await openCalendar([
+            task('a', {
+                content: '<b>ship</b>',
+                startDateTime: at(12, '09:00'),
+                targetDateTime: at(12, '10:00')
+            })
+        ])
+
+        expect(cellFor(12).querySelector('.cal-chip b')).toBeNull()
+        expect(chipsIn(12)).toEqual(['09:00<b>ship</b>'])
+    })
+
+    test('nothing in a cell is clickable', async () => {
+        const manager = await openCalendar([
+            task('a', { startDateTime: at(12, '09:00'), targetDateTime: at(12, '10:00') })
+        ])
+        jest.spyOn(manager, 'showModal').mockImplementation(() => {})
+
+        cellFor(12).querySelector('.cal-chip').click()
+
+        expect(manager.showModal).not.toHaveBeenCalled()
+        expect(manager.selectedTaskIds.size).toBe(0)
+    })
+
+    test('the choice survives a restart', async () => {
+        localStorage.setItem('viewMode', 'calendar')
+
+        const manager = await boot([task('a')])
+
+        expect(manager.viewMode).toBe('calendar')
+        expect(document.getElementById('calendarView').style.display).not.toBe('none')
+    })
+
+    // 150px cannot hold seven columns, so the same idea narrows to one day
+    // stood up in time order - still a calendar, not the task list.
+    describe('collapsed', () => {
+        const items = () => Array.from(document.querySelectorAll('#collapsedMiniTasksBody li'))
+
+        const openCollapsed = async (tasks) => {
+            const manager = await boot(tasks)
+            manager.viewMode = 'calendar'
+            manager.isCollapsed = true
+            manager.applyViewMode()
+            manager.renderTasks()
+            return manager
+        }
+
+        const todayAt = (time) => {
+            const now = new Date()
+            const month = String(now.getMonth() + 1).padStart(2, '0')
+            const day = String(now.getDate()).padStart(2, '0')
+            return `${now.getFullYear()}-${month}-${day} ${time}`
+        }
+
+        test('shows only today, in time order, with the time in front', async () => {
+            await openCollapsed([
+                task('later', { startDateTime: todayAt('15:00'), targetDateTime: todayAt('16:00') }),
+                task('sooner', { startDateTime: todayAt('09:00'), targetDateTime: todayAt('10:00') }),
+                task('other', { startDateTime: at(1, '09:00'), targetDateTime: at(1, '10:00') })
+            ])
+
+            expect(items().map((li) => li.querySelector('.mini-index').textContent)).toEqual([
+                '09:00',
+                '15:00'
+            ])
+        })
+
+        test('keeps the grid out of the strip', async () => {
+            await openCollapsed([task('a', { startDateTime: todayAt('09:00') })])
+
+            expect(document.getElementById('calendarView').style.display).toBe('none')
+        })
+
+        // Sizing the strip off every active task left a long empty tail, since
+        // only today's rows are drawn.
+        test('sizes the window to what it actually draws', async () => {
+            const manager = await openCollapsed([
+                task('today', { startDateTime: todayAt('09:00'), targetDateTime: todayAt('10:00') }),
+                task('next-month', { startDateTime: at(1, '09:00'), targetDateTime: at(1, '10:00') })
+            ])
+
+            expect(manager.collapsedRowCount()).toBe(2) // one row plus the date header
+        })
+    })
+})

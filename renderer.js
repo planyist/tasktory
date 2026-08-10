@@ -106,6 +106,9 @@ class TaskManager {
         // 있어서, 여기서 저장해 두고 시작할 때 다시 밀어주지 않으면 재시작마다
         // 1.0으로 돌아간다.
         this.unfocusedOpacity = this.loadUnfocusedOpacity();
+        // 'list' | 'calendar'. 목록은 무엇이 있는지, 달력은 언제 몰리는지에 강하다.
+        this.viewMode = localStorage.getItem('viewMode') === 'calendar' ? 'calendar' : 'list';
+        this.calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         this.tagPresets = this.loadTagPresets();
         this.actionThrottleMap = new Map(); // 스로틀링을 위한 맵
         this.init();
@@ -145,6 +148,7 @@ class TaskManager {
         await this.loadTasks();
         await this.loadRules();
         await this.ensureRuleRows();
+        this.applyViewMode();
         this.renderTasks();
         this.updateCompletionCounter();
         this.updateCompletionCounterText();
@@ -639,6 +643,16 @@ class TaskManager {
             this.toggleTaskSelection(box.dataset.taskId, box.checked);
         });
 
+        // 달력 보기
+        document.getElementById('viewModeBtn').addEventListener('click', () => this.toggleViewMode());
+        document.getElementById('calPrev').addEventListener('click', () => this.moveCalendarMonth(-1));
+        document.getElementById('calNext').addEventListener('click', () => this.moveCalendarMonth(1));
+        document.getElementById('calToday').addEventListener('click', () => {
+            const now = new Date();
+            this.calendarMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            this.renderTasks();
+        });
+
         // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
         document.getElementById('quickFilters').addEventListener('click', (e) => {
             const chip = e.target.closest('.quick-chip');
@@ -1038,6 +1052,10 @@ class TaskManager {
                 'completeDetails': 'Completion notes (optional)',
                 'completedAt': 'Completed at',
                 'showAll': 'All',
+                'calendarView': 'Calendar view',
+                'listView': 'List view',
+                'today': 'Today',
+                'weekdayNames': 'Mon,Tue,Wed,Thu,Fri,Sat,Sun',
                 'deleteReason': 'Reason for deletion (optional)',
                 'confirmComplete': 'Confirm completion',
                 'confirmDelete': 'Confirm deletion',
@@ -1199,6 +1217,10 @@ class TaskManager {
                 'completeDetails': '완료 메모 (선택사항)',
                 'completedAt': '완료 시각',
                 'showAll': '전체',
+                'calendarView': '달력 보기',
+                'listView': '목록 보기',
+                'today': '오늘',
+                'weekdayNames': '월,화,수,목,금,토,일',
                 'deleteReason': '삭제 사유 (선택사항)',
                 'confirmComplete': '완료 확인',
                 'confirmDelete': '삭제 확인',
@@ -1360,6 +1382,10 @@ class TaskManager {
                 'completeDetails': '完成备注（可选）',
                 'completedAt': '完成时间',
                 'showAll': '全部',
+                'calendarView': '日历视图',
+                'listView': '列表视图',
+                'today': '今天',
+                'weekdayNames': '一,二,三,四,五,六,日',
                 'deleteReason': '删除原因（可选）',
                 'confirmComplete': '确认完成',
                 'confirmDelete': '确认删除',
@@ -1521,6 +1547,10 @@ class TaskManager {
                 'completeDetails': '完了メモ（オプション）',
                 'completedAt': '完了時刻',
                 'showAll': 'すべて',
+                'calendarView': 'カレンダー表示',
+                'listView': 'リスト表示',
+                'today': '今日',
+                'weekdayNames': '月,火,水,木,金,土,日',
                 'deleteReason': '削除理由（オプション）',
                 'confirmComplete': '完了確認',
                 'confirmDelete': '削除確認',
@@ -1682,6 +1712,10 @@ class TaskManager {
                 'completeDetails': 'Notas de finalización (opcional)',
                 'completedAt': 'Completado a las',
                 'showAll': 'Todas',
+                'calendarView': 'Vista de calendario',
+                'listView': 'Vista de lista',
+                'today': 'Hoy',
+                'weekdayNames': 'Lun,Mar,Mié,Jue,Vie,Sáb,Dom',
                 'deleteReason': 'Razón para la eliminación (opcional)',
                 'confirmComplete': 'Confirmar finalización',
                 'confirmDelete': 'Confirmar eliminación',
@@ -2206,6 +2240,204 @@ class TaskManager {
         this.renderTasks();
     }
 
+    // ---- 달력 보기 ---------------------------------------------------------
+    // 목록은 "무엇이 있는가"에 강하고 달력은 "언제 몰려 있는가"에 강하다.
+    // 보기 전용이다: 선택도 편집도 없다. 좁은 칸에 클릭 대상을 채우면 잘못
+    // 누르기 쉽고, 어차피 목록으로 돌아가면 다 할 수 있다.
+
+    // 달력 칸은 문자열로 조립한다. 작업 내용에 '<'가 들어가면 격자가 깨지므로
+    // 넣기 전에 막는다.
+    escapeHtml(text) {
+        return String(text).replace(/[&<>"]/g, ch =>
+            ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[ch]);
+    }
+
+    // 하루 단위 키. 파일 이름과 마찬가지로 로컬 날짜다.
+    dayKey(date) {
+        return formatWithPattern(date, 'YYYY-MM-DD');
+    }
+
+    // 날짜별 작업 묶음. 여러 날에 걸친 작업은 걸친 날마다 나온다 - 8일에
+    // 시작해 12일이 마감이면 그 닷새 내내 "하고 있는 일"이기 때문이다.
+    tasksByDay(tasks) {
+        const byDay = new Map();
+
+        for (const task of tasks) {
+            const start = new Date(task.startDateTime);
+            if (isNaN(start.getTime())) continue;
+
+            // 마감이 없는 상시 업무는 길이가 없다. 시작한 날 하루에만 둔다.
+            const end = task.targetDateTime ? new Date(task.targetDateTime) : start;
+            const last = isNaN(end.getTime()) ? start : end;
+
+            const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+            const stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
+
+            while (cursor <= stop) {
+                const key = this.dayKey(cursor);
+                if (!byDay.has(key)) byDay.set(key, []);
+                byDay.get(key).push(task);
+                cursor.setDate(cursor.getDate() + 1);
+            }
+        }
+
+        // 칸 안에서는 시간순. 마감 없는 상시 업무는 시각이 없으니 맨 위로 올린다
+        // (구글 캘린더의 종일 줄과 같은 자리).
+        for (const list of byDay.values()) {
+            list.sort((a, b) => {
+                if (!a.targetDateTime !== !b.targetDateTime) return a.targetDateTime ? 1 : -1;
+                return String(a.startDateTime).localeCompare(String(b.startDateTime));
+            });
+        }
+
+        return byDay;
+    }
+
+    // 칸 안의 한 줄. 시각 + 내용, 배경은 상태색.
+    calendarChip(task) {
+        const status = this.getTaskStatus(task);
+        const time = task.targetDateTime
+            ? formatWithPattern(new Date(task.startDateTime), 'HH:mm')
+            : '';
+        const title = this.escapeHtml(task.content);
+        const text = this.escapeHtml(task.content.split('\n')[0].replace(/^\s*\d+\s*[.)]\s*/, ''));
+        const marks = task.highlighted ? ' highlighted' : '';
+
+        return `<div class="cal-chip ${status.status}${marks}" title="${title}">` +
+            (time ? `<span class="cal-chip-time">${time}</span>` : '') +
+            `<span class="cal-chip-text">${text}</span></div>`;
+    }
+
+    moveCalendarMonth(delta) {
+        this.calendarMonth = new Date(
+            this.calendarMonth.getFullYear(),
+            this.calendarMonth.getMonth() + delta,
+            1
+        );
+        this.renderTasks();
+    }
+
+    renderCalendar() {
+        const grid = document.getElementById('calGrid');
+        const label = document.getElementById('calLabel');
+        const weekdays = document.getElementById('calWeekdays');
+        if (!grid) return;
+
+        label.textContent = formatWithPattern(this.calendarMonth, 'YYYY-MM');
+        document.getElementById('calToday').textContent = this.getLocalizedText('today');
+
+        const names = this.getLocalizedText('weekdayNames').split(',');
+        weekdays.innerHTML = names.map(n => `<div class="cal-weekday">${n}</div>`).join('');
+
+        const byDay = this.tasksByDay(this.filteredActiveTasks());
+        const todayKey = this.dayKey(new Date());
+        const month = this.calendarMonth.getMonth();
+
+        // 월요일 시작. 첫 칸은 1일이 속한 주의 월요일이다.
+        const first = new Date(this.calendarMonth);
+        const cursor = new Date(first);
+        cursor.setDate(1 - ((first.getDay() + 6) % 7));
+
+        const cells = [];
+        // 6주면 어떤 달이든 덮는다. 5주로 끝나는 달은 마지막 줄이 다음 달로만
+        // 채워지므로 그 줄은 그리지 않는다.
+        for (let week = 0; week < 6; week++) {
+            const row = [];
+            for (let day = 0; day < 7; day++) {
+                const key = this.dayKey(cursor);
+                const outside = cursor.getMonth() !== month;
+                const classes = ['cal-day'];
+                if (outside) classes.push('outside');
+                if (key === todayKey) classes.push('today');
+
+                const chips = (byDay.get(key) || []).map(t => this.calendarChip(t)).join('');
+                row.push(
+                    `<div class="${classes.join(' ')}">` +
+                    `<div class="cal-date">${cursor.getDate()}</div>` +
+                    `<div class="cal-day-body">${chips}</div></div>`
+                );
+                cursor.setDate(cursor.getDate() + 1);
+            }
+            // 통째로 다음 달인 줄은 버린다
+            if (week >= 4 && row.every(cell => cell.includes('outside'))) break;
+            cells.push(...row);
+        }
+
+        grid.innerHTML = cells.join('');
+    }
+
+    // 접힘(150px)에서는 7열 격자가 물리적으로 안 들어간다. 같은 생각을 한 칸으로
+    // 옮겨서 오늘 하루를 시간순으로 세운다 - 여전히 달력이지, 목록이 아니다.
+    renderCollapsedCalendar() {
+        const list = document.getElementById('collapsedMiniTasksBody');
+        const header = document.getElementById('collapsedCalDate');
+        list.innerHTML = '';
+
+        const today = new Date();
+        if (header) header.textContent = formatWithPattern(today, 'MM-DD');
+
+        const todays = this.tasksByDay(this.tasks.filter(t => !t.completed)).get(this.dayKey(today)) || [];
+        if (todays.length === 0) {
+            list.innerHTML = `<li class="empty-message">${this.getLocalizedText('allCompleted')}</li>`;
+            return;
+        }
+
+        for (const task of todays) {
+            const li = document.createElement('li');
+            li.setAttribute('data-task-id', task.id);
+
+            const time = document.createElement('span');
+            time.className = 'mini-index';
+            time.textContent = task.targetDateTime
+                ? formatWithPattern(new Date(task.startDateTime), 'HH:mm')
+                : '·';
+
+            const text = document.createElement('span');
+            text.className = 'mini-text';
+            text.textContent = task.content.split('\n')[0].replace(/^\s*\d+\s*[.)]\s*/, '');
+
+            li.append(time, text);
+            li.title = task.content;
+            if (task.highlighted) li.classList.add('highlighted');
+            else li.classList.add(this.getTaskStatus(task).status);
+
+            list.appendChild(li);
+        }
+    }
+
+    toggleViewMode() {
+        this.viewMode = this.viewMode === 'calendar' ? 'list' : 'calendar';
+        localStorage.setItem('viewMode', this.viewMode);
+        // 보기를 바꿀 때마다 이번 달로 돌아온다. 지난달을 보다 목록으로 갔다가
+        // 돌아왔을 때 엉뚱한 달이 떠 있으면 비어 보인다.
+        this.calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        this.applyViewMode();
+        this.renderTasks();
+        // 접힌 채로 보기를 바꾸면 줄 수가 달라지므로 창 높이도 다시 맞춘다
+        if (this.isCollapsed) this.resizeCollapsedWindow();
+    }
+
+    // 달력일 때 숨길 것들: 선택 막대와 페이지 넘김은 보기 전용 화면에서 할 일이 없다.
+    applyViewMode() {
+        const calendar = this.viewMode === 'calendar';
+        const show = (id, visible) => {
+            const el = document.getElementById(id);
+            if (el) el.style.display = visible ? '' : 'none';
+        };
+
+        show('calendarView', calendar && !this.isCollapsed);
+        show('taskActionBar', !calendar);
+        show('paginationContainer', !calendar);
+        document.querySelector('.table-container').style.display = calendar ? 'none' : '';
+
+        const button = document.getElementById('viewModeBtn');
+        if (button) {
+            button.classList.toggle('active', calendar);
+            button.title = this.getLocalizedText(calendar ? 'listView' : 'calendarView');
+        }
+        document.body.classList.toggle('calendar-mode', calendar);
+    }
+
     // 검색창 아래의 빠른 필터. 표 안의 칩과 같은 일을 하지만, 원하는 칩이 걸린
     // 행을 먼저 찾아 헤맬 필요가 없다. 지금 목록에 실제로 있는 상태와 태그만
     // 내보낸다 - 하나도 없는 조건을 눌러 빈 표를 보는 건 의미가 없다.
@@ -2320,7 +2552,11 @@ class TaskManager {
 
     renderTasks() {
         if (this.isCollapsed) {
-            this.renderMiniCollapsedTasks();
+            if (this.viewMode === 'calendar') this.renderCollapsedCalendar();
+            else this.renderMiniCollapsedTasks();
+        } else if (this.viewMode === 'calendar') {
+            this.renderCalendar();
+            this.renderQuickFilters();
         } else {
             this.renderExpandedTasks();
             this.renderQuickFilters();
@@ -2329,6 +2565,32 @@ class TaskManager {
         // Always update completion counter
         this.updateCompletionCounter();
         this.updateCollapsedCompletionCounter();
+    }
+
+    // 표와 달력이 같은 목록을 본다. 각자 거르면 검색해 둔 채로 보기를 바꿨을 때
+    // 한쪽만 걸러진 결과가 나온다.
+    filteredActiveTasks() {
+        const active = this.tasks.filter(task => !task.completed);
+        if (!this.searchQuery) return active;
+
+        return active.filter(task => {
+            // 컬럼별 검색 대상. '전체'면 전부 훑는다.
+            const fields = {
+                content: task.content.toLowerCase(),
+                tags: this.searchableTags(task),
+                start: this.formatDateTime(task.startDateTime).toLowerCase(),
+                target: this.formatDateTime(task.targetDateTime).toLowerCase(),
+                status: this.getTaskStatus(task).text.toLowerCase(),
+                // 반복은 주기 설명과 '반복' 라벨로 찾을 수 있다
+                repeat: this.describeRepeat(task).toLowerCase()
+            };
+
+            const searched = this.searchColumn === 'all'
+                ? Object.values(fields)
+                : [fields[this.searchColumn] || ''];
+
+            return searched.some(value => value !== '' && value.includes(this.searchQuery));
+        });
     }
 
     renderExpandedTasks() {
@@ -2347,30 +2609,7 @@ class TaskManager {
             return;
         }
 
-        // Display only active tasks (not completed)
-        let activeTasks = this.tasks.filter(task => !task.completed);
-
-        // Apply search filter
-        if (this.searchQuery) {
-            activeTasks = activeTasks.filter(task => {
-                // 컬럼별 검색 대상. '전체'면 전부 훑는다.
-                const fields = {
-                    content: task.content.toLowerCase(),
-                    tags: this.searchableTags(task),
-                    start: this.formatDateTime(task.startDateTime).toLowerCase(),
-                    target: this.formatDateTime(task.targetDateTime).toLowerCase(),
-                    status: this.getTaskStatus(task).text.toLowerCase(),
-                    // 반복은 주기 설명과 '반복' 라벨로 찾을 수 있다
-                    repeat: this.describeRepeat(task).toLowerCase()
-                };
-
-                const searched = this.searchColumn === 'all'
-                    ? Object.values(fields)
-                    : [fields[this.searchColumn] || ''];
-
-                return searched.some(value => value !== '' && value.includes(this.searchQuery));
-            });
-        }
+        const activeTasks = this.filteredActiveTasks();
 
         if (activeTasks.length === 0) {
             const message = this.searchQuery ? this.getLocalizedText('noSearchResults') : this.getLocalizedText('allCompleted');
@@ -2692,18 +2931,7 @@ class TaskManager {
             collapsedElement.style.display = 'none';
             miniLayout.style.display = 'flex';
             
-            // Resize window if in Electron mode
-            if (this.isElectron && window.electronAPI) {
-                // Calculate dynamic height based on task count
-                const activeTasks = this.tasks.filter(t => !t.completed);
-                const taskCount = activeTasks.length; // Show all tasks without limit
-                const baseHeight = 80; // Expand button + completion counter + padding
-                const taskHeight = 22; // Height per task item
-                const paddingHeight = 30; // Bottom padding
-                const dynamicHeight = Math.max(150, baseHeight + (taskCount * taskHeight) + paddingHeight);
-                
-                this.resizeAndPositionWindow(COLLAPSED_WIDTH, dynamicHeight, 'top-right-150');
-            }
+            this.resizeCollapsedWindow();
         } else {
             // Exit collapsed mode - return to normal view
             container.classList.remove('collapsed-mode');
@@ -2719,7 +2947,32 @@ class TaskManager {
             }
         }
 
+        this.applyViewMode();
         this.renderTasks();
+    }
+
+    // 접힘 창 높이는 실제로 그려질 줄 수를 따라간다. 달력 보기는 오늘 하루만
+    // 세우므로, 활성 작업 전체로 계산하면 빈 칸이 길게 남는다.
+    collapsedRowCount() {
+        const active = this.tasks.filter(t => !t.completed);
+        if (this.viewMode !== 'calendar') return active.length;
+
+        const today = this.tasksByDay(active).get(this.dayKey(new Date())) || [];
+        return today.length + 1; // 날짜 머리 한 줄
+    }
+
+    resizeCollapsedWindow() {
+        if (!this.isElectron || !window.electronAPI) return;
+
+        const baseHeight = 80; // Expand button + completion counter + padding
+        const taskHeight = 22; // Height per task item
+        const paddingHeight = 30; // Bottom padding
+        const height = Math.max(
+            150,
+            baseHeight + this.collapsedRowCount() * taskHeight + paddingHeight
+        );
+
+        this.resizeAndPositionWindow(COLLAPSED_WIDTH, height, 'top-right-150');
     }
 
     resizeWindow(width, height) {
