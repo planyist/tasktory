@@ -1643,7 +1643,7 @@ describe('calendar view', () => {
             task('a', { startDateTime: at(12, '09:00'), targetDateTime: at(12, '18:00') })
         ])
 
-        expect(chipsIn(12)).toEqual(['09:00task a'])
+        expect(chipsIn(12)).toEqual(['18:00task a'])
         expect(chipsIn(13)).toEqual([])
     })
 
@@ -1660,13 +1660,13 @@ describe('calendar view', () => {
         expect(chipsIn(15)).toHaveLength(0)
     })
 
-    test('orders a day by start time', async () => {
+    test('orders a day by target time', async () => {
         await openCalendar([
             task('late', { startDateTime: at(12, '15:00'), targetDateTime: at(12, '16:00') }),
             task('early', { startDateTime: at(12, '09:00'), targetDateTime: at(12, '10:00') })
         ])
 
-        expect(chipsIn(12)).toEqual(['09:00task early', '15:00task late'])
+        expect(chipsIn(12)).toEqual(['10:00task early', '16:00task late'])
     })
 
     // A task with no target has no length to draw. It goes at the top of the
@@ -1677,7 +1677,7 @@ describe('calendar view', () => {
             task('ongoing', { startDateTime: at(12, '14:00'), targetDateTime: '' })
         ])
 
-        expect(chipsIn(12)).toEqual(['task ongoing', '09:00task timed'])
+        expect(chipsIn(12)).toEqual(['task ongoing', '10:00task timed'])
     })
 
     test('carries the same status class the table and the strip use', async () => {
@@ -1737,7 +1737,7 @@ describe('calendar view', () => {
         manager.searchQuery = 'milk'
         manager.renderTasks()
 
-        expect(chipsIn(12)).toEqual(['09:00buy milk'])
+        expect(chipsIn(12)).toEqual(['10:00buy milk'])
     })
 
     // The cells are assembled as an HTML string, so a task titled with a tag
@@ -1752,7 +1752,7 @@ describe('calendar view', () => {
         ])
 
         expect(cellFor(12).querySelector('.cal-chip b')).toBeNull()
-        expect(chipsIn(12)).toEqual(['09:00<b>ship</b>'])
+        expect(chipsIn(12)).toEqual(['10:00<b>ship</b>'])
     })
 
     test('nothing in a cell is clickable', async () => {
@@ -1805,8 +1805,8 @@ describe('calendar view', () => {
             ])
 
             expect(items().map((li) => li.querySelector('.mini-index').textContent)).toEqual([
-                '09:00',
-                '15:00'
+                '10:00',
+                '16:00'
             ])
         })
 
@@ -1824,7 +1824,160 @@ describe('calendar view', () => {
                 task('next-month', { startDateTime: at(1, '09:00'), targetDateTime: at(1, '10:00') })
             ])
 
-            expect(manager.collapsedRowCount()).toBe(2) // one row plus the date header
+            expect(manager.collapsedRowCount()).toBe(3) // two rows minimum plus the date header
         })
+    })
+})
+
+describe('quick filter presentation', () => {
+    const chips = () => Array.from(document.querySelectorAll('#quickFilters .quick-chip'))
+    const chip = (text) => chips().find((c) => c.textContent === text)
+
+    // A tag that is red in the table and blue in the filter bar cannot be
+    // matched up by eye.
+    test('a coloured tag keeps its colour', async () => {
+        await boot([task('a', { tags: '#[RED]urgent' })])
+
+        expect(chip('#urgent').getAttribute('style')).toContain('background-color')
+        expect(chip('#urgent').getAttribute('style')).not.toBe('')
+    })
+
+    // The invariant: whatever colour the table paints a tag, the filter bar
+    // paints the same one.
+    test.each(['#[RED]urgent', '#[GREEN]done', '#meeting'])(
+        'matches the table chip for %s',
+        async (tags) => {
+            const manager = await boot([task('a', { tags })])
+            const name = manager.displayTagTexts(manager.tasks[0])[0]
+
+            const inTable = document.querySelector('#tasksBody .tag')
+            expect(chip(name).style.backgroundColor).toBe(inTable.style.backgroundColor)
+            expect(chip(name).style.color).toBe(inTable.style.color)
+        }
+    )
+
+    // Twenty tags wrapping onto three lines push the table down and turn the
+    // filters into an obstacle.
+    test('caps the bar and says how many it left out', async () => {
+        const many = Array.from({ length: 25 }, (_, i) =>
+            task(`t${i}`, { tags: `#tag${i}` })
+        )
+        await boot(many)
+
+        // All + statuses + tags, never more than the cap plus the All button.
+        expect(chips().length).toBeLessThanOrEqual(16)
+        expect(document.querySelector('#quickFilters .quick-more')).not.toBeNull()
+    })
+
+    test('keeps the most used tags when it has to choose', async () => {
+        const tasks = [
+            ...Array.from({ length: 5 }, (_, i) => task(`c${i}`, { tags: '#common' })),
+            ...Array.from({ length: 20 }, (_, i) => task(`r${i}`, { tags: `#rare${i}` }))
+        ]
+        await boot(tasks)
+
+        expect(chip('#common')).not.toBeUndefined()
+    })
+
+    test('says nothing about hidden tags when they all fit', async () => {
+        await boot([task('a', { tags: '#one #two' })])
+
+        expect(document.querySelector('#quickFilters .quick-more')).toBeNull()
+    })
+})
+
+describe('view toggle', () => {
+    const button = () => document.getElementById('viewModeBtn')
+
+    // It sits under the search box, not among the export/settings icons at the
+    // far right where it read as just another tool.
+    test('sits in the filter bar under the search box', async () => {
+        await boot([task('a')])
+
+        expect(button().closest('.filter-bar')).not.toBeNull()
+        expect(button().closest('.header-buttons')).toBeNull()
+    })
+
+    // The icon shows what you get, not what you have - same rule as collapse.
+    test('shows a calendar in list view and a list in calendar view', async () => {
+        const manager = await boot([task('a')])
+
+        expect(button().innerHTML).toContain('rect')
+        expect(button().title).toBe('Calendar view')
+
+        manager.toggleViewMode()
+
+        expect(button().innerHTML).not.toContain('rect')
+        expect(button().title).toBe('List view')
+    })
+
+    test('clicking it switches the view', async () => {
+        const manager = await boot([task('a')])
+
+        button().click()
+
+        expect(manager.viewMode).toBe('calendar')
+        expect(localStorage.getItem('viewMode')).toBe('calendar')
+    })
+})
+
+describe('collapsed calendar with nothing today', () => {
+    const pad = (n) => String(n).padStart(2, '0')
+    const shift = (days, time) => {
+        const now = new Date()
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days)
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`
+    }
+
+    const openCollapsed = async (tasks) => {
+        const manager = await boot(tasks)
+        manager.viewMode = 'calendar'
+        manager.isCollapsed = true
+        manager.applyViewMode()
+        manager.renderTasks()
+        return manager
+    }
+
+    // The strip is the always-visible note. Blanking it whenever today happens
+    // to be clear defeats the point of collapsing at all.
+    test('rolls forward to the next day that has work', async () => {
+        await openCollapsed([
+            task('soon', { startDateTime: shift(3, '09:00'), targetDateTime: shift(3, '10:00') }),
+            task('later', { startDateTime: shift(9, '09:00'), targetDateTime: shift(9, '10:00') })
+        ])
+
+        expect(document.getElementById('collapsedCalDate').textContent).toBe(
+            shift(3, '00:00').slice(5, 10)
+        )
+        expect(document.querySelectorAll('#collapsedMiniTasksBody li')).toHaveLength(1)
+    })
+
+    test('prefers today when today has work', async () => {
+        await openCollapsed([
+            task('today', { startDateTime: shift(0, '09:00'), targetDateTime: shift(0, '10:00') }),
+            task('later', { startDateTime: shift(3, '09:00'), targetDateTime: shift(3, '10:00') })
+        ])
+
+        expect(document.getElementById('collapsedCalDate').textContent).toBe(
+            shift(0, '00:00').slice(5, 10)
+        )
+    })
+
+    // Overdue work must not vanish just because its day has passed.
+    test('falls back to the most recent past day', async () => {
+        await openCollapsed([
+            task('missed', { startDateTime: shift(-4, '09:00'), targetDateTime: shift(-4, '10:00') })
+        ])
+
+        expect(document.querySelectorAll('#collapsedMiniTasksBody li')).toHaveLength(1)
+        expect(document.querySelector('#collapsedMiniTasksBody .empty-message')).toBeNull()
+    })
+
+    // "All tasks completed" was a lie whenever work simply sat on another day.
+    test('says nothing is scheduled rather than claiming everything is done', async () => {
+        await openCollapsed([])
+
+        const message = document.querySelector('#collapsedMiniTasksBody .empty-message')
+        expect(message.textContent).toBe('Nothing scheduled')
     })
 })

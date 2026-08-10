@@ -349,6 +349,8 @@ ipcMain.handle('open-log-folder', async () => {
     }
 })
 
+ipcMain.handle('get-app-version', async () => app.getVersion())
+
 // Opacity 설정
 ipcMain.handle('set-unfocused-opacity', async (event, opacity) => {
     unfocusedOpacity = opacity

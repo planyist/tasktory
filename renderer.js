@@ -21,6 +21,10 @@ const STORAGE_FORMAT = 'YYYY-MM-DD HH:mm';
 // 상수라, 한쪽만 바꾸면 표시와 알림이 따로 놀았다.
 const LEAD_MINUTES = [60, 15];
 
+// 보기 전환 버튼의 두 아이콘. 누르면 무엇이 되는지를 그린다.
+const CALENDAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
+const LIST_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
+
 // main.js가 로그 파일에 쓰는 헤더와 같아야 한다
 const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT';
 
@@ -172,6 +176,12 @@ class TaskManager {
         // main.js는 투명도를 메모리에만 두므로 시작할 때마다 다시 알려줘야 한다
         this.updateOpacityControl();
         if (this.isElectron) window.electronAPI.setUnfocusedOpacity(this.unfocusedOpacity);
+
+        // 정보 창의 버전. 손으로 적어두면 릴리스마다 잊는다.
+        const version = document.getElementById('aboutVersionValue');
+        if (version && this.isElectron && window.electronAPI.getAppVersion) {
+            window.electronAPI.getAppVersion().then(v => { version.textContent = v; });
+        }
     }
 
     updateUIText() {
@@ -1052,6 +1062,8 @@ class TaskManager {
                 'completeDetails': 'Completion notes (optional)',
                 'completedAt': 'Completed at',
                 'showAll': 'All',
+                'moreTags': 'More tags exist; search to reach them',
+                'nothingScheduled': 'Nothing scheduled',
                 'calendarView': 'Calendar view',
                 'listView': 'List view',
                 'today': 'Today',
@@ -1217,6 +1229,8 @@ class TaskManager {
                 'completeDetails': '완료 메모 (선택사항)',
                 'completedAt': '완료 시각',
                 'showAll': '전체',
+                'moreTags': '태그가 더 있습니다. 검색으로 찾으세요',
+                'nothingScheduled': '예정된 일정 없음',
                 'calendarView': '달력 보기',
                 'listView': '목록 보기',
                 'today': '오늘',
@@ -1382,6 +1396,8 @@ class TaskManager {
                 'completeDetails': '完成备注（可选）',
                 'completedAt': '完成时间',
                 'showAll': '全部',
+                'moreTags': '还有更多标签，请使用搜索',
+                'nothingScheduled': '没有安排',
                 'calendarView': '日历视图',
                 'listView': '列表视图',
                 'today': '今天',
@@ -1547,6 +1563,8 @@ class TaskManager {
                 'completeDetails': '完了メモ（オプション）',
                 'completedAt': '完了時刻',
                 'showAll': 'すべて',
+                'moreTags': 'タグは他にもあります。検索してください',
+                'nothingScheduled': '予定なし',
                 'calendarView': 'カレンダー表示',
                 'listView': 'リスト表示',
                 'today': '今日',
@@ -1712,6 +1730,8 @@ class TaskManager {
                 'completeDetails': 'Notas de finalización (opcional)',
                 'completedAt': 'Completado a las',
                 'showAll': 'Todas',
+                'moreTags': 'Hay más etiquetas; búsquelas',
+                'nothingScheduled': 'Nada programado',
                 'calendarView': 'Vista de calendario',
                 'listView': 'Vista de lista',
                 'today': 'Hoy',
@@ -2281,23 +2301,25 @@ class TaskManager {
             }
         }
 
-        // 칸 안에서는 시간순. 마감 없는 상시 업무는 시각이 없으니 맨 위로 올린다
-        // (구글 캘린더의 종일 줄과 같은 자리).
+        // 칸 안에서는 목표 시각순. 달력에서 궁금한 것은 "언제까지"이지 "언제부터"가
+        // 아니라서 칸에 찍는 시각도 목표 시각이고, 정렬도 같은 값을 따라야
+        // 보이는 시각이 순서대로 선다.
+        // 마감 없는 상시 업무는 시각이 없으니 맨 위로 올린다 (종일 줄과 같은 자리).
         for (const list of byDay.values()) {
             list.sort((a, b) => {
                 if (!a.targetDateTime !== !b.targetDateTime) return a.targetDateTime ? 1 : -1;
-                return String(a.startDateTime).localeCompare(String(b.startDateTime));
+                return String(a.targetDateTime).localeCompare(String(b.targetDateTime));
             });
         }
 
         return byDay;
     }
 
-    // 칸 안의 한 줄. 시각 + 내용, 배경은 상태색.
+    // 칸 안의 한 줄. 목표 시각 + 내용, 배경은 상태색.
     calendarChip(task) {
         const status = this.getTaskStatus(task);
         const time = task.targetDateTime
-            ? formatWithPattern(new Date(task.startDateTime), 'HH:mm')
+            ? formatWithPattern(new Date(task.targetDateTime), 'HH:mm')
             : '';
         const title = this.escapeHtml(task.content);
         const text = this.escapeHtml(task.content.split('\n')[0].replace(/^\s*\d+\s*[.)]\s*/, ''));
@@ -2368,28 +2390,47 @@ class TaskManager {
 
     // 접힘(150px)에서는 7열 격자가 물리적으로 안 들어간다. 같은 생각을 한 칸으로
     // 옮겨서 오늘 하루를 시간순으로 세운다 - 여전히 달력이지, 목록이 아니다.
+    // 스트립에 세울 하루. 오늘에 걸치는 일이 있으면 오늘, 없으면 일이 있는 가장
+    // 가까운 앞날이다. 오늘만 고집하면 이번 주에 할 일이 있어도 스트립이 텅 비는데,
+    // 늘 떠 있는 메모지가 비어 있으면 접어둘 이유가 없다.
+    collapsedCalendarDay() {
+        const byDay = this.tasksByDay(this.tasks.filter(t => !t.completed));
+        const todayKey = this.dayKey(new Date());
+        if (byDay.has(todayKey)) return { key: todayKey, tasks: byDay.get(todayKey) };
+
+        const ahead = [...byDay.keys()].filter(key => key > todayKey).sort();
+        if (ahead.length) return { key: ahead[0], tasks: byDay.get(ahead[0]) };
+
+        // 앞날에도 없으면 지난 것 중 가장 최근 - 밀린 일을 감추지 않는다
+        const behind = [...byDay.keys()].sort();
+        if (behind.length) return { key: behind[behind.length - 1], tasks: byDay.get(behind[behind.length - 1]) };
+
+        return { key: todayKey, tasks: [] };
+    }
+
     renderCollapsedCalendar() {
         const list = document.getElementById('collapsedMiniTasksBody');
         const header = document.getElementById('collapsedCalDate');
         list.innerHTML = '';
 
-        const today = new Date();
-        if (header) header.textContent = formatWithPattern(today, 'MM-DD');
+        const { key, tasks } = this.collapsedCalendarDay();
+        if (header) header.textContent = key.slice(5); // MM-DD
 
-        const todays = this.tasksByDay(this.tasks.filter(t => !t.completed)).get(this.dayKey(today)) || [];
-        if (todays.length === 0) {
-            list.innerHTML = `<li class="empty-message">${this.getLocalizedText('allCompleted')}</li>`;
+        if (tasks.length === 0) {
+            // "모든 작업 완료"가 아니다. 남은 일이 있는데 오늘 자리에 없을 뿐일 수도
+            // 있어서, 그 문구는 사실이 아닌 말을 하게 된다.
+            list.innerHTML = `<li class="empty-message">${this.getLocalizedText('nothingScheduled')}</li>`;
             return;
         }
 
-        for (const task of todays) {
+        for (const task of tasks) {
             const li = document.createElement('li');
             li.setAttribute('data-task-id', task.id);
 
             const time = document.createElement('span');
             time.className = 'mini-index';
             time.textContent = task.targetDateTime
-                ? formatWithPattern(new Date(task.startDateTime), 'HH:mm')
+                ? formatWithPattern(new Date(task.targetDateTime), 'HH:mm')
                 : '·';
 
             const text = document.createElement('span');
@@ -2430,9 +2471,11 @@ class TaskManager {
         show('paginationContainer', !calendar);
         document.querySelector('.table-container').style.display = calendar ? 'none' : '';
 
+        // 아이콘은 "지금 무엇인가"가 아니라 "누르면 무엇이 되는가"를 그린다.
+        // 접기 버튼과 같은 규칙이라 둘이 따로 놀지 않는다.
         const button = document.getElementById('viewModeBtn');
         if (button) {
-            button.classList.toggle('active', calendar);
+            button.innerHTML = calendar ? LIST_ICON : CALENDAR_ICON;
             button.title = this.getLocalizedText(calendar ? 'listView' : 'calendarView');
         }
         document.body.classList.toggle('calendar-mode', calendar);
@@ -2441,6 +2484,10 @@ class TaskManager {
     // 검색창 아래의 빠른 필터. 표 안의 칩과 같은 일을 하지만, 원하는 칩이 걸린
     // 행을 먼저 찾아 헤맬 필요가 없다. 지금 목록에 실제로 있는 상태와 태그만
     // 내보낸다 - 하나도 없는 조건을 눌러 빈 표를 보는 건 의미가 없다.
+    // 상태는 많아야 다섯 가지라 전부 내보내고, 태그는 남는 자리를 많이 쓰인
+    // 순서로 채운다. 열다섯이면 검색창 폭에서 두 줄쯤이라 표를 크게 밀지 않는다.
+    static get QUICK_FILTER_LIMIT() { return 15; }
+
     quickFilterOptions() {
         const active = this.tasks.filter(task => !task.completed);
         const statuses = new Map();
@@ -2451,12 +2498,23 @@ class TaskManager {
             if (!statuses.has(status.text)) {
                 statuses.set(status.text, { value: status.text, column: 'status', kind: status.status });
             }
-            for (const tag of this.displayTagTexts(task)) {
-                if (!tags.has(tag)) tags.set(tag, { value: tag, column: 'tags', kind: 'tag' });
+            // 표의 칩과 같은 색을 쓴다. 같은 태그가 표에서는 빨강, 필터에서는
+            // 파랑이면 눈으로 잇지 못한다.
+            for (const raw of (task.tags || '').split(/\s+/).filter(t => t.startsWith('#'))) {
+                const parsed = this.parseTagWithColor(raw);
+                const found = tags.get(parsed.content);
+                if (found) found.count += 1;
+                else tags.set(parsed.content, {
+                    value: parsed.content, column: 'tags', kind: 'tag',
+                    color: parsed.color, count: 1
+                });
             }
         }
 
-        return [...statuses.values(), ...tags.values()];
+        const room = Math.max(0, TaskManager.QUICK_FILTER_LIMIT - statuses.size);
+        const ranked = [...tags.values()].sort((a, b) => b.count - a.count);
+
+        return { shown: [...statuses.values(), ...ranked.slice(0, room)], hidden: Math.max(0, ranked.length - room) };
     }
 
     renderQuickFilters() {
@@ -2470,14 +2528,24 @@ class TaskManager {
             `${this.getLocalizedText('showAll')}</button>`
         ];
 
-        for (const option of this.quickFilterOptions()) {
+        const { shown, hidden } = this.quickFilterOptions();
+        for (const option of shown) {
             const active = this.searchQuery === option.value.toLowerCase()
                 && this.searchColumn === option.column;
+            const style = option.color
+                ? ` style="background-color:${option.color.bg};border-color:${option.color.border};color:${option.color.text}"`
+                : '';
+            const value = this.escapeHtml(option.value);
             chips.push(
-                `<button type="button" class="quick-chip quick-${option.kind}${active ? ' active' : ''}" ` +
-                `data-quick="${option.value}" data-quick-column="${option.column}" ` +
-                `title="${option.value}">${option.value}</button>`
+                `<button type="button" class="quick-chip quick-${option.kind}${active ? ' active' : ''}"${style} ` +
+                `data-quick="${value}" data-quick-column="${option.column}" ` +
+                `title="${value}">${value}</button>`
             );
+        }
+
+        // 잘라낸 개수는 밝힌다. 조용히 자르면 "이게 전부"로 읽힌다.
+        if (hidden > 0) {
+            chips.push(`<span class="quick-more" title="${this.getLocalizedText('moreTags')}">+${hidden}</span>`);
         }
 
         bar.innerHTML = chips.join('');
@@ -2957,8 +3025,9 @@ class TaskManager {
         const active = this.tasks.filter(t => !t.completed);
         if (this.viewMode !== 'calendar') return active.length;
 
-        const today = this.tasksByDay(active).get(this.dayKey(new Date())) || [];
-        return today.length + 1; // 날짜 머리 한 줄
+        // 날짜 머리 한 줄 + 그날의 작업들. 비었을 때도 안내 문구가 두 줄까지
+        // 접히므로 최소 두 줄은 잡는다.
+        return Math.max(2, this.collapsedCalendarDay().tasks.length) + 1;
     }
 
     resizeCollapsedWindow() {
