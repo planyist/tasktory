@@ -1,166 +1,231 @@
 # Tasktory
 
-A compact desktop application for managing tasks with always-on-top functionality. Track your tasks efficiently without losing focus on your work.
+A compact, always-on-top task manager. It sits in the corner of your screen like
+a sticky note so the things you have to do stay visible while you work.
+
+It exists to solve one problem: when you are busy, you forget what you were
+meant to do — and you forget what you already did. Tasktory keeps both.
 
 ## Features
 
-### Core Features
-- **Always-on-Top**: Stays visible above all other windows like a sticky note
-- **Compact Design**: Optimized for corner placement (600x400 window)
-- **Ultra-Compact Mode**: Toggle to 80px width for minimal screen space usage
-- **Task Management**: Add, edit, complete, delete, highlight, and reorder tasks
-- **Time Tracking**: Set start and target times with intelligent status updates
-- **Tag System**: Organize tasks with colored tags using GitHub-style color schemes
-- **Search & Filter**: Real-time task filtering with pagination support
+### Tasks
 
-### UI/UX (v0.2.x)
-- **SVG Icon System**: Professional vector icons throughout the interface
-- **Dark Mode**: Complete dark theme with automatic system detection
-- **Smart Status Indicators**: Pending, In Progress, Due Soon, Overdue, Completed
-- **Notification System**: Per-task notification settings with system alerts  
-- **Statistics Dashboard**: Visual completion trends over 30 days
-- **Completion Celebrations**: Animated counter with confetti effects
-- **Internationalization**: Support for English, Korean, Chinese, Japanese, Spanish
+- **Always-on-top** window, so the list does not disappear behind your work
+- **Add, edit, complete, delete, highlight, reorder** — select rows and use the
+  action bar above the table
+- **Multi-select**: tick several rows and act on all of them at once
+- **Optional target time**: a task without one is *ongoing* — never overdue,
+  never "due soon", and it raises no notifications
+- **Repeating tasks**: daily, weekly, monthly or yearly. One row *is* the rule
+- **Highlight** anything you want to keep your eye on
+- **Tags** with colours, and a preset list for the ones you use often
 
-### Technical Features
-- **Comprehensive Logging**: All actions logged in structured .log format
-- **Cross-Platform**: Works on Windows, Linux, and macOS  
-- **Dual Mode**: Runs as Electron app (with always-on-top) or in browser
-- **Export/Import**: JSON backup and restore functionality
-- **Security**: Content Security Policy and IPC isolation
+### Views
+
+- **List** — the table. Everything you can do to a task happens here
+- **Calendar** — a month grid; a task shows on every day it spans. View-only
+- **Side strip** — 150px, read-only, for when you want it out of the way
+
+### Finding things
+
+- Search as you type, optionally **scoped to one column**
+- **Click a chip** — a tag, a status, a repeat cadence — to filter by it
+- **Quick filters** under the search box: the statuses and tags actually in use
+
+### History
+
+- Every action is logged — added, completed, edited, deleted, and more
+- One tab-separated file per day, so a spreadsheet opens it directly
+- A **daily completion counter**, and a 30-day chart of completion trends
+- **Export/import** for backup, or for moving to another machine
+
+### The rest
+
+- **Dark mode**
+- **Five languages**: English, Korean, Chinese, Japanese, Spanish
+- **Configurable date format** — the display changes, the stored data does not
+- **Notifications** an hour and fifteen minutes before a deadline, and when one
+  passes. Can be silenced per task
+- **Installable on a phone** as a PWA, and it opens offline
 
 ## Installation
 
-### Option 1: Run from Source
+### Run from source
+
 ```bash
-# Clone the repository
 git clone https://github.com/planyist/tasktory.git
 cd tasktory
-
-# Install dependencies
 npm install
-
-# Start the application
 npm start
 ```
 
-### Option 2: Build Executable
-```bash
-# Install electron-builder (if not already installed)
-npm install --save-dev electron-builder
+### Build an executable
 
-# Build for your platform
-npm run build:win   # For Windows (.exe)
-npm run build:mac   # For macOS (.dmg)
-npm run build:linux # For Linux (.AppImage)
+```bash
+npm run build:win     # Windows (.exe)
+npm run build:mac     # macOS (.dmg)
+npm run build:linux   # Linux (.AppImage)
 ```
 
-### Option 3: Browser Mode
-Simply open `tasktory-standalone.html` in your web browser for a version without always-on-top functionality.
+Output goes to `dist/`.
+
+### In a browser
+
+Open `tasktory-standalone.html` — a single self-contained file. No always-on-top
+and no log files; it keeps everything in `localStorage`.
 
 ## Usage
 
-### Basic Operations
-1. **Adding Tasks**: Click the "+" button or press `Ctrl+N` to create new tasks
-2. **Editing Tasks**: Click the edit icon (✏️) next to any task to modify it
-3. **Completing Tasks**: Click the checkmark (✓) to mark tasks as completed
-4. **Deleting Tasks**: Click the delete icon (🗑️) to remove tasks without completing
-5. **Highlighting**: Click the lightning bolt (⚡) to highlight important tasks
-6. **Reordering**: Use up/down arrows (↑↓) to change task order
-7. **Notifications**: Click the bell icon (🔔) to toggle task notifications
+### The action bar
 
-### Advanced Features
-- **Tag Presets**: Create colored tag presets in Settings for quick tagging
-- **Search**: Use the search box to filter tasks by content, tags, or status
-- **Statistics**: View completion trends and productivity patterns
-- **Dark Mode**: Toggle between light and dark themes in Settings
-- **Collapse Mode**: Switch to ultra-compact 80px width for minimal footprint
-- **Export/Import**: Backup and restore your tasks via JSON files
+Rows carry no buttons. Tick the rows you want and use the bar above the table:
 
-### Status System
-Tasks automatically show status based on timing:
-- **Pending**: Before start time
-- **In Progress**: Between start and target time  
-- **Due Soon**: Less than 1 hour remaining
-- **Overdue**: Past target time
-- **Completed**: Task marked as done
+| Button | What it does |
+|---|---|
+| Bell | Silence or unsilence notifications |
+| Pencil | Edit — needs exactly one row selected |
+| Check | Complete. Asks first, and lets you set the completion time |
+| Bin | Delete. Asks first |
+| Bolt | Highlight |
+| Up / down | Reorder — needs exactly one row selected |
 
-### Tag System
-Use hashtags with optional colors:
-- Basic tags: `#meeting #urgent`
-- Colored tags: `#[RED]urgent #[GREEN]completed #[BLUE]research`
-- Available colors: RED, GREEN, BLUE, YELLOW, PURPLE, ORANGE, GRAY, PINK
+Clicking **anywhere in a row** selects it. Tags and status chips are the
+exception: clicking those filters the list instead.
 
-## Keyboard Shortcuts
+With several rows selected, the two toggles gather the whole selection onto one
+state rather than flipping each row on its own. If any selected task is not
+highlighted, they all become highlighted; only when every one already is does
+pressing again clear them. Notifications work the same way around muting.
 
-- `Ctrl/Cmd + N`: Add new task
-- `Ctrl/Cmd + M`: Toggle ultra-compact mode (80px width)
-- `ESC`: Close modal or date picker
+### Repeating tasks
 
-## Data Storage
+Set a repeat in the task's edit form. The row then *is* the rule:
 
-- **Electron Mode**: Tasks stored in JSON files, logs in structured .log format in the app's data directory
-- **Browser Mode**: Data stored in browser's localStorage with export/import functionality
-- **Log Format**: Daily log files with fixed-width columns for easy parsing and viewing
+- Completing it does not remove it — the dates move to the next occurrence
+- Completing advances **one** step. A task five occurrences overdue takes five
+  presses, and each is logged, so the history stays honest. To skip ahead, edit
+  the date
+- Deleting the row deletes the repeat rule with it
+- Month ends are clamped: a "31st of each month" rule fires on 28/29 February
+- A task with no target time cannot repeat
 
-## Distribution Protection
+### Calendar view
 
-This project is licensed under the MIT License, which allows:
-- ✅ Commercial use
-- ✅ Modification
-- ✅ Distribution
-- ✅ Private use
+Toggle it with the button under the search box.
 
-However, any distributed copies must include the original license and copyright notice.
+- A task appears on **every day it spans** — started Monday, due Wednesday means
+  it is in hand on Tuesday too
+- The time shown is the **target** time, and each day sorts by it
+- A task with no target time has no length to draw, so it sits at the top of its
+  start day without a time
+- Colours match the table's status badges
+- **View-only.** Nothing in a cell is clickable — the list does all of that
 
-## Building for Distribution
+Collapsed, the calendar narrows to a single day: today, or the next day with
+work if today is clear.
 
-To create a standalone executable that doesn't require Node.js or npm:
+### Search and filters
 
-```bash
-# Install dependencies
-npm install
+The dropdown beside the search box narrows the search to one column, so
+searching "overdue" under *Status* will not also match a task with the word in
+its title.
 
-# Build executable for Windows
-npm run build:win
+Clicking a chip in the table sets both the search text and the column. The quick
+filter row under the search box does the same from a fixed place, listing the
+statuses and tags actually in use (up to 15, most-used first). **All** clears the
+search and the column together.
 
-# The executable will be in the 'dist' folder
+### Statuses
+
+| Status | Meaning |
+|---|---|
+| Pending | Before the start time |
+| In Progress | Between start and target |
+| Due Soon | Less than an hour to the target |
+| Overdue | Past the target time |
+| Ongoing | No target time — never overdue, never due soon |
+| Completed | Done |
+
+### Tags
+
+```
+#meeting #urgent                       plain
+#[RED]urgent #[GREEN]done #[BLUE]spec  coloured
 ```
 
-This creates a `.exe` file that users can run without any additional setup.
+Colours: `RED`, `GREEN`, `BLUE`, `YELLOW`, `PURPLE`, `ORANGE`, `GRAY`, `PINK`.
+
+### Keyboard shortcuts
+
+- `Ctrl/Cmd + N` — add a task
+- `Ctrl/Cmd + M` — collapse to the side strip and back
+- `Esc` — close a dialog or the date picker
+
+## Where your data lives
+
+Under Electron, in the app's user-data directory:
+
+```
+data/tasks.json      active tasks
+data/rules.json      repeat rules
+logs/YYYY-MM-DD.tsv  one history file per day, by local date
+```
+
+The log columns are `TIMESTAMP ACTION STATUS TASK_ID START_TIME TARGET_TIME
+TAGS CONTENT`. `TIMESTAMP` carries the UTC offset, because a log is a permanent
+record and without the offset the zone cannot be recovered later. `START_TIME`
+and `TARGET_TIME` deliberately do not — they express wall-clock intent, not an
+instant.
+
+Times are stored as `YYYY-MM-DD HH:mm` whatever display format you pick, so
+changing the setting never rewrites your data.
+
+In a browser, everything lives in `localStorage`; use export/import to move it.
 
 ## Development
 
-### Project Structure
-```
-Tasktory/
-├── main.js          # Main Electron process
-├── preload.js       # Security bridge
-├── renderer.js      # Client-side logic
-├── index.html       # UI structure
-├── styles.css       # Styling
-├── package.json     # Project configuration
-├── LICENSE          # MIT License
-└── README.md        # This file
+```bash
+npm install
+npm start        # run it
+npm test         # Jest
+npm run build    # package for the current platform
 ```
 
-### Technology Stack
-- **Electron**: Desktop app framework
-- **HTML/CSS/JavaScript**: UI implementation
-- **IPC**: Secure communication between processes
-- **JSON**: Data persistence
+### Project layout
+
+```
+main.js                  Electron main process, IPC handlers, log writing
+preload.js               the bridge between main and renderer
+index.html               UI structure
+renderer.js              all client-side logic (one TaskManager class)
+styles.css               styling, light and dark
+recurrence.js            pure date maths for repeat rules
+manifest.json            PWA manifest
+service-worker.js        offline cache
+register-sw.js           service-worker registration (skipped under file://)
+tasktory-standalone.html single-file browser build, independent of renderer.js
+tests/                   Jest suite
+__mocks__/               manual electron mock for main-process tests
+assets/                  icons
+docs/                    design notes, including a sync proposal (not built)
+```
+
+**Adding a source file?** Add it to `build.files` in `package.json` — that list
+is an allowlist, not a filter. A file missing from it is missing from the
+packaged app, and running from source hides that completely.
+
+### Technology
+
+Electron 32, plain HTML/CSS/JavaScript, no framework. Data in JSON, history in
+TSV, IPC isolated behind a preload bridge with a Content Security Policy.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+MIT — see [LICENSE](LICENSE).
 
 ## Contributing
 
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Submit a pull request
+Fork, branch, change, open a pull request. A bug fix should come with a test
+that fails before the change and passes after.
 
-## Support
-
-If you encounter any issues, please report them at the [GitHub Issues](https://github.com/planyist/tasktory/issues) page.
+Issues: https://github.com/planyist/tasktory/issues
