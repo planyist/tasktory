@@ -18,7 +18,9 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 
 ## Recurring Tasks
 
-**A recurring task is one row, and that row is the rule.** Completing it does not remove it — the dates advance to the next occurrence and the row stays. Rules live in `<userData>/data/rules.json` via the `load-rules` / `save-rules` IPC pair, deliberately separate from `tasks.json` (whose top level is a bare array); the row carries `ruleId`.
+**A recurring task is one row, and that row is the rule.** Completing it does not remove it — the row stays and only its two dates are rewritten to the next occurrence (`Object.assign(task, occurrenceTimes(rule, nextKey))`; content, tags and id are untouched).
+
+Status is never stored — it is recomputed from those dates every render. So moving the dates forward is *why* a completed repeat usually shows as Pending again; "advances to the next occurrence" and "goes back to pending" describe the same single change, one as cause and one as effect. Not always Pending, though: a task two occurrences behind is still Overdue after one press, and takes one press per missed occurrence to catch up. Rules live in `<userData>/data/rules.json` via the `load-rules` / `save-rules` IPC pair, deliberately separate from `tasks.json` (whose top level is a bare array); the row carries `ruleId`.
 
 This is the Todoist model, not the calendar model. It was chosen deliberately:
 

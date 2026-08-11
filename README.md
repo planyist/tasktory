@@ -106,7 +106,10 @@ pressing again clear them. Notifications work the same way around muting.
 
 Set a repeat in the task's edit form. The row then *is* the rule:
 
-- Completing it does not remove it — the dates move to the next occurrence
+- Completing it does not remove the row. Its two dates are rewritten to the next
+  occurrence, and since the status is worked out from the dates, the task
+  usually goes back to Pending. Two occurrences behind means it is still Overdue
+  after one press
 - Completing advances **one** step. A task five occurrences overdue takes five
   presses, and each is logged, so the history stays honest. To skip ahead, edit
   the date
