@@ -185,6 +185,29 @@ This is a complete Electron application with the following structure:
 - **Search functionality**: real-time filtering, optionally scoped to one column
 - **Pagination**: Smart pagination for large task lists
 
+### Visual weight
+
+A pass in 0.8.6 took weight off everything that is not the task list, because
+several elements were competing with it:
+
+- **The table header** was a dark navy slab (`#2c3e50`) with white text — the
+  heaviest thing on screen, above the content you actually read. It is a light
+  band with a hairline rule now.
+- **Vertical cell dividers** are gone. Zebra striping already separates rows, so
+  a line between every column only built a cage around the text.
+- **Status badges** carry `white-space: nowrap`. "In Progress" wrapped to two
+  lines, and that one row grew taller than the rest, so the table looked ragged.
+- **The completion counter** was a large bordered pill with a shadow, making
+  "how many did I finish" the loudest element on the page. It is a quiet chip on
+  the same baseline as the search row.
+- **The action bar** dropped its grey panel. Nothing is selected most of the
+  time, so an empty box sat above the table doing nothing; it keeps its height
+  so the table still does not shift when a selection appears.
+
+Anything hardcoded here needs a matching `body.dark-mode` rule. The counter used
+`var(--bg-tertiary)` and followed the theme for free; replacing that with a
+literal left a white box sitting on the dark background.
+
 ### Technical Implementation
 - **SVG Icons**: Scalable vector graphics with currentColor for theme compatibility
 - **CSS Variables**: Centralized color management for light/dark themes
