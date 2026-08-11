@@ -259,6 +259,16 @@ body.dark-mode .search-column {
     color: #999;
 }
 
+/* 입력창 안에 얹힌 지우기 표시라 테두리가 있으면 안 된다. .clear-search-btn 이
+   먼저 border: none 을 선언해도, 뒤에 또 나오는 .btn(2027행)의
+   border: 1px solid transparent 가 같은 순위로 이겨서 라이트에서만 1px 자리가
+   생겼다. 다크에는 body.dark-mode .clear-search-btn 이 다시 none 을 걸어
+   테마마다 다르게 보였다. 두 테마 모두 확실히 없앤다. */
+.btn.clear-search-btn,
+body.dark-mode .btn.clear-search-btn {
+    border: none;
+}
+
 .search-input:not([value=""]) + .clear-search-btn,
 .search-input:focus + .clear-search-btn {
     display: flex;
@@ -812,10 +822,8 @@ body.dark-mode .page-size-select {
 .bar-btn.bar-delete { color: #e74c3c; }
 .bar-btn.bar-move { color: #42a5f5; }
 
-body.dark-mode .task-action-bar {
-    background: #2d2d2d;
-    border-color: #444;
-}
+/* 라이트에서 패널을 걷어냈으므로 다크도 같이 없앤다. 한쪽만 남기면 같은 줄이
+   테마마다 회색 상자였다가 빈 줄이었다가 한다. */
 
 body.dark-mode .selection-summary.has-selection {
     color: #6ea8fe;
@@ -1122,6 +1130,17 @@ body.dark-mode .date-format-preview {
     background-color: var(--hover-bg);
     color: var(--text-primary);
     transform: scale(1.05);
+}
+
+/* 아이콘 버튼은 옅은 바탕만으로 구분하고 테두리는 두지 않는다.
+   .btn 이 두 번 선언돼 있어(1089행, 2027행) 뒤엣것의 border: 1px solid
+   transparent 가 .icon-btn 의 테두리를 이겼고, 다크에서는 body.dark-mode .btn
+   의 #555 가 그 자리를 채웠다. 그래서 같은 버튼이 라이트에서는 테두리 없이,
+   다크에서는 테두리를 두르고 나왔다. 두 테마 모두 없는 쪽으로 맞춘다.
+   (.btn 중복 선언 자체는 다른 버튼들에도 걸려 있어 여기서 건드리지 않는다) */
+.btn.icon-btn,
+body.dark-mode .btn.icon-btn {
+    border: 1px solid transparent;
 }
 
 .add-btn {
@@ -1543,7 +1562,8 @@ body.dark-mode .collapsed-task-list li.standing {
    대신 renderer가 마우스 이동량을 main에 넘겨 직접 옮긴다(setupWindowDrag). */
 .drag-bar {
     /* .container의 20px 위쪽 여백만큼 아래에 떠 있으면 제목줄에서 멀어져
-       창 손잡이가 아니라 화면 안의 무언가로 보인다. 창 위 가장자리로 끌어올린다. */
+       창 손잡이가 아니라 화면 안의 무언가로 보인다. 창 위 가장자리로 끌어올린다.
+       이 값은 그 20px에 매인 것이라, 여백이 다른 접힘 모드에서는 다시 0으로 둔다. */
     margin-top: -14px;
     height: 12px;
     flex: 0 0 auto;
@@ -1585,12 +1605,23 @@ body.dark-mode .drag-bar:hover > span {
 
 /* 접힘 폭에서는 손잡이가 더 중요하다. 창 버튼이 거의 안 보이는 크기라
    여기 말고는 집을 데가 없다. */
+/* 끌어올리지 않는다. 접힘 컨테이너는 padding이 3px뿐이라 -14px를 그대로 쓰면
+   손잡이가 컨테이너 밖으로 나가고, overflow: hidden 에 잘려 아예 사라진다. */
 .container.collapsed-mode .drag-bar {
+    margin-top: 0;
     height: 14px;
 }
 
+/* 접힘에서는 오히려 더 크게 잡는다. 여기서는 이것 말고 창을 집을 데가 없는데,
+   24x3px 옅은 회색은 150px 스트립 안에서 그냥 여백으로 지나친다. */
 .container.collapsed-mode .drag-bar > span {
-    width: 24px;
+    width: 44px;
+    height: 4px;
+    background-color: #b6bfca;
+}
+
+body.dark-mode .container.collapsed-mode .drag-bar > span {
+    background-color: #5c636d;
 }
 
 /* ---- 오늘 완료 목록 ----------------------------------------------------

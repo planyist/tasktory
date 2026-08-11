@@ -208,6 +208,30 @@ Anything hardcoded here needs a matching `body.dark-mode` rule. The counter used
 `var(--bg-tertiary)` and followed the theme for free; replacing that with a
 literal left a white box sitting on the dark background.
 
+### Light and dark must not diverge structurally
+
+Colours differ between the themes; **whether a border exists must not**. Three
+places had drifted, and all three came from the same root:
+
+- `.btn` is declared **twice** (once around line 1089, again around 2027). The
+  second wins for anything it sets, including `border: 1px solid transparent`,
+  which quietly overrode `.icon-btn`'s own border. In light that left no visible
+  edge; in dark `body.dark-mode .btn` filled the same slot with `#555`, so the
+  identical button had a box in one theme and not the other.
+- `.clear-search-btn` said `border: none`, lost to that same duplicate `.btn`,
+  and got `none` back only under `body.dark-mode`.
+- `.task-action-bar` lost its panel in the light pass but kept
+  `body.dark-mode .task-action-bar`, so dark still drew a grey box.
+
+Fixes use `.btn.icon-btn` / `.btn.clear-search-btn` to outrank the duplicate
+rather than merging the two `.btn` blocks, which many other buttons depend on.
+
+**When you change a themed rule, change both sides.** The trap is one-sided
+edits: removing a light panel, or replacing a `var(--…)` with a literal, works
+on screen while silently stranding the other theme. `scratchpad/audit.js` walks
+a list of selectors in both themes and reports any element whose border presence
+differs — cheap to re-run after visual work.
+
 ### Technical Implementation
 - **SVG Icons**: Scalable vector graphics with currentColor for theme compatibility
 - **CSS Variables**: Centralized color management for light/dark themes
