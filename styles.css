@@ -467,6 +467,9 @@ body.collapsed-mode-body {
     gap: 14px;
     flex: 0 0 auto;
     margin-top: 10px;
+    /* 안에 무엇이 있든 줄 높이는 고정이다. 페이저가 나타났다 사라진다고 표가
+       늘었다 줄었다 하면 안 된다. */
+    min-height: 24px;
 }
 
 .pagination-total {
@@ -509,7 +512,7 @@ body.dark-mode .page-size-select {
 /* 회색 바탕 위의 흰 상자 여덟 개는 페이지 넘김치고 시끄럽다. 바탕은 부모를
    그대로 쓰고, 지금 보고 있는 쪽만 채워서 표시한다. */
 .pagination-btn {
-    min-width: var(--control-height);
+    min-width: 24px;
     border: 1px solid transparent;
     background: transparent;
     /* 화살표 SVG가 stroke="currentColor"라, 글자색을 안 정하면 브라우저
@@ -538,15 +541,13 @@ body.dark-mode .page-size-select {
 }
 
 .page-number {
-    padding: 8px 12px;
     border: 1px solid transparent;
     background: transparent;
     color: var(--text-primary);
     cursor: pointer;
     border-radius: 4px;
-    min-width: 35px;
+    min-width: 26px;
     text-align: center;
-    font-size: 14px;
 }
 
 .page-number:hover {
@@ -727,10 +728,14 @@ body.dark-mode .page-size-select {
 }
 
 /* 페이지네이션도 같은 높이로 */
+/* 페이저는 검색창과 같은 34px을 쓸 자리가 아니다. 쪽당 개수 선택 상자(24px)에
+   맞춘다. 34px이면 페이지가 하나뿐일 때 이 줄이 24px로 줄었다가 여러 쪽이 되면
+   34px로 자라고, 그 10px만큼 표가 깎이면서 모든 행이 위아래로 밀렸다. */
 .pagination-btn,
 .page-number {
-    height: var(--control-height);
-    padding: 0 12px;
+    height: 24px;
+    padding: 0 8px;
+    font-size: 12px;
 }
 
 /* 입력 아래 붙는 짧은 설명 */
