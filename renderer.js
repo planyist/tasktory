@@ -97,6 +97,10 @@ class TaskManager {
         this.dateFormat = localStorage.getItem('dateFormat') || DATE_FORMATS[0];
         this.searchQuery = '';
         this.searchColumn = 'all'; // 검색 대상 컬럼
+        // 빠른 필터는 검색어와 별개로 산다. 여러 개를 동시에 켤 수 있어야 하는데
+        // 검색창 한 칸에 밀어넣으면 하나밖에 담기지 않기 때문이다.
+        // 같은 갈래끼리는 OR(태그 A 또는 B), 갈래끼리는 AND(지연이면서 태그 A).
+        this.quickFilters = { status: new Set(), tags: new Set() };
         this.selectedTaskIds = new Set(); // 일괄 처리용 선택
         // 이미 알림을 보낸 태스크들. 메모리에만 두면 앱을 껐다 켤 때마다
         // 아직 시간대에 걸린 작업의 알림이 전부 다시 울린다.
@@ -104,7 +108,11 @@ class TaskManager {
         this.completionCount = 0; // Will be set in init()
         this.isCollapsed = false;
         this.currentPage = 1;
-        this.tasksPerPage = 10;
+        // 쪽당 개수. 목록을 보면서 바꾸는 값이라 설정 창이 아니라 페이지 넘김
+        // 옆에 두고, 고른 값은 기억한다.
+        this.tasksPerPage = TaskManager.PAGE_SIZES.includes(Number(localStorage.getItem('tasksPerPage')))
+            ? Number(localStorage.getItem('tasksPerPage'))
+            : 10;
         this.defaultNotificationEnabled = localStorage.getItem('defaultNotificationEnabled') !== 'false';
         // 창이 포커스를 잃었을 때의 투명도. main.js는 이 값을 메모리에만 들고
         // 있어서, 여기서 저장해 두고 시작할 때 다시 밀어주지 않으면 재시작마다
@@ -113,6 +121,8 @@ class TaskManager {
         // 'list' | 'calendar'. 목록은 무엇이 있는지, 달력은 언제 몰리는지에 강하다.
         this.viewMode = localStorage.getItem('viewMode') === 'calendar' ? 'calendar' : 'list';
         this.calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        // 접힘 미니 달력에서 직접 고른 날. null이면 오늘 우선으로 자동 선택한다.
+        this.collapsedPickedKey = null;
         this.tagPresets = this.loadTagPresets();
         this.actionThrottleMap = new Map(); // 스로틀링을 위한 맵
         this.init();
@@ -646,6 +656,14 @@ class TaskManager {
         });
 
 
+        document.getElementById('pageSizeSelect').addEventListener('change', (e) => {
+            this.tasksPerPage = Number(e.target.value);
+            localStorage.setItem('tasksPerPage', String(this.tasksPerPage));
+            // 20건짜리 3페이지를 보다 100으로 바꾸면 3페이지는 없는 쪽이 된다
+            this.currentPage = 1;
+            this.renderTasks();
+        });
+
         // 검색 대상 컬럼
         document.getElementById('searchColumn').addEventListener('change', (e) => {
             this.searchColumn = e.target.value;
@@ -707,6 +725,18 @@ class TaskManager {
             this.renderTasks();
         });
 
+        // 접힘 미니 달력에서 날짜를 누르면 그날 목록으로 바꾼다. 여기만은 눌러야
+        // 한다 - 스트립에는 다른 날로 갈 방법이 이것뿐이다. 같은 날을 다시 누르면
+        // 자동(오늘 우선)으로 되돌린다.
+        document.getElementById('collapsedCalGrid').addEventListener('click', (e) => {
+            const cell = e.target.closest('[data-day]');
+            if (!cell) return;
+            const key = cell.dataset.day;
+            this.collapsedPickedKey = this.collapsedPickedKey === key ? null : key;
+            this.renderTasks();
+            this.resizeCollapsedWindow();
+        });
+
         // 완료 목록은 열 때마다 읽는다. 미리 채워두면 다른 창에서 완료한 것이나
         // 자정을 넘긴 뒤의 목록이 낡은 채로 뜬다.
         document.getElementById('completionCounter').addEventListener('mouseenter', () => {
@@ -719,10 +749,23 @@ class TaskManager {
             if (!chip) return;
 
             if (chip.hasAttribute('data-quick-all')) {
+                this.quickFilters.status.clear();
+                this.quickFilters.tags.clear();
                 this.clearSearch();
-            } else {
-                this.applyChipFilter(chip.dataset.quick, chip.dataset.quickColumn);
+                return;
             }
+
+            // 켜고 끄기. 여러 개를 동시에 걸 수 있어야 "지연이면서 #운영"처럼
+            // 좁힐 수 있고, 하나씩만 되면 칩을 누를 때마다 앞의 조건이 날아간다.
+            const bucket = chip.dataset.quickColumn === 'status'
+                ? this.quickFilters.status
+                : this.quickFilters.tags;
+            const value = chip.dataset.quick;
+            if (bucket.has(value)) bucket.delete(value);
+            else bucket.add(value);
+
+            this.currentPage = 1;
+            this.renderTasks();
         });
 
         // Confirmation form submission
@@ -1112,6 +1155,7 @@ class TaskManager {
                 'completeDetails': 'Completion notes (optional)',
                 'completedAt': 'Completed at',
                 'showAll': 'All',
+                'totalCount': '{n} tasks',
                 'views': 'Views',
                 'searchAndFilters': 'Search and Filters',
                 'repeatingTasks': 'Repeating Tasks',
@@ -1305,6 +1349,7 @@ class TaskManager {
                 'completeDetails': '완료 메모 (선택사항)',
                 'completedAt': '완료 시각',
                 'showAll': '전체',
+                'totalCount': '{n}건',
                 'views': '보기',
                 'searchAndFilters': '검색과 필터',
                 'repeatingTasks': '반복 작업',
@@ -1498,6 +1543,7 @@ class TaskManager {
                 'completeDetails': '完成备注（可选）',
                 'completedAt': '完成时间',
                 'showAll': '全部',
+                'totalCount': '共 {n} 项',
                 'views': '视图',
                 'searchAndFilters': '搜索与筛选',
                 'repeatingTasks': '重复任务',
@@ -1691,6 +1737,7 @@ class TaskManager {
                 'completeDetails': '完了メモ（オプション）',
                 'completedAt': '完了時刻',
                 'showAll': 'すべて',
+                'totalCount': '{n}件',
                 'views': '表示',
                 'searchAndFilters': '検索とフィルター',
                 'repeatingTasks': '繰り返しタスク',
@@ -1884,6 +1931,7 @@ class TaskManager {
                 'completeDetails': 'Notas de finalización (opcional)',
                 'completedAt': 'Completado a las',
                 'showAll': 'Todas',
+                'totalCount': '{n} tareas',
                 'views': 'Vistas',
                 'searchAndFilters': 'Búsqueda y filtros',
                 'repeatingTasks': 'Tareas repetidas',
@@ -2077,12 +2125,16 @@ class TaskManager {
             .map(box => box.dataset.taskId);
     }
 
+    // 전체 선택은 페이지가 아니라 지금 걸린 검색 결과 전체에 적용된다.
+    // 보이는 열 줄만 잡으면 "전체"라는 말과 어긋나고, 50건을 지우려면 페이지를
+    // 넘겨가며 다섯 번 눌러야 했다. 검색은 존중한다 - 걸러 놓고 전체 선택을
+    // 눌렀다면 걸러진 것들을 뜻한 것이다.
     toggleSelectAll(selected) {
-        for (const id of this.visibleTaskIds()) {
+        for (const task of this.filteredActiveTasks()) {
             if (selected) {
-                this.selectedTaskIds.add(id);
+                this.selectedTaskIds.add(task.id);
             } else {
-                this.selectedTaskIds.delete(id);
+                this.selectedTaskIds.delete(task.id);
             }
         }
         document.querySelectorAll('#tasksBody .task-select').forEach(box => {
@@ -2104,8 +2156,7 @@ class TaskManager {
         const selectAll = document.getElementById('selectAllTasks');
         if (!summary) return;
 
-        // 화면에서 사라진 항목(삭제·완료)은 선택에서도 빠져야 한다
-        const visible = new Set(this.visibleTaskIds());
+        // 목록에서 사라진 항목(삭제·완료)은 선택에서도 빠져야 한다
         for (const id of [...this.selectedTaskIds]) {
             if (!this.tasks.some(t => t.id === id && !t.completed)) {
                 this.selectedTaskIds.delete(id);
@@ -2135,10 +2186,12 @@ class TaskManager {
         });
 
         if (selectAll) {
-            const shown = [...visible];
-            const allChosen = shown.length > 0 && shown.every(id => this.selectedTaskIds.has(id));
+            // 머리 체크박스도 검색 결과 전체를 기준으로 읽는다. 현재 페이지만
+            // 보면 2페이지로 넘겼을 때 "전체 선택됨"이 풀린 것처럼 보인다.
+            const all = this.filteredActiveTasks().map(t => t.id);
+            const allChosen = all.length > 0 && all.every(id => this.selectedTaskIds.has(id));
             selectAll.checked = allChosen;
-            selectAll.indeterminate = !allChosen && shown.some(id => this.selectedTaskIds.has(id));
+            selectAll.indeterminate = !allChosen && all.some(id => this.selectedTaskIds.has(id));
         }
     }
 
@@ -2457,28 +2510,22 @@ class TaskManager {
         return formatWithPattern(date, 'YYYY-MM-DD');
     }
 
-    // 날짜별 작업 묶음. 여러 날에 걸친 작업은 걸친 날마다 나온다 - 8일에
-    // 시작해 12일이 마감이면 그 닷새 내내 "하고 있는 일"이기 때문이다.
+    // 날짜별 작업 묶음. 작업은 **마감일 하루에만** 놓인다.
+    // 예전에는 시작일부터 마감일까지 걸친 날을 전부 칠했는데, 시작 시각은
+    // 대개 "적어둔 때"라서 마감을 며칠 미루면 그 사이가 통째로 칠해졌다.
+    // 편집한 날에만 있어야 할 것이 이전 날짜에 그대로 남아 누적된 것처럼
+    // 보였고, 달력 전체가 같은 작업으로 번졌다.
+    // 마감이 없는 상시 업무만 기준이 없으므로 시작한 날에 둔다.
     tasksByDay(tasks) {
         const byDay = new Map();
 
         for (const task of tasks) {
-            const start = new Date(task.startDateTime);
-            if (isNaN(start.getTime())) continue;
+            const anchor = new Date(task.targetDateTime || task.startDateTime);
+            if (isNaN(anchor.getTime())) continue;
 
-            // 마감이 없는 상시 업무는 길이가 없다. 시작한 날 하루에만 둔다.
-            const end = task.targetDateTime ? new Date(task.targetDateTime) : start;
-            const last = isNaN(end.getTime()) ? start : end;
-
-            const cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
-            const stop = new Date(last.getFullYear(), last.getMonth(), last.getDate());
-
-            while (cursor <= stop) {
-                const key = this.dayKey(cursor);
-                if (!byDay.has(key)) byDay.set(key, []);
-                byDay.get(key).push(task);
-                cursor.setDate(cursor.getDate() + 1);
-            }
+            const key = this.dayKey(anchor);
+            if (!byDay.has(key)) byDay.set(key, []);
+            byDay.get(key).push(task);
         }
 
         // 칸 안에서는 목표 시각순. 달력에서 궁금한 것은 "언제까지"이지 "언제부터"가
@@ -2575,6 +2622,13 @@ class TaskManager {
     // 늘 떠 있는 메모지가 비어 있으면 접어둘 이유가 없다.
     collapsedCalendarDay() {
         const byDay = this.tasksByDay(this.tasks.filter(t => !t.completed));
+
+        // 격자에서 직접 고른 날이 있으면 그 날이 우선이다. 비어 있어도 보여준다 -
+        // "그날은 아무것도 없다"도 알고 싶은 답이다.
+        if (this.collapsedPickedKey) {
+            return { key: this.collapsedPickedKey, tasks: byDay.get(this.collapsedPickedKey) || [] };
+        }
+
         const todayKey = this.dayKey(new Date());
         if (byDay.has(todayKey)) return { key: todayKey, tasks: byDay.get(todayKey) };
 
@@ -2641,7 +2695,7 @@ class TaskManager {
             if (key === shownKey) classes.push('shown');
 
             cells.push(
-                `<div class="${classes.join(' ')}"><span>${cursor.getDate()}</span>` +
+                `<div class="${classes.join(' ')}" data-day="${key}"><span>${cursor.getDate()}</span>` +
                 (status ? `<i class="mini-cal-dot ${status}"></i>` : '') +
                 '</div>'
             );
@@ -2782,6 +2836,8 @@ class TaskManager {
     // 순서로 채운다. 열다섯이면 검색창 폭에서 두 줄쯤이라 표를 크게 밀지 않는다.
     static get QUICK_FILTER_LIMIT() { return 15; }
 
+    static get PAGE_SIZES() { return [10, 20, 50, 100]; }
+
     quickFilterOptions() {
         const active = this.tasks.filter(task => !task.completed);
         const statuses = new Map();
@@ -2816,7 +2872,8 @@ class TaskManager {
         if (!bar) return;
 
         // '전체'는 어떤 필터가 걸렸든 늘 첫 칸에 있어야 빠져나올 길이 보인다
-        const cleared = !this.searchQuery;
+        const cleared = !this.searchQuery
+            && !this.quickFilters.status.size && !this.quickFilters.tags.size;
         const chips = [
             `<button type="button" class="quick-chip quick-all${cleared ? ' active' : ''}" data-quick-all>` +
             `${this.getLocalizedText('showAll')}</button>`
@@ -2824,8 +2881,8 @@ class TaskManager {
 
         const { shown, hidden } = this.quickFilterOptions();
         for (const option of shown) {
-            const active = this.searchQuery === option.value.toLowerCase()
-                && this.searchColumn === option.column;
+            const bucket = option.column === 'status' ? this.quickFilters.status : this.quickFilters.tags;
+            const active = bucket.has(option.value);
             const style = option.color
                 ? ` style="background-color:${option.color.bg};border-color:${option.color.border};color:${option.color.text}"`
                 : '';
@@ -2932,7 +2989,17 @@ class TaskManager {
     // 표와 달력이 같은 목록을 본다. 각자 거르면 검색해 둔 채로 보기를 바꿨을 때
     // 한쪽만 걸러진 결과가 나온다.
     filteredActiveTasks() {
-        const active = this.tasks.filter(task => !task.completed);
+        let active = this.tasks.filter(task => !task.completed);
+
+        const { status, tags } = this.quickFilters;
+        if (status.size || tags.size) {
+            active = active.filter(task => {
+                if (status.size && !status.has(this.getTaskStatus(task).text)) return false;
+                if (tags.size && !this.displayTagTexts(task).some(tag => tags.has(tag))) return false;
+                return true;
+            });
+        }
+
         if (!this.searchQuery) return active;
 
         return active.filter(task => {
@@ -2974,7 +3041,11 @@ class TaskManager {
         const activeTasks = this.filteredActiveTasks();
 
         if (activeTasks.length === 0) {
-            const message = this.searchQuery ? this.getLocalizedText('noSearchResults') : this.getLocalizedText('allCompleted');
+            // 빠른 필터만 걸려도 "결과 없음"이다. 검색어만 보고 판단하면 필터로
+            // 비운 화면에 "모든 작업 완료!"가 떠서 사실이 아닌 말을 한다.
+            const filtered = this.searchQuery
+                || this.quickFilters.status.size || this.quickFilters.tags.size;
+            const message = filtered ? this.getLocalizedText('noSearchResults') : this.getLocalizedText('allCompleted');
             tbody.innerHTML = `
                 <tr>
                     <td colspan="7" class="empty-message">
@@ -3201,15 +3272,24 @@ class TaskManager {
         const pageNumbers = document.getElementById('pageNumbers');
         const prevBtn = document.getElementById('prevPageBtn');
         const nextBtn = document.getElementById('nextPageBtn');
+        const total = document.getElementById('paginationTotal');
+        const pageSize = document.getElementById('pageSizeSelect');
 
-        
-        if (totalPages <= 1) {
-            paginationContainer.style.display = 'none';
-            return;
+        // 총 개수는 페이지가 하나뿐이어도 보여준다. "몇 건인가"는 페이지를
+        // 넘길 일이 있을 때만 궁금한 값이 아니다.
+        const count = this.filteredActiveTasks().length;
+        if (total) {
+            total.textContent = this.getLocalizedText('totalCount').replace('{n}', count);
         }
+        if (pageSize) pageSize.value = String(this.tasksPerPage);
+
+        const pager = paginationContainer.querySelector('.pagination');
+        if (pager) pager.style.visibility = totalPages <= 1 ? 'hidden' : 'visible';
 
         paginationContainer.style.display = 'flex';
         pageNumbers.innerHTML = '';
+
+        if (totalPages <= 1) return;
 
         // Previous button
         prevBtn.disabled = this.currentPage === 1;
@@ -4701,12 +4781,25 @@ class TaskManager {
                 };
             }
         }
-        // Default tag without color
+        // 색을 지정하지 않은 태그. 예전에는 전부 같은 파랑이라, 손으로 친 태그와
+        // 색 없는 프리셋이 화면에서 구분되지 않았다. 이름에서 색을 유도해
+        // 태그마다 고유한 색을 갖게 한다 - 같은 이름이면 언제 어디서 봐도 같은 색이다.
         return {
             content: tag, // Keep #
-            color: { bg: '#e3f2fd', border: '#bbdefb', text: '#1565c0' },
+            color: this.derivedTagColor(tag),
             hasColor: false
         };
+    }
+
+    // 이름을 팔레트의 한 자리로 접는다. 무작위가 아니라 이름의 함수라서
+    // 다시 그려도, 다른 화면에서도 같은 색이 나온다.
+    derivedTagColor(tag) {
+        const palette = Object.values(this.getGitHubColors());
+        let hash = 0;
+        for (let i = 0; i < tag.length; i++) {
+            hash = (hash * 31 + tag.charCodeAt(i)) >>> 0;
+        }
+        return palette[hash % palette.length];
     }
 
     repositionTask(taskId, newPosition) {

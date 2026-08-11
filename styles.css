@@ -441,17 +441,54 @@ body.collapsed-mode-body {
 }
 
 /* Pagination styles */
+/* 총 개수는 왼쪽, 페이지 넘김은 가운데, 쪽당 개수는 오른쪽.
+   넘김이 정확히 가운데 오도록 양쪽 칸의 폭을 같게 잡는다. */
 .pagination-container {
     display: flex;
-    justify-content: center;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
     flex: 0 0 auto;
     margin-top: 10px;
 }
 
+.pagination-total {
+    flex: 0 0 auto;
+    /* 접히면 "10 / tasks" 두 줄이 되어 표 아래가 들쭉날쭉해진다 */
+    white-space: nowrap;
+    font-size: 11px;
+    font-weight: 600;
+    color: #7b8794;
+}
+
+.page-size-select {
+    flex: 0 0 auto;
+    width: auto;
+    font-size: 11px;
+    color: #7b8794;
+    height: 24px;
+    padding: 0 4px;
+    border: 1px solid #d8dee6;
+    border-radius: 4px;
+    background: #fff;
+    color: #4a5568;
+    cursor: pointer;
+}
+
+body.dark-mode .pagination-total { color: #9aa5b1; }
+
+body.dark-mode .page-size-select {
+    background-color: #3a3f46;
+    border-color: #4a5058;
+    color: #cbd5e0;
+}
+
+/* 양옆 항목의 폭이 달라도 넘김은 가운데 오게 한다 */
 .pagination {
     display: flex;
     align-items: center;
     gap: 5px;
+    margin: 0 auto;
 }
 
 .pagination-btn {
@@ -1496,6 +1533,53 @@ body.dark-mode .collapsed-task-list li.standing {
     border: 1px solid #a3cfbb;
 }
 
+/* ---- 창 이동 손잡이 ----------------------------------------------------
+   -webkit-app-region: drag 는 그 영역의 마우스 이벤트를 창 이동에 넘긴다.
+   그래서 누를 것이 있는 요소에는 절대 걸면 안 되고, 오직 이 빈 띠에만 건다. */
+.drag-bar {
+    -webkit-app-region: drag;
+    height: 12px;
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: grab;
+}
+
+.drag-bar:active {
+    cursor: grabbing;
+}
+
+/* 잡을 수 있다는 표시. 없으면 그냥 여백으로 보여서 아무도 안 잡는다. */
+.drag-bar > span {
+    width: 34px;
+    height: 3px;
+    border-radius: 2px;
+    background-color: #ccd3db;
+}
+
+.drag-bar:hover > span {
+    background-color: #9aa5b1;
+}
+
+body.dark-mode .drag-bar > span {
+    background-color: #4a5058;
+}
+
+body.dark-mode .drag-bar:hover > span {
+    background-color: #6b7280;
+}
+
+/* 접힘 폭에서는 손잡이가 더 중요하다. 창 버튼이 거의 안 보이는 크기라
+   여기 말고는 집을 데가 없다. */
+.container.collapsed-mode .drag-bar {
+    height: 14px;
+}
+
+.container.collapsed-mode .drag-bar > span {
+    width: 24px;
+}
+
 /* ---- 오늘 완료 목록 ----------------------------------------------------
    "오늘 7개"는 뿌듯하지만 무엇이었는지 기억나지 않으면 회고에도 보고에도 쓸 수
    없다. 카운터 위에 올리면 그 일곱 개가 무엇인지 보여준다. */
@@ -1632,15 +1716,11 @@ body.dark-mode .collapsed-task-list li.standing {
     min-height: 0;
     background-color: #d8dee6;
     border: 1px solid #d8dee6;
-    /* 6주 격자가 창보다 길어지면 안쪽에서만 스크롤한다. 최소 높이를 크게 잡으면
-       기본 500px 창에서 셋째 주부터 잘려서, 달력을 켠 목적인 "한눈에"가 사라진다. */
-    overflow-y: auto;
-    /* 줄 높이는 그 주에서 가장 바쁜 날이 정한다. 반드시 max-content여야 한다 -
-       컨테이너 높이가 확정된 상태에서는 auto도, minmax(60px, max-content)도
-       여섯 줄 모두 정확히 60px로 눌려서 일이 몰린 날이 잘렸다. 실제로 재보면
-       max-content만 60/60/168/60/60/60 로 늘어난다.
-       바닥 높이(60px)는 칸(.cal-day)의 min-height가 맡는다. */
-    grid-auto-rows: max-content;
+    /* 격자는 창 안에 딱 맞춘다. 스크롤은 칸 안에서만 일어난다.
+       격자 자체가 세로로 늘어나면 요일 머리와 칸의 열 폭이 스크롤바 두께만큼
+       어긋나고, 한 달을 보려고 켠 화면에서 아래 주가 잘린다. */
+    overflow: hidden;
+    grid-auto-rows: 1fr;
 }
 
 .cal-day {
@@ -1649,12 +1729,10 @@ body.dark-mode .collapsed-task-list li.standing {
     display: flex;
     flex-direction: column;
     gap: 2px;
-    /* 한산한 날도 칸으로 보이게 하는 바닥 높이. 줄 높이는 이 값과 내용 중 큰
-       쪽으로 결정된다.
-       overflow: hidden 을 주면 안 된다. grid 항목의 자동 최소 높이가 0이 되어
-       줄이 내용 높이를 못 보고, 일이 몰린 날이 칸 안에 갇혀 칸마다 작은 스크롤
-       상자가 생긴다. */
-    min-height: 60px;
+    /* min-height: 0 이 있어야 안쪽 목록이 칸을 넘길 때 스크롤이 생긴다.
+       없으면 flex 항목의 자동 최소 높이가 내용 높이라 칸이 격자를 밀어낸다. */
+    min-height: 0;
+    overflow: hidden;
 }
 
 /* 이번 달이 아닌 날. 지우지 않고 흐리게만 둔다 - 주의 시작과 끝이 보여야
@@ -1684,12 +1762,31 @@ body.dark-mode .collapsed-task-list li.standing {
     flex-shrink: 0;
 }
 
-/* 하루에 열 건이 몰려도 전부 세운다. 잘라내면 "다 봤다"고 오해하고, 칸 안에서
-   스크롤시키면 굴릴 상자가 서른 개가 된다. 줄이 늘어나고 달력 하나만 스크롤한다. */
+/* 하루에 몰린 건 그 칸 안에서 세로로만 스크롤한다. 잘라내면 "다 봤다"고
+   오해하므로 감추지 않고, 격자 자체는 창에 고정되어 요일 머리와 어긋나지 않는다. */
 .cal-day-body {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    min-height: 0;
+    /* 스크롤이 없는 칸과 있는 칸의 폭이 달라 보이지 않게 자리를 미리 잡아둔다 */
+    scrollbar-gutter: stable;
+}
+
+/* 칸 안 스크롤바는 얇게. 기본 두께면 19px 남짓한 칩 폭을 절반 가까이 먹는다. */
+.cal-day-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.cal-day-body::-webkit-scrollbar-thumb {
+    background-color: #c8cdd5;
+    border-radius: 3px;
+}
+
+.cal-day-body::-webkit-scrollbar-track {
+    background: transparent;
 }
 
 .cal-chip {
@@ -1762,6 +1859,8 @@ body.dark-mode .collapsed-task-list li.standing {
 
 .mini-cal-day {
     position: relative;
+    /* 스트립에서 다른 날로 갈 방법이 이것뿐이라 여기만은 누를 수 있다 */
+    cursor: pointer;
     height: 17px;
     display: flex;
     align-items: center;

@@ -1524,10 +1524,51 @@ describe('quick filters', () => {
 
         chip('#meeting').click()
 
-        expect(manager.searchQuery).toBe('#meeting')
-        expect(manager.searchColumn).toBe('tags')
-        expect(document.getElementById('searchInput').value).toBe('#meeting')
+        expect([...manager.quickFilters.tags]).toEqual(['#meeting'])
+        expect(document.getElementById('searchInput').value).toBe('')
         expect(rows()).toHaveLength(1)
+    })
+
+    // One filter at a time makes every second click undo the first.
+    test('several chips stack: OR within a kind, AND across kinds', async () => {
+        const manager = await boot([
+            task('a', { tags: '#meeting' }),
+            task('b', { tags: '#urgent' }),
+            task('c', { tags: '#other' })
+        ])
+
+        chip('#meeting').click()
+        chip('#urgent').click()
+
+        expect(rows()).toHaveLength(2)
+
+        const status = manager.getTaskStatus(manager.tasks[0]).text
+        chip(status).click()
+
+        expect([...manager.quickFilters.status]).toEqual([status])
+        expect(rows()).toHaveLength(2)
+    })
+
+    test('clicking an active chip turns it off again', async () => {
+        const manager = await boot([task('a', { tags: '#meeting' }), task('b')])
+
+        chip('#meeting').click()
+        chip('#meeting').click()
+
+        expect(manager.quickFilters.tags.size).toBe(0)
+        expect(rows()).toHaveLength(2)
+    })
+
+    // Emptying the table with a filter and then claiming everything is done is
+    // simply untrue.
+    test('an empty result says no matches, not all completed', async () => {
+        const manager = await boot([task('a', { tags: '#meeting' })])
+        manager.quickFilters.tags.add('#nothing')
+        manager.renderTasks()
+
+        expect(document.querySelector('#tasksBody .empty-message').textContent.trim()).toBe(
+            'No tasks found matching your search.'
+        )
     })
 
     test('the active chip is marked so the current filter is visible', async () => {
@@ -1539,16 +1580,18 @@ describe('quick filters', () => {
         expect(chip('All').className).not.toContain('active')
     })
 
-    test('All clears the search and goes back to every row', async () => {
+    test('All clears every filter and goes back to every row', async () => {
         const manager = await boot([
             task('a', { tags: '#meeting' }),
             task('b', { tags: '#urgent' })
         ])
         chip('#meeting').click()
+        manager.searchQuery = 'zzz'
 
         chip('All').click()
 
         expect(manager.searchQuery).toBe('')
+        expect(manager.quickFilters.tags.size).toBe(0)
         expect(rows()).toHaveLength(2)
     })
 
@@ -1556,7 +1599,7 @@ describe('quick filters', () => {
     // quietly searched in that one column only.
     test('clearing resets the column back to all', async () => {
         const manager = await boot([task('a', { tags: '#meeting' })])
-        chip('#meeting').click()
+        manager.applyChipFilter('#meeting', 'tags')
 
         chip('All').click()
 
@@ -1647,17 +1690,40 @@ describe('calendar view', () => {
         expect(chipsIn(13)).toEqual([])
     })
 
-    // Something started on the 12th and due on the 14th is work in hand on the
-    // 13th too - showing it only on its first day hides that.
-    test('spans a task across every day it covers', async () => {
+    // A task sits on its deadline, not on every day between start and target.
+    // The start time is usually just when it was noted, so spanning smeared one
+    // task across the whole month and looked like old entries piling up.
+    test('places a task on its target day only', async () => {
         await openCalendar([
             task('a', { startDateTime: at(12, '09:00'), targetDateTime: at(14, '18:00') })
         ])
 
-        expect(chipsIn(12)).toHaveLength(1)
-        expect(chipsIn(13)).toHaveLength(1)
+        expect(chipsIn(12)).toHaveLength(0)
+        expect(chipsIn(13)).toHaveLength(0)
         expect(chipsIn(14)).toHaveLength(1)
-        expect(chipsIn(15)).toHaveLength(0)
+    })
+
+    // Pushing the deadline back must move it, not add a second copy.
+    test('moving the target date moves the task', async () => {
+        const manager = await openCalendar([
+            task('a', { startDateTime: at(12, '09:00'), targetDateTime: at(12, '18:00') })
+        ])
+        expect(chipsIn(12)).toHaveLength(1)
+
+        manager.tasks[0].targetDateTime = at(20, '18:00')
+        manager.renderTasks()
+
+        expect(chipsIn(12)).toHaveLength(0)
+        expect(chipsIn(20)).toHaveLength(1)
+    })
+
+    // Nothing else anchors it.
+    test('falls back to the start day when there is no target', async () => {
+        await openCalendar([
+            task('a', { startDateTime: at(12, '09:00'), targetDateTime: '' })
+        ])
+
+        expect(chipsIn(12)).toHaveLength(1)
     })
 
     test('orders a day by target time', async () => {

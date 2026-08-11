@@ -13,7 +13,10 @@ meant to do — and you forget what you already did. Tasktory keeps both.
 - **Always-on-top** window, so the list does not disappear behind your work
 - **Add, edit, complete, delete, highlight, reorder** — select rows and use the
   action bar above the table
-- **Multi-select**: tick several rows and act on all of them at once
+- **Multi-select**: tick several rows and act on all of them at once. The header
+  checkbox selects everything currently filtered, not just the visible page
+- **Page size**: 10, 20, 50 or 100 rows, chosen beside the pager, with the total
+  count alongside
 - **Optional target time**: a task without one is *ongoing* — never overdue,
   never "due soon", and it raises no notifications
 - **Repeating tasks**: daily, weekly, monthly or yearly. One row *is* the rule
@@ -114,9 +117,9 @@ Set a repeat in the task's edit form. The row then *is* the rule:
 
 Toggle it with the calendar button at the top right, next to collapse.
 
-- A task appears on **every day it spans** — started Monday, due Wednesday means
-  it is in hand on Tuesday too
-- The time shown is the **target** time, and each day sorts by it
+- A task sits on its **target day** — the deadline, not every day from start to
+  finish. The start time is usually just when you noted it down
+- The time shown is the target time, and each day sorts by it
 - A task with no target time has no length to draw, so it sits at the top of its
   start day without a time
 - Colours match the table's status badges
@@ -126,7 +129,8 @@ Collapsed, it becomes a mini month grid — 150px is too narrow for task names,
 so each day shows its number and a coloured underline for its most pressing
 status, with that day's items listed underneath. Today is a filled circle. If
 today is clear the strip rolls forward to the next day with work, and that day
-gets a ring so you can see the two are different.
+gets a ring so you can see the two are different. **Click any date** to list it
+instead; click it again to go back to automatic.
 
 ### Search and filters
 
@@ -134,10 +138,16 @@ The dropdown beside the search box narrows the search to one column, so
 searching "overdue" under *Status* will not also match a task with the word in
 its title.
 
-Clicking a chip in the table sets both the search text and the column. The quick
-filter row under the search box does the same from a fixed place, listing the
-statuses and tags actually in use (up to 15, most-used first). **All** clears the
-search and the column together.
+Clicking a chip in the table sets both the search text and the column.
+
+The quick filter row under the search box works differently: the chips are
+**toggles and you can hold several at once**. Two tags means either tag; a tag
+plus a status means both must match. It lists the statuses and tags actually in
+use, up to 15, most-used first. **All** clears the filters and the search
+together.
+
+Tags you type yourself get a colour derived from their name, so two different
+tags never look alike. Give one an explicit colour with `#[RED]name`.
 
 ### Statuses
 
@@ -164,6 +174,11 @@ Colours: `RED`, `GREEN`, `BLUE`, `YELLOW`, `PURPLE`, `ORANGE`, `GRAY`, `PINK`.
 - `Ctrl/Cmd + N` — add a task
 - `Ctrl/Cmd + M` — collapse to the side strip and back
 - `Esc` — close a dialog or the date picker
+
+### Moving the window
+
+The title bar is thin, and at 150px there is almost nothing left of it. Use the
+grip at the very top of the window instead — it is there in both sizes.
 
 ## Where your data lives
 
