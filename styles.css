@@ -506,10 +506,12 @@ body.dark-mode .page-size-select {
     gap: 5px;
 }
 
+/* 회색 바탕 위의 흰 상자 여덟 개는 페이지 넘김치고 시끄럽다. 바탕은 부모를
+   그대로 쓰고, 지금 보고 있는 쪽만 채워서 표시한다. */
 .pagination-btn {
     min-width: var(--control-height);
-    border: 1px solid #ddd;
-    background: white;
+    border: 1px solid transparent;
+    background: transparent;
     /* 화살표 SVG가 stroke="currentColor"라, 글자색을 안 정하면 브라우저
        기본값에 맡겨져 배경에 묻힌다. 명시한다. */
     color: var(--text-primary);
@@ -522,7 +524,7 @@ body.dark-mode .page-size-select {
 }
 
 .pagination-btn:hover:not(:disabled) {
-    background-color: #f0f0f0;
+    background-color: rgba(0, 0, 0, 0.06);
 }
 
 .pagination-btn:disabled {
@@ -537,8 +539,8 @@ body.dark-mode .page-size-select {
 
 .page-number {
     padding: 8px 12px;
-    border: 1px solid #ddd;
-    background: white;
+    border: 1px solid transparent;
+    background: transparent;
     color: var(--text-primary);
     cursor: pointer;
     border-radius: 4px;
@@ -548,7 +550,7 @@ body.dark-mode .page-size-select {
 }
 
 .page-number:hover {
-    background-color: #f0f0f0;
+    background-color: rgba(0, 0, 0, 0.06);
 }
 
 .page-number.active {
@@ -1138,9 +1140,33 @@ body.dark-mode .date-format-preview {
    의 #555 가 그 자리를 채웠다. 그래서 같은 버튼이 라이트에서는 테두리 없이,
    다크에서는 테두리를 두르고 나왔다. 두 테마 모두 없는 쪽으로 맞춘다.
    (.btn 중복 선언 자체는 다른 버튼들에도 걸려 있어 여기서 건드리지 않는다) */
+/* 바탕을 따로 칠하지 않는다. 페이지 배경(#f5f5f5)과 3단위밖에 차이 나지 않는
+   #f8f9fa를 깔면 색이 다르다고는 못 하면서 네모난 이음새만 드러난다.
+   눌리는 곳이라는 신호는 호버에서 주면 충분하다. */
 .btn.icon-btn,
 body.dark-mode .btn.icon-btn {
     border: 1px solid transparent;
+    background-color: transparent;
+}
+
+.btn.icon-btn:hover {
+    background-color: rgba(0, 0, 0, 0.06);
+}
+
+/* 추가 버튼만 예외다. .btn.icon-btn 이 .add-btn 보다 순위가 높아, 위의
+   투명 배경이 초록을 덮어버린다. 같은 순위로 다시 적어준다. */
+.btn.icon-btn.add-btn {
+    background-color: var(--color-success);
+    color: #fff;
+    border-color: var(--color-success);
+}
+
+.btn.icon-btn.add-btn:hover {
+    background-color: #2f9e4f;
+}
+
+body.dark-mode .btn.icon-btn:hover {
+    background-color: rgba(255, 255, 255, 0.09);
 }
 
 .add-btn {
@@ -2496,14 +2522,17 @@ body.dark-mode .icon-btn:hover {
     stroke-width: 2;
 }
 
-body.dark-mode .add-btn {
-    background-color: transparent;
-    color: #4caf50;
-    border-color: #4caf50;
+/* 유일한 주요 동작이라 두 테마 모두 채운 초록을 유지한다. 예전에는 다크에서
+   테두리만 남긴 초록이었는데, 뒤에 오는 body.dark-mode .btn 이 배경을 #2d2d2d로
+   덮어써서 결국 초록이 아예 사라지고 다른 아이콘들과 구분되지 않았다. */
+body.dark-mode .btn.add-btn {
+    background-color: var(--color-success);
+    color: #fff;
+    border-color: var(--color-success);
 }
 
-body.dark-mode .add-btn:hover {
-    background-color: rgba(76, 175, 80, 0.1);
+body.dark-mode .btn.add-btn:hover {
+    background-color: #2f9e4f;
 }
 
 body.dark-mode .table-container {
@@ -3017,20 +3046,16 @@ body.dark-mode .btn:disabled {
 }
 
 /* Dark mode pagination buttons */
-body.dark-mode .pagination-btn {
-    background-color: #2d2d2d;
-    color: #f0f0f0;
-    border-color: #555;
-}
-
-body.dark-mode .pagination-btn:hover:not(:disabled) {
-    background-color: #3d3d3d;
-}
-
+body.dark-mode .pagination-btn,
 body.dark-mode .page-number {
-    background-color: #2d2d2d;
+    background-color: transparent;
     color: #f0f0f0;
-    border-color: #555;
+    border-color: transparent;
+}
+
+body.dark-mode .pagination-btn:hover:not(:disabled),
+body.dark-mode .page-number:hover {
+    background-color: rgba(255, 255, 255, 0.09);
 }
 
 body.dark-mode .page-number.active {

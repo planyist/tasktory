@@ -208,6 +208,23 @@ Anything hardcoded here needs a matching `body.dark-mode` rule. The counter used
 `var(--bg-tertiary)` and followed the theme for free; replacing that with a
 literal left a white box sitting on the dark background.
 
+### Buttons take the background they sit on
+
+Icon buttons and the pager paint no background of their own; the tint appears on
+hover. `.icon-btn` used `#f8f9fa` against a `#f5f5f5` page — three units apart,
+which is not a colour difference so much as a visible seam around each square.
+The pager was worse: white boxes on grey. The only exceptions are the **add
+button**, which stays solid green in both themes because it is the one primary
+action, and the **current page number**, which fills so you can see where you are.
+
+Text fields keep their chrome (`.search-input`, both selects) — the split is
+fields have a border, buttons do not.
+
+Watch the cascade here. `.btn.icon-btn` outranks `.add-btn`, so the transparent
+background silently swallowed the green until `.btn.icon-btn.add-btn` restated
+it; in dark, `body.dark-mode .btn` had already been doing the same thing for
+some time, leaving the add button indistinguishable from the icons beside it.
+
 ### Light and dark must not diverge structurally
 
 Colours differ between the themes; **whether a border exists must not**. Three
