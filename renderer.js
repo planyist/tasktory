@@ -209,6 +209,7 @@ class TaskManager {
         document.getElementById('collapseBtn').title = this.getLocalizedText('collapseView');
         document.getElementById('collapsedExpandBtn').title = this.getLocalizedText('expand');
         document.getElementById('clearSearchBtn').title = this.getLocalizedText('clearSearch');
+        document.getElementById('dragBar').title = this.getLocalizedText('dragToMove');
         
         // Search input
         document.getElementById('searchInput').placeholder = this.getLocalizedText('search');
@@ -1167,6 +1168,7 @@ class TaskManager {
                 'completedAt': 'Completed at',
                 'showAll': 'All',
                 'totalCount': '{n} tasks',
+                'dragToMove': 'Drag to move the window',
                 'views': 'Views',
                 'searchAndFilters': 'Search and Filters',
                 'repeatingTasks': 'Repeating Tasks',
@@ -1361,6 +1363,7 @@ class TaskManager {
                 'completedAt': '완료 시각',
                 'showAll': '전체',
                 'totalCount': '{n}건',
+                'dragToMove': '끌어서 창 옮기기',
                 'views': '보기',
                 'searchAndFilters': '검색과 필터',
                 'repeatingTasks': '반복 작업',
@@ -1555,6 +1558,7 @@ class TaskManager {
                 'completedAt': '完成时间',
                 'showAll': '全部',
                 'totalCount': '共 {n} 项',
+                'dragToMove': '拖动以移动窗口',
                 'views': '视图',
                 'searchAndFilters': '搜索与筛选',
                 'repeatingTasks': '重复任务',
@@ -1749,6 +1753,7 @@ class TaskManager {
                 'completedAt': '完了時刻',
                 'showAll': 'すべて',
                 'totalCount': '{n}件',
+                'dragToMove': 'ドラッグでウィンドウを移動',
                 'views': '表示',
                 'searchAndFilters': '検索とフィルター',
                 'repeatingTasks': '繰り返しタスク',
@@ -1943,6 +1948,7 @@ class TaskManager {
                 'completedAt': 'Completado a las',
                 'showAll': 'Todas',
                 'totalCount': '{n} tareas',
+                'dragToMove': 'Arrastre para mover la ventana',
                 'views': 'Vistas',
                 'searchAndFilters': 'Búsqueda y filtros',
                 'repeatingTasks': 'Tareas repetidas',
@@ -3297,8 +3303,10 @@ class TaskManager {
         }
         if (pageSize) pageSize.value = String(this.tasksPerPage);
 
+        // visibility: hidden 은 자리를 그대로 차지해서, 페이지가 하나일 때 보이지
+        // 않는 넘김 버튼이 쪽당 개수를 오른쪽 끝에서 밀어냈다.
         const pager = paginationContainer.querySelector('.pagination');
-        if (pager) pager.style.visibility = totalPages <= 1 ? 'hidden' : 'visible';
+        if (pager) pager.style.display = totalPages <= 1 ? 'none' : 'flex';
 
         paginationContainer.style.display = 'flex';
         pageNumbers.innerHTML = '';

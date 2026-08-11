@@ -483,12 +483,14 @@ body.dark-mode .page-size-select {
     color: #cbd5e0;
 }
 
-/* 양옆 항목의 폭이 달라도 넘김은 가운데 오게 한다 */
+/* 총 건수는 표를 설명하는 라벨이라 왼쪽에 두고, 조작하는 것(넘김·쪽당 개수)은
+   오른쪽에 몰아둔다. 셋을 서로 다른 세 자리에 흩어놓으면 한 페이지뿐일 때
+   가운데가 비어 양 구석에 글자 둘만 남는다. */
 .pagination {
     display: flex;
     align-items: center;
     gap: 5px;
-    margin: 0 auto;
+    margin-left: auto;
 }
 
 .pagination-btn {
