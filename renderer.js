@@ -4072,6 +4072,12 @@ class TaskManager {
                 // Log with actual task content
                 await this.addLog('EDIT', taskData, taskData.content);
             }
+
+            // 편집은 선택을 푼다. 저장하면 상태나 날짜가 바뀌어 걸어둔 검색에서
+            // 빠지는 일이 흔한데, 그러면 보이지도 않는 행이 선택된 채로 남아
+            // 다음 일괄 작업에 딸려간다. 반대로 강조·알림 토글은 되돌리려면 한 번
+            // 더 눌러야 하므로 선택을 유지한다.
+            this.clearSelection();
         } else {
             // Add mode - insert at specified position
             const completedTasks = this.tasks.filter(t => t.completed);

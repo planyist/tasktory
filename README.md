@@ -10,7 +10,8 @@ meant to do — and you forget what you already did. Tasktory keeps both.
 
 ### Tasks
 
-- **Always-on-top** window, so the list does not disappear behind your work
+- **Always-on-top** window, so the list does not disappear behind your work —
+  including through Win+D (show desktop), the way a sticky note would
 - **Add, edit, complete, delete, highlight, reorder** — select rows and use the
   action bar above the table
 - **Multi-select**: tick several rows and act on all of them at once. The header

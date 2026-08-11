@@ -2049,3 +2049,40 @@ describe('collapsed calendar with nothing today', () => {
         expect(message.textContent).toBe('Nothing scheduled')
     })
 })
+
+// Saving an edit usually changes the status or the date, so the row often
+// leaves the current filter - and an invisible row left ticked would be swept
+// into the next bulk action.
+describe('selection after an edit', () => {
+    const pick = (id) => {
+        const box = Array.from(document.querySelectorAll('.task-select')).find(
+            (b) => b.dataset.taskId === id
+        )
+        box.checked = true
+        box.dispatchEvent(new window.Event('change', { bubbles: true }))
+    }
+
+    test('clears the selection', async () => {
+        const manager = await boot([task('a'), task('b')])
+        pick('a')
+
+        manager.editTask('a')
+        document.getElementById('taskContent').value = 'renamed'
+        await manager.saveTask()
+        await settle()
+
+        expect(manager.selectedTaskIds.size).toBe(0)
+    })
+
+    // The toggles are the opposite case: undoing one needs a second press, so
+    // the selection has to survive.
+    test('but a highlight toggle keeps it', async () => {
+        const manager = await boot([task('a'), task('b')])
+        pick('a')
+
+        await document.querySelector('[data-bulk="highlight"]').click()
+        await settle()
+
+        expect(manager.selectedTaskIds.size).toBe(1)
+    })
+})

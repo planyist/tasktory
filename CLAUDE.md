@@ -45,7 +45,7 @@ This is the Todoist model, not the calendar model. It was chosen deliberately:
 
 ### 1. Always-on-Top Display
 - The application stays on top of all other windows like a sticky note program
-- Implemented with `alwaysOnTop: true` in BrowserWindow configuration
+- `alwaysOnTop: true` alone is not enough — Win+D (show desktop) and full-screen apps still bury it. `setAlwaysOnTop(true, 'screen-saver')` raises it to the top level, which survives both. It changes only stacking order, never size or position
 
 ### 2. Cross-Platform Compatibility
 - Works on Windows, Linux, and macOS
@@ -141,6 +141,7 @@ This is a complete Electron application with the following structure:
 - **Reminders**: one `LEAD_MINUTES` list drives both the notifications and the "due soon" badge, so they cannot drift apart. Not user-configurable — the earlier settings and per-task fields were removed as unnecessary
 - **Chips filter on click**: tags, status and repeat cadence. No hidden keyword to guess, and it works in any UI language
 - **Quick filters are multi-select and independent of the search box.** Several can be on at once — OR within a kind (tag A or B), AND across kinds (overdue *and* tag A). They used to write into the search box, which holds one value, so every second chip undid the first. `All` clears both them and the search. The empty-state message checks the filters too; looking only at `searchQuery` put "All tasks completed!" on a table emptied by a filter.
+- **Editing clears the selection; the toggles keep it.** Saving an edit usually changes the status or the date, so the row drops out of whatever filter is on — leaving an invisible row ticked, ready to be swept into the next bulk action. Highlight and notification are the opposite case: undoing one needs a second press, so their selection has to survive.
 - **Select-all covers the whole filtered list, not the visible page.** Page-scoped select-all contradicts the word and made deleting 50 rows a five-page chore. The header checkbox reads its state the same way, so paging no longer looks like it cleared the selection.
 - **Page size lives beside the pager** (10/20/50/100, remembered) with the total count on the other side. Both belong where the list is, not behind the settings dialog — you change the page size while looking at the list, and "how many are there" is not a question that only matters when paging.
 - **A tag with no `#[COLOR]` gets a colour derived from its name.** They all shared one blue before, so a hand-typed tag and an uncoloured preset were indistinguishable. The hash is over the name, so the same tag is the same colour everywhere and across restarts.

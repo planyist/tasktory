@@ -25,6 +25,12 @@ const createWindow = () => {
         }
     })
     
+    // 그냥 alwaysOnTop: true 면 Win+D(바탕화면 보기)나 전체화면 앱에 밀려 사라진다.
+    // 스티커처럼 남아 있으라는 것이 이 앱의 요구사항이므로 한 단계 위로 올린다.
+    // 'screen-saver'는 그 위가 없는 레벨이라 바탕화면 보기에도 살아남는다.
+    // (창 크기나 위치는 그대로다 - 쌓이는 순서만 달라진다)
+    mainWindow.setAlwaysOnTop(true, 'screen-saver')
+
     mainWindow.loadFile('index.html')
     
     
