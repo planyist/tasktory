@@ -2764,6 +2764,9 @@ class TaskManager {
         // 보기를 바꿀 때마다 이번 달로 돌아온다. 지난달을 보다 목록으로 갔다가
         // 돌아왔을 때 엉뚱한 달이 떠 있으면 비어 보인다.
         this.calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+        // 골라둔 날도 같이 놓는다. 같은 이유다 - 목록으로 갔다 돌아왔는데
+        // 지난주가 떠 있으면 오늘 할 일이 없는 것처럼 보인다.
+        this.collapsedPickedKey = null;
         this.applyViewMode();
         this.renderTasks();
         // 접힌 채로 보기를 바꾸면 줄 수가 달라지므로 창 높이도 다시 맞춘다

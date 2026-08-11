@@ -2124,3 +2124,93 @@ describe('completed tasks leave tasks.json', () => {
         expect(manager.tasks.map((t) => t.id)).toEqual(['a'])
     })
 })
+
+// The strip has no other way to reach another day, so its dates are the one
+// exception to the calendar being view-only.
+describe('picking a day in the collapsed calendar', () => {
+    const pad = (n) => String(n).padStart(2, '0')
+    const shift = (days, time) => {
+        const now = new Date()
+        const d = new Date(now.getFullYear(), now.getMonth(), now.getDate() + days)
+        return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())} ${time}`
+    }
+    const dayCell = (key) => document.querySelector(`#collapsedCalGrid [data-day="${key}"]`)
+    const listed = () => document.getElementById('collapsedCalDate').textContent
+
+    const openCollapsed = async (tasks) => {
+        const manager = await boot(tasks)
+        manager.viewMode = 'calendar'
+        manager.isCollapsed = true
+        manager.applyViewMode()
+        manager.renderTasks()
+        return manager
+    }
+
+    test('clicking a date lists that day instead', async () => {
+        await openCollapsed([
+            task('today', { startDateTime: shift(0, '09:00'), targetDateTime: shift(0, '10:00') }),
+            task('later', { startDateTime: shift(2, '09:00'), targetDateTime: shift(2, '15:00') })
+        ])
+        expect(listed()).toBe(shift(0, '00:00').slice(5, 10))
+
+        dayCell(shift(2, '00:00').slice(0, 10)).click()
+
+        expect(listed()).toBe(shift(2, '00:00').slice(5, 10))
+        expect(
+            Array.from(document.querySelectorAll('#collapsedMiniTasksBody li')).map(
+                (li) => li.querySelector('.mini-index').textContent
+            )
+        ).toEqual(['15:00'])
+    })
+
+    // "That day is empty" is an answer worth having, so an empty day is still
+    // selectable rather than silently ignored.
+    test('an empty day can be picked and says so', async () => {
+        await openCollapsed([
+            task('today', { startDateTime: shift(0, '09:00'), targetDateTime: shift(0, '10:00') })
+        ])
+
+        dayCell(shift(3, '00:00').slice(0, 10)).click()
+
+        expect(document.querySelector('#collapsedMiniTasksBody .empty-message').textContent).toBe(
+            'Nothing scheduled'
+        )
+    })
+
+    test('clicking the same date again goes back to automatic', async () => {
+        const manager = await openCollapsed([
+            task('today', { startDateTime: shift(0, '09:00'), targetDateTime: shift(0, '10:00') }),
+            task('later', { startDateTime: shift(2, '09:00'), targetDateTime: shift(2, '15:00') })
+        ])
+        const key = shift(2, '00:00').slice(0, 10)
+
+        dayCell(key).click()
+        dayCell(key).click()
+
+        expect(manager.collapsedPickedKey).toBeNull()
+        expect(listed()).toBe(shift(0, '00:00').slice(5, 10))
+    })
+
+    test('leaving calendar view drops the picked day', async () => {
+        const manager = await openCollapsed([
+            task('later', { startDateTime: shift(2, '09:00'), targetDateTime: shift(2, '15:00') })
+        ])
+        dayCell(shift(2, '00:00').slice(0, 10)).click()
+
+        manager.toggleViewMode()
+
+        expect(manager.collapsedPickedKey).toBeNull()
+    })
+})
+
+// -webkit-app-region: drag hands an element's mouse events to the window
+// manager, so anything clickable inside one stops responding.
+describe('window drag grip', () => {
+    test('exists and holds nothing clickable', async () => {
+        await boot([task('a')])
+        const grip = document.getElementById('dragBar')
+
+        expect(grip).not.toBeNull()
+        expect(grip.querySelectorAll('button, input, select, a, [data-bulk]')).toHaveLength(0)
+    })
+})
