@@ -1384,16 +1384,9 @@ td:nth-child(2) {
     color: #6f42c1;
 }
 
-/* 태그·상태·반복 칩은 모두 클릭하면 그 키워드로 걸러진다.
-   같은 규칙을 쓰므로 눌러도 되는 것처럼 보여야 한다. */
-[data-filter] {
-    cursor: pointer;
-    transition: opacity 0.15s ease;
-}
-
-[data-filter]:hover {
-    opacity: 0.72;
-}
+/* 표 안의 칩은 더 이상 따로 눌리는 것이 아니다. 행과 같이 선택될 뿐이라
+   호버 강조도 커서도 행을 따른다. (예전 [data-filter] 규칙은 칩만 밝아지게
+   해서, 행이 아니라 칩이 눌린다는 잘못된 신호를 줬다) */
 
 .repeat-row {
     display: flex;
@@ -1536,10 +1529,10 @@ body.dark-mode .collapsed-task-list li.standing {
 }
 
 /* ---- 창 이동 손잡이 ----------------------------------------------------
-   -webkit-app-region: drag 는 그 영역의 마우스 이벤트를 창 이동에 넘긴다.
-   그래서 누를 것이 있는 요소에는 절대 걸면 안 되고, 오직 이 빈 띠에만 건다. */
+   -webkit-app-region: drag 는 쓰지 않는다. 프레임 없는 창(frame: false) 전용이라
+   제목줄이 있는 이 창에서는 Windows가 무시해서 잡아도 움직이지 않았다.
+   대신 renderer가 마우스 이동량을 main에 넘겨 직접 옮긴다(setupWindowDrag). */
 .drag-bar {
-    -webkit-app-region: drag;
     height: 12px;
     flex: 0 0 auto;
     display: flex;
@@ -1548,8 +1541,14 @@ body.dark-mode .collapsed-task-list li.standing {
     cursor: grab;
 }
 
-.drag-bar:active {
+.drag-bar:active,
+.drag-bar.dragging {
     cursor: grabbing;
+}
+
+/* 끄는 동안 손잡이가 살아 있음을 보여준다 */
+.drag-bar.dragging > span {
+    background-color: #7b8794;
 }
 
 /* 잡을 수 있다는 표시. 없으면 그냥 여백으로 보여서 아무도 안 잡는다. */

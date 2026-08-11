@@ -695,15 +695,11 @@ class TaskManager {
 
         });
 
-        // 표 안의 칩(태그·상태·반복)을 클릭하면 그 키워드로 검색한다.
-        // 어떤 단어를 쳐야 하는지 몰라도 되고, 언어가 바뀌어도 보이는 것을 누르면 된다.
+        // 표 안에서는 어디를 눌러도 그 행이 선택된다. 태그·상태 칩도 예외가 아니다.
+        // 예전에는 칩을 누르면 검색으로 빠졌는데, 빠른 필터가 같은 일을 늘 같은
+        // 자리에서 여러 개까지 걸 수 있게 하면서 쓸모가 없어졌다. 남겨두면 행을
+        // 고르려다 칩을 스치기만 해도 목록이 통째로 바뀌어 버린다.
         document.getElementById('tasksTable').addEventListener('click', (e) => {
-            const chip = e.target.closest('[data-filter]');
-            if (chip) {
-                this.applyChipFilter(chip.dataset.filter, chip.dataset.filterColumn);
-                return;
-            }
-
             // 행 어디를 눌러도 선택된다. 체크박스만 노리기에는 표적이 작다.
             // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
             if (e.target.closest('.task-select')) return;
@@ -725,6 +721,8 @@ class TaskManager {
             this.calendarMonth = new Date(now.getFullYear(), now.getMonth(), 1);
             this.renderTasks();
         });
+
+        this.setupWindowDrag();
 
         // 접힘 미니 달력에서 날짜를 누르면 그날 목록으로 바꾼다. 여기만은 눌러야
         // 한다 - 스트립에는 다른 날로 갈 방법이 이것뿐이다. 같은 날을 다시 누르면
@@ -2491,25 +2489,6 @@ class TaskManager {
         select.value = this.searchColumn;
     }
 
-    // 칩 클릭 = 그 키워드로 검색. 검색창에도 값을 넣어 무슨 일이 일어났는지 보이게 하고,
-    // 기존 지우기 버튼으로 그대로 되돌릴 수 있게 한다.
-    // 칩을 누르면 그 칩이 속한 컬럼으로 대상까지 맞춘다. '지연'을 눌렀는데
-    // 전체 컬럼으로 찾으면 작업 내용에 '지연'이 들어간 것까지 딸려 나온다.
-    applyChipFilter(value, column) {
-        const input = document.getElementById('searchInput');
-        if (input) input.value = value;
-        // 값을 코드로 넣으면 input 이벤트가 안 나서 지우기 버튼이 숨은 채였다
-        const clearBtn = document.getElementById('clearSearchBtn');
-        if (clearBtn) clearBtn.style.display = 'block';
-
-        this.searchColumn = column || 'all';
-        this.updateSearchColumnControl();
-
-        this.searchQuery = value.toLowerCase();
-        this.currentPage = 1;
-        this.renderTasks();
-    }
-
     // ---- 달력 보기 ---------------------------------------------------------
     // 목록은 "무엇이 있는가"에 강하고 달력은 "언제 몰려 있는가"에 강하다.
     // 보기 전용이다: 선택도 편집도 없다. 좁은 칸에 클릭 대상을 채우면 잘못
@@ -2849,6 +2828,43 @@ class TaskManager {
         box.innerHTML = rows.join('');
     }
 
+    // 손잡이를 끌면 창이 따라온다. CSS의 -webkit-app-region: drag 는 프레임 없는
+    // 창 전용이라 제목줄이 있는 이 창에서는 아무 일도 하지 않았다 - 잡아도 안
+    // 움직였던 이유다. 화면 좌표(screenX/Y)의 변화량을 그대로 창에 넘긴다.
+    setupWindowDrag() {
+        const grip = document.getElementById('dragBar');
+        if (!grip || !this.isElectron || !window.electronAPI.moveWindowBy) return;
+
+        let last = null;
+
+        const move = (e) => {
+            if (!last) return;
+            const dx = e.screenX - last.x;
+            const dy = e.screenY - last.y;
+            if (dx === 0 && dy === 0) return;
+            last = { x: e.screenX, y: e.screenY };
+            window.electronAPI.moveWindowBy(dx, dy);
+        };
+
+        const stop = () => {
+            last = null;
+            grip.classList.remove('dragging');
+            document.removeEventListener('mousemove', move);
+            document.removeEventListener('mouseup', stop);
+        };
+
+        grip.addEventListener('mousedown', (e) => {
+            // 왼쪽 버튼만. 가운데/오른쪽 버튼으로 창이 끌려다니면 놀란다.
+            if (e.button !== 0) return;
+            e.preventDefault();
+            last = { x: e.screenX, y: e.screenY };
+            grip.classList.add('dragging');
+            // 손잡이 밖으로 벗어나도 계속 따라오도록 document에 건다
+            document.addEventListener('mousemove', move);
+            document.addEventListener('mouseup', stop);
+        });
+    }
+
     // 검색창 아래의 빠른 필터. 표 안의 칩과 같은 일을 하지만, 원하는 칩이 걸린
     // 행을 먼저 찾아 헤맬 필요가 없다. 지금 목록에 실제로 있는 상태와 태그만
     // 내보낸다 - 하나도 없는 조건을 눌러 빈 표를 보는 건 의미가 없다.
@@ -3112,7 +3128,7 @@ class TaskManager {
             // 다른 칩과 같은 규칙: 보이는 글자 그대로 걸러진다. '2일마다'를 눌렀는데
             // 반복 전체가 나오면 누른 것과 결과가 어긋난다.
             const cadenceMarkup = repeatCadence ? `
-                <div class="repeat-cadence" data-filter="${repeatCadence}" data-filter-column="repeat" title="${repeatCadence}">
+                <div class="repeat-cadence" title="${repeatCadence}">
                     <span class="repeat-badge">
                         <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                             <polyline points="17,1 21,5 17,9"/><path d="M3,11V9a4,4,0,0,1,4-4H21"/>
@@ -3132,7 +3148,7 @@ class TaskManager {
             // Tags from the tags field with color support
             const displayTags = task.tags ? task.tags.split(/\s+/).filter(tag => tag.startsWith('#')).map(tag => {
                 const parsed = this.parseTagWithColor(tag);
-                return `<span class="tag" data-filter="${parsed.content}" data-filter-column="tags" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
+                return `<span class="tag" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
             }).join(' ') : '';
             
             row.innerHTML = `
@@ -3142,7 +3158,7 @@ class TaskManager {
                 <td>${this.formatDateTime(task.targetDateTime)}${notificationFlag}</td>
                 <td class="task-tags">${displayTags}</td>
                 <td class="task-content">${plainContent}</td>
-                <td><span class="status ${taskStatus.status}" data-filter="${taskStatus.text}" data-filter-column="status" title="${taskStatus.text}">${taskStatus.text}</span></td>
+                <td><span class="status ${taskStatus.status}" title="${taskStatus.text}">${taskStatus.text}</span></td>
             `;
             
             tbody.appendChild(row);

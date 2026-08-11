@@ -357,6 +357,17 @@ ipcMain.handle('open-log-folder', async () => {
 
 ipcMain.handle('get-app-version', async () => app.getVersion())
 
+// 손잡이를 끌 때 마우스가 움직인 만큼 창을 옮긴다.
+// CSS의 -webkit-app-region: drag 는 프레임 없는 창(frame: false)용이라, 제목줄이
+// 있는 이 창에서는 Windows가 통째로 무시한다. 그래서 직접 옮긴다.
+// 절대 좌표가 아니라 이동량을 받는다 - 창 위치를 renderer가 알 필요가 없다.
+ipcMain.handle('move-window-by', async (event, dx, dy) => {
+    if (!mainWindow) return false
+    const [x, y] = mainWindow.getPosition()
+    mainWindow.setPosition(Math.round(x + dx), Math.round(y + dy))
+    return true
+})
+
 // Opacity 설정
 ipcMain.handle('set-unfocused-opacity', async (event, opacity) => {
     unfocusedOpacity = opacity

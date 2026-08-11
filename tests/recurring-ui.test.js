@@ -485,71 +485,29 @@ describe('searching recurring tasks', () => {
 
     // Typing the right keyword is undiscoverable and changes with the UI
     // language, so every chip in the table filters by itself when clicked.
-    describe('clicking chips to filter', () => {
+    // Chips in a row no longer jump to a search - the quick filters do that,
+    // and hold several at once. What has to keep working is that a chip's
+    // displayed text is what matches.
+    describe('filtering by what a chip shows', () => {
         const visibleRows = () =>
             Array.from(document.querySelectorAll('#tasksBody tr')).filter(
                 (row) => !row.querySelector('.empty-message')
             )
-
-        // Clicking a chip must give what the chip says: clicking "Weekly Mon"
-        // should not also drag in every daily task.
-        test('clicking a cadence chip filters to that cadence only', async () => {
-            await boot(setup())
-            expect(visibleRows()).toHaveLength(3)
-
-            const weekly = Array.from(document.querySelectorAll('#tasksBody .repeat-cadence')).find(
-                (chip) => chip.textContent.includes('Weekly')
+        const quickChip = (text) =>
+            Array.from(document.querySelectorAll('#quickFilters .quick-chip')).find(
+                (c) => c.textContent === text
             )
-            weekly.click()
 
-            expect(visibleRows()).toHaveLength(1)
-            expect(document.getElementById('tasksBody').textContent).toContain('report')
-            expect(document.getElementById('tasksBody').textContent).not.toContain('standup')
-        })
-
-        test('mirrors the keyword into the search box so it can be undone', async () => {
-            await boot(setup())
-
-            document.querySelector('#tasksBody .repeat-cadence').click()
-
-            expect(document.getElementById('searchInput').value).toBe('Daily')
-        })
-
-        test('clicking a status chip filters by that status', async () => {
-            const manager = await boot(setup())
-            const status = document.querySelector('#tasksBody .status')
-            const label = status.textContent
-
-            status.click()
-
-            expect(manager.searchQuery).toBe(label.toLowerCase())
-            expect(visibleRows().length).toBeGreaterThan(0)
-        })
-
-        test('clicking a tag chip filters by that tag', async () => {
-            const data = setup()
-            data.tasks[2].tags = '#errands'
-            const manager = await boot(data)
-
-            document.querySelector('#tasksBody .tag').click()
-
-            expect(manager.searchQuery).toBe('#errands')
-            expect(visibleRows()).toHaveLength(1)
-        })
-
-        // Regression: a coloured tag is stored as '#[RED]issue' but rendered as
-        // '#issue'. Matching the stored form only meant clicking the chip - or
-        // typing exactly what was on screen - found nothing.
-        test('clicking a coloured tag chip filters by its displayed text', async () => {
+        // A coloured tag is stored as '#[RED]issue' but rendered as '#issue'.
+        // Matching the stored form meant what you saw on screen found nothing.
+        test('a quick filter uses the tag as displayed, not as stored', async () => {
             const data = setup()
             data.tasks[2].tags = '#[RED]issue'
-            const manager = await boot(data)
+            await boot(data)
 
-            const chip = document.querySelector('#tasksBody .tag')
-            expect(chip.textContent).toBe('#issue')
-            chip.click()
+            expect(document.querySelector('#tasksBody .tag').textContent).toBe('#issue')
+            quickChip('#issue').click()
 
-            expect(manager.searchQuery).toBe('#issue')
             expect(visibleRows()).toHaveLength(1)
             expect(document.getElementById('tasksBody').textContent).toContain('errand')
         })
@@ -562,11 +520,11 @@ describe('searching recurring tasks', () => {
             expect(await search(manager, '#urgent')).toHaveLength(1)
         })
 
-        test('resets to the first page so the match is visible', async () => {
+        test('a quick filter goes back to the first page', async () => {
             const manager = await boot(setup())
             manager.currentPage = 3
 
-            document.querySelector('#tasksBody .repeat-cadence').click()
+            quickChip(manager.getTaskStatus(manager.tasks[0]).text).click()
 
             expect(manager.currentPage).toBe(1)
         })

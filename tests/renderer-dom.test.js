@@ -1080,43 +1080,27 @@ describe('column-scoped search', () => {
         expect(document.getElementById('tasksBody').textContent).toContain('urgent call')
     })
 
-    // Clicking a chip should search the column the chip came from. Falling
-    // back to every column drags in rows that merely mention the word.
-    test('clicking a tag chip scopes the search to tags', async () => {
+    // Chips in the table used to jump to a search. The quick filters do that
+    // job from a fixed place and hold several at once, so a chip in a row is
+    // just part of the row now - brushing one while aiming for the row must
+    // not replace the whole list.
+    test('clicking a tag chip leaves the search alone', async () => {
         const manager = await boot(setup())
-        // Start scoped elsewhere so the switch is what the assertion catches.
-        search(manager, '', 'content')
 
         document.querySelector('#tasksBody .tag').click()
 
-        expect(manager.searchColumn).toBe('tags')
-        expect(document.getElementById('searchColumn').value).toBe('tags')
-        expect(rowCount()).toBe(1)
+        expect(manager.searchQuery).toBe('')
+        expect(manager.searchColumn).toBe('all')
+        expect(rowCount()).toBe(2)
     })
 
-    test('clicking a status chip scopes the search to status', async () => {
+    test('clicking a status chip leaves the search alone', async () => {
         const manager = await boot(setup())
 
         document.querySelector('#tasksBody .status').click()
 
-        expect(manager.searchColumn).toBe('status')
-        expect(document.getElementById('searchColumn').value).toBe('status')
-    })
-
-    test('a status word that also appears in content matches only the status', async () => {
-        const manager = await boot([
-            task('a', { content: 'plain' }),
-            task('b', { content: 'chase the overdue invoice' })
-        ])
-        const label = document.querySelector('#tasksBody .status').textContent
-
-        document.querySelector('#tasksBody .status').click()
-
-        expect(manager.searchQuery).toBe(label.toLowerCase())
-        expect(manager.searchColumn).toBe('status')
-        // Both share a status here, so both stay - the point is that the
-        // content-only match is not what selected them.
-        expect(rowCount()).toBe(2)
+        expect(manager.searchQuery).toBe('')
+        expect(manager.searchColumn).toBe('all')
     })
 
     test('is labelled in the selected language', async () => {
@@ -1454,14 +1438,14 @@ describe('selecting by clicking the row', () => {
         expect(boxOf('a').checked).toBe(false)
     })
 
-    // Chips search; they must not also flip the selection underneath.
-    test('clicking a chip filters without selecting the row', async () => {
+    // A chip is part of its row like anything else in it.
+    test('clicking a chip selects the row it sits in', async () => {
         const manager = await boot(setup())
 
         document.querySelector('#tasksBody .tag').click()
 
-        expect(manager.selectedTaskIds.size).toBe(0)
-        expect(manager.searchColumn).toBe('tags')
+        expect(manager.selectedTaskIds.has('a')).toBe(true)
+        expect(boxOf('a').checked).toBe(true)
     })
 
     // The checkbox raises its own change event; the row handler must not
@@ -1603,7 +1587,9 @@ describe('quick filters', () => {
     // quietly searched in that one column only.
     test('clearing resets the column back to all', async () => {
         const manager = await boot([task('a', { tags: '#meeting' })])
-        manager.applyChipFilter('#meeting', 'tags')
+        const column = document.getElementById('searchColumn')
+        column.value = 'tags'
+        column.dispatchEvent(new window.Event('change', { bubbles: true }))
 
         chip('All').click()
 

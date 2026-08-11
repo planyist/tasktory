@@ -19,5 +19,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     resizeAndPositionWindow: (width, height, position) => ipcRenderer.invoke('resize-and-position-window', width, height, position),
     // 정보 창의 버전은 손으로 적혀 있었고 0.6.4에서 멈춰 있었다. package.json을
     // 그대로 읽어오면 릴리스마다 잊어버릴 자리가 하나 줄어든다.
-    getAppVersion: () => ipcRenderer.invoke('get-app-version')
+    getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+    moveWindowBy: (dx, dy) => ipcRenderer.invoke('move-window-by', dx, dy)
 })
