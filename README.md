@@ -191,6 +191,12 @@ data/rules.json      repeat rules
 logs/YYYY-MM-DD.tsv  one history file per day, by local date
 ```
 
+Completing a task removes it from `tasks.json`. The history lives in the daily
+log, whose `COMPLETE` line already records the id, both times, the tags and the
+content — so keeping a second copy only grew the file and every backup. A
+repeating task is the exception: its row is the rule, so it stays and moves on
+to its next occurrence.
+
 The log columns are `TIMESTAMP ACTION STATUS TASK_ID START_TIME TARGET_TIME
 TAGS CONTENT`. `TIMESTAMP` carries the UTC offset, because a log is a permanent
 record and without the offset the zone cannot be recovered later. `START_TIME`

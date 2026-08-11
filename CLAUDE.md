@@ -75,6 +75,33 @@ This is the Todoist model, not the calendar model. It was chosen deliberately:
 - v0.2.5 and earlier wrote `YYYY-MM-DD.log` in a fixed-width format instead (ACTION at characters 25–40). `get-completed-tasks-count` still reads those as a fallback so the daily counter and the 30-day chart keep pre-upgrade history. Do not drop that fallback.
 - `add-log` is serialized through a promise queue: the renderer fires it without awaiting, and the header write would otherwise truncate rows a concurrent call had already appended.
 
+## Completed tasks
+
+**Completing a one-off removes its row from `tasks.json`.** The row is not kept
+with `completed: true`; the TSV log is the history.
+
+The log's `COMPLETE` line already carries `TASK_ID`, `START_TIME`, `TARGET_TIME`,
+`TAGS` and `CONTENT` — everything the kept row held. Nothing ever read the kept
+copy: the daily counter, the 30-day chart and the hover list all read the TSV,
+and the only three places that touched `t.completed` were carrying the rows along
+while reordering the active ones. So it was pure duplication that grew
+`tasks.json` and every backup for years and answered no question.
+
+`loadTasks()` drops any completed rows it finds and writes the file back once, so
+old data and old backups clean themselves up. The `!t.completed` filters
+scattered through the renderer are now belt-and-braces against an imported old
+backup; they are cheap, so they stay.
+
+**Recurring rows are the exception** — the row *is* the rule, so completing
+advances it instead (see Recurring Tasks). It never leaves the file.
+
+There is deliberately **no un-complete and no pruning job**. Completing already
+goes through a confirmation dialog that shows the content, the notes field and
+the completion time, so mis-clicks are rare — unlike the one-tap checkbox in
+Todoist or Reminders, where undo is essential. Building an undo would mean a
+completed-tasks screen, a restore action and an `UNCOMPLETE` log entry for
+something that seldom happens and already has a workable fallback (add it again).
+
 ## Architecture
 
 This is a complete Electron application with the following structure:

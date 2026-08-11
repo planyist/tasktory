@@ -756,12 +756,11 @@ describe('multi-select', () => {
         await barBtn('complete').click()
         await settle()
         expect(confirmOpen()).toBe(true)
-        expect(manager.tasks.every((t) => !t.completed)).toBe(true)
+        expect(manager.tasks).toHaveLength(3)
 
         await submitConfirm()
 
-        expect(manager.tasks.filter((t) => t.completed).map((t) => t.id)).toEqual(['a', 'c'])
-        expect(manager.tasks.find((t) => t.id === 'b').completed).toBe(false)
+        expect(manager.tasks.map((t) => t.id)).toEqual(['b'])
     })
 
     test('deleting in bulk asks once, then removes only the selected rows', async () => {
@@ -814,7 +813,12 @@ describe('multi-select', () => {
         field.value = '2026-08-01 09:00'
         await submitConfirm()
 
-        expect(manager.tasks[0].completedAt).toBe('2026-08-01 09:00')
+        // The chosen time goes into the log body; the row itself is gone.
+        const logged = electronAPI.addLog.mock.calls.map((c) => c[0]).find(
+            (entry) => entry.action === 'COMPLETE'
+        )
+        expect(logged.details).toContain('at 2026-08-01 09:00')
+        expect(manager.tasks).toHaveLength(0)
     })
 
     test('the completion time is hidden when deleting', async () => {
@@ -2084,5 +2088,39 @@ describe('selection after an edit', () => {
         await settle()
 
         expect(manager.selectedTaskIds.size).toBe(1)
+    })
+})
+
+// The TSV log is the history and holds the id, both times, the tags and the
+// content. Keeping a completed copy in tasks.json duplicated all of that, and
+// no code ever read it - it only grew the file and every backup.
+describe('completed tasks leave tasks.json', () => {
+    test('old data is cleaned up on load and written back', async () => {
+        const manager = await boot([
+            task('a'),
+            task('done', { completed: true }),
+            task('older', { completed: true })
+        ])
+
+        expect(manager.tasks.map((t) => t.id)).toEqual(['a'])
+        expect(electronAPI.saveTasks).toHaveBeenCalled()
+        expect(electronAPI.saveTasks.mock.calls.at(-1)[0]).toHaveLength(1)
+    })
+
+    test('a clean file is not rewritten on every launch', async () => {
+        await boot([task('a')])
+
+        expect(electronAPI.saveTasks).not.toHaveBeenCalled()
+    })
+
+    // The rule lives on the row, so a repeating task must survive completion.
+    test('a repeating row stays and moves to its next occurrence', async () => {
+        const manager = await boot([task('a')])
+        jest.spyOn(manager, 'advanceRecurringTask').mockReturnValue(true)
+
+        await manager.doCompleteTask('a', null)
+        await settle()
+
+        expect(manager.tasks.map((t) => t.id)).toEqual(['a'])
     })
 })

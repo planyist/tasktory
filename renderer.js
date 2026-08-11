@@ -885,6 +885,17 @@ class TaskManager {
             this.tasks = [];
             this.logs = [];
         }
+
+        // 완료한 작업은 tasks.json에 남기지 않는다. 이력은 TSV가 맡고, 그 쪽에는
+        // TASK_ID·시작·목표·태그·내용이 모두 들어 있어 완전한 중복이었다.
+        // 실제로 읽는 코드가 한 군데도 없었는데도 파일과 백업에 계속 쌓였다.
+        // 예전 데이터와 예전 백업에서 들어오는 것들을 여기서 걷어낸다.
+        const dropped = this.tasks.filter(t => t.completed).length;
+        if (dropped > 0) {
+            this.tasks = this.tasks.filter(t => !t.completed);
+            console.log(`Dropped ${dropped} completed task(s) kept only in tasks.json`);
+            await this.saveTasks();
+        }
     }
 
     async saveTasks() {
@@ -4141,9 +4152,10 @@ class TaskManager {
 
             // 반복 작업은 사라지지 않고 다음 회차로 이동한다. 그 행이 곧 규칙이라
             // 없애버리면 반복을 다시 볼 방법이 없어진다.
+            // 일회성 작업은 목록에서 뺀다. completed: true로 표시만 해두던 시절에는
+            // 아무도 읽지 않는 행이 tasks.json과 백업에 영원히 쌓였다.
             if (!this.advanceRecurringTask(task)) {
-                task.completed = true;
-                task.completedAt = completedAt || formatWithPattern(new Date(), STORAGE_FORMAT);
+                this.tasks.splice(taskIndex, 1);
             }
 
             await this.saveTasks();

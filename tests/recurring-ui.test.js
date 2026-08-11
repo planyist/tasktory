@@ -665,7 +665,7 @@ describe('completing a repeating task', () => {
         await manager.doCompleteTask('task-1', null)
         await settle()
 
-        expect(manager.tasks.find((t) => t.id === 'task-1').completed).toBe(true)
+        expect(manager.tasks.find((t) => t.id === 'task-1')).toBeUndefined()
         expect(visibleRows()).toHaveLength(0)
     })
 
@@ -685,7 +685,9 @@ describe('completing a repeating task', () => {
         await manager.doCompleteTask('task-1', null)
         await settle()
 
-        expect(manager.tasks[0].completed).toBe(true)
+        // The row leaves tasks.json entirely - the TSV log is the history, and
+        // nothing ever read the completed copy kept here.
+        expect(manager.tasks).toHaveLength(0)
         expect(visibleRows()).toHaveLength(0)
     })
 
