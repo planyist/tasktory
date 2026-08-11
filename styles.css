@@ -447,13 +447,14 @@ body.collapsed-mode-body {
 }
 
 /* Pagination styles */
-/* 총 개수는 왼쪽, 페이지 넘김은 가운데, 쪽당 개수는 오른쪽.
-   넘김이 정확히 가운데 오도록 양쪽 칸의 폭을 같게 잡는다. */
+/* 셋을 가운데 한 덩어리로 모은다. 화면 양 끝으로 벌려 놓으면 880px 떨어진
+   작은 글자 둘이 서로 무관해 보이고, 페이지가 하나뿐일 때는 빈 줄 양 구석에
+   숫자만 둘 남는다. 페이지 숫자가 가운데, 총 건수와 쪽당 개수가 그 양옆이다. */
 .pagination-container {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    justify-content: center;
+    gap: 14px;
     flex: 0 0 auto;
     margin-top: 10px;
 }
@@ -489,20 +490,10 @@ body.dark-mode .page-size-select {
     color: #cbd5e0;
 }
 
-/* 총 건수는 표를 설명하는 라벨이라 왼쪽에 두고, 조작하는 것(넘김·쪽당 개수)은
-   오른쪽에 몰아둔다. 셋을 서로 다른 세 자리에 흩어놓으면 한 페이지뿐일 때
-   가운데가 비어 양 구석에 글자 둘만 남는다. */
 .pagination {
     display: flex;
     align-items: center;
     gap: 5px;
-    margin-left: auto;
-}
-
-/* 표 폭이 넓어도 아래 줄의 양 끝이 화면 구석까지 벌어지지 않게 한다.
-   880px 떨어진 작은 글자 둘은 서로 관계없어 보인다. */
-.pagination-container {
-    padding: 0 4px;
 }
 
 .pagination-btn {
@@ -1551,6 +1542,9 @@ body.dark-mode .collapsed-task-list li.standing {
    제목줄이 있는 이 창에서는 Windows가 무시해서 잡아도 움직이지 않았다.
    대신 renderer가 마우스 이동량을 main에 넘겨 직접 옮긴다(setupWindowDrag). */
 .drag-bar {
+    /* .container의 20px 위쪽 여백만큼 아래에 떠 있으면 제목줄에서 멀어져
+       창 손잡이가 아니라 화면 안의 무언가로 보인다. 창 위 가장자리로 끌어올린다. */
+    margin-top: -14px;
     height: 12px;
     flex: 0 0 auto;
     display: flex;
