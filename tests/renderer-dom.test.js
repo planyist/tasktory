@@ -2204,40 +2204,50 @@ describe('window drag grip', () => {
     })
 })
 
-// Leaving the strip moves the window back to the centre of the screen while the
-// pointer stays put, so it can land on the counter without any mouseenter. Under
-// a CSS :hover rule that opened the panel by itself, still holding whatever it
-// had fetched last time.
+// It opens on a click, never on hover. Hovering meant the pointer only had to
+// come to rest there - after the window moved, after a restore, on the way to
+// the search box - and the panel covered the table uninvited.
 describe('completed-today panel', () => {
     const panel = () => document.getElementById('completedList')
     const counter = () => document.getElementById('completionCounter')
     const open = () => panel().classList.contains('is-open')
+    const show = async () => {
+        counter().dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+        await settle()
+    }
 
-    test('stays shut until the pointer actually arrives', async () => {
+    test('ignores the pointer passing over it', async () => {
         await boot([task('a')])
+
+        counter().dispatchEvent(new window.Event('mouseenter'))
+        await settle()
 
         expect(open()).toBe(false)
-
-        counter().dispatchEvent(new window.Event('mouseenter'))
-        await settle()
-
-        expect(open()).toBe(true)
     })
 
-    test('closes when the pointer leaves', async () => {
+    test('opens on a click and closes on the next one', async () => {
         await boot([task('a')])
-        counter().dispatchEvent(new window.Event('mouseenter'))
-        await settle()
 
-        counter().dispatchEvent(new window.Event('mouseleave'))
+        await show()
+        expect(open()).toBe(true)
+
+        await show()
+        expect(open()).toBe(false)
+    })
+
+    test('closes when something else is clicked', async () => {
+        await boot([task('a')])
+        await show()
+
+        document.getElementById('searchInput')
+            .dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
 
         expect(open()).toBe(false)
     })
 
     test('closes when the window collapses or comes back', async () => {
         const manager = await boot([task('a')])
-        counter().dispatchEvent(new window.Event('mouseenter'))
-        await settle()
+        await show()
 
         manager.toggleCollapse()
 
@@ -2246,8 +2256,7 @@ describe('completed-today panel', () => {
 
     test('closes when the view changes', async () => {
         const manager = await boot([task('a')])
-        counter().dispatchEvent(new window.Event('mouseenter'))
-        await settle()
+        await show()
 
         manager.toggleViewMode()
 
@@ -2259,7 +2268,8 @@ describe('completed-today panel', () => {
 // was still open when the window came back - showing the previous fetch.
 describe('completed-today panel and the window', () => {
     const openIt = async () => {
-        document.getElementById('completionCounter').dispatchEvent(new window.Event('mouseenter'))
+        document.getElementById('completionCounter')
+            .dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
         await settle()
     }
     const isOpen = () => document.getElementById('completedList').classList.contains('is-open')

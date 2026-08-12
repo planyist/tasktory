@@ -742,19 +742,30 @@ class TaskManager {
 
         // 완료 목록은 열 때마다 읽는다. 미리 채워두면 다른 창에서 완료한 것이나
         // 자정을 넘긴 뒤의 목록이 낡은 채로 뜬다.
+        // 눌러야 열린다. 호버로 열었더니 마우스가 스쳐 지나가기만 해도 표를 덮었고,
+        // 창이 옮겨가거나 최소화에서 돌아올 때 포인터가 우연히 얹히면서 부르지도
+        // 않은 목록이 저절로 떴다. 여는 것은 사용자가 정한다.
         const counter = document.getElementById('completionCounter');
-        counter.addEventListener('mouseenter', () => {
+        counter.addEventListener('click', () => {
+            const box = document.getElementById('completedList');
+            if (box.classList.contains('is-open')) {
+                this.hideCompletedList();
+                return;
+            }
             // 좌표를 먼저 잡는다. 내용은 IPC로 읽어오므로 한 박자 늦는데, 그 사이에
             // 지난번 자리에 잠깐 뜨는 것을 막는다.
             this.placeCompletedList();
             this.renderCompletedList();
-            document.getElementById('completedList').classList.add('is-open');
+            box.classList.add('is-open');
         });
-        counter.addEventListener('mouseleave', () => this.hideCompletedList());
 
-        // 열린 채로 창이 최소화되면 mouseleave 가 뜨지 않는다. 마우스가 움직인 게
-        // 아니라 창이 사라진 것이라서다. 그대로 두면 복원할 때 지난번 목록이
-        // 열린 채로 다시 나타난다. 창이 포커스를 잃거나 숨겨지면 닫는다.
+        // 바깥을 누르면 닫는다 (목록 안을 누르는 것은 빼고 - 스크롤해야 하므로)
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('#completionCounter')) return;
+            this.hideCompletedList();
+        });
+
+        // 창이 사라지면 닫는다. 열린 채로 최소화되면 다시 나타날 때 그대로 남는다.
         window.addEventListener('blur', () => this.hideCompletedList());
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) this.hideCompletedList();

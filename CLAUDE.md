@@ -255,17 +255,19 @@ overridden, and a `li.standing` pair copy-pasted verbatim.
 Duplicate selectors in this file are not stylistic untidiness; every one is a
 rule silently losing to another somewhere else in the file.
 
-### The completed-today panel opens from JS, not `:hover`
+### The completed-today panel opens on a click
 
-Leaving the strip moves the window back to the centre of the screen while the
-pointer stays where it was, so it can end up over the counter without any
-`mouseenter`. A CSS `:hover` rule opened the panel by itself there — and since
-`mouseenter` never fired, it showed whatever it had fetched last time. It is
-`.is-open`, added on `mouseenter` after the fill and removed on `mouseleave`,
-`toggleCollapse`, `toggleViewMode`, `window` blur and `visibilitychange`. Those
-last two matter because **minimising does not move the pointer**: `mouseleave`
-never fires, so a panel open at that moment was still open — and still holding
-the previous fetch — when the window came back.
+Never on hover. Hovering only requires the pointer to come to rest on the
+counter — after the window is moved or recentred, after a restore from minimise,
+on the way to the search box — and the panel then covers the table uninvited.
+Three separate bug reports came out of that one choice, each of them a different
+route to the same accident.
+
+It toggles on `click`, and closes on a click anywhere else, on `toggleCollapse`,
+`toggleViewMode`, `window` blur and `visibilitychange`. The blur and visibility
+cases matter because minimising does not move the pointer: `mouseleave` never
+fires, so a panel open at that moment was still open — and still holding the
+previous fetch — when the window came back.
 
 ### A popover has to leave the table's world
 
