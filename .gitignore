@@ -66,3 +66,5 @@ bower_components
 # Temporary files
 *.tmp
 *.temp
+# 개발 중 남긴 개인 메모 (저장소에 넣지 않는다)
+DEVELOPMENT_LOG_*.txt
