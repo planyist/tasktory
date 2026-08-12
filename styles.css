@@ -1794,6 +1794,12 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
     gap: 1px;
 }
 
+/* 격자에는 1px 테두리가 있고 요일 줄에는 없다. 그대로 두면 두 격자의 열이
+   1px씩 어긋나 요일이 칸 위에 정확히 얹히지 않는다. 같은 만큼 안으로 들인다. */
+.calendar-weekdays {
+    padding: 0 1px;
+}
+
 .cal-weekday {
     text-align: center;
     font-size: 11px;

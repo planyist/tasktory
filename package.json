@@ -23,7 +23,8 @@
     "build:win": "electron-builder --win",
     "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
-    "dist": "npm run build"
+    "dist": "npm run build",
+    "check:ui": "electron scripts/check-ui.js"
   },
   "repository": {
     "type": "git",

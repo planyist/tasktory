@@ -219,6 +219,7 @@ In a browser, everything lives in `localStorage`; use export/import to move it.
 npm install
 npm start        # run it
 npm test         # Jest
+npm run check:ui # layout and theme checks in a real Electron window
 npm run build    # package for the current platform
 ```
 

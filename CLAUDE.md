@@ -64,6 +64,35 @@ returns an empty buffer, so retry until the PNG has real length.
 
 ## Testing
 
+**Two suites, because Jest cannot see the whole app.**
+
+`npm test` runs on jsdom, which has **no layout engine** —
+`getBoundingClientRect()` always returns 0 — and gets compound-selector
+specificity wrong. Measured: jsdom reports the dark-mode add button as
+`rgb(45,45,45)`; real Chromium reports `rgb(40,167,69)`, because jsdom skips
+`body.dark-mode .btn.add-btn` and applies the weaker `body.dark-mode .btn`.
+Asking jsdom about the cascade returns *wrong answers for exactly the bugs worth
+catching*, so `tests/styles.test.js` reads the stylesheet as text only —
+duplicate selectors, dead classes, column widths summing to 100%.
+
+`npm run check:ui` (`scripts/check-ui.js`) launches a real Electron window and
+measures. Everything it asserts is something that once shipped broken while all
+of Jest was green:
+
+| check | the bug it would have caught |
+|---|---|
+| border presence matches across themes | icon buttons bordered in dark only |
+| add button green in both themes | `body.dark-mode .btn` eating the green |
+| header colour differs by theme | `body.dark-mode thead` declared twice, so the light band never applied in dark |
+| column widths equal across pages | `table-layout: auto` recomputing per page |
+| table height with and without the pager | pager at 34px stealing 10px from the table |
+| panel above the sticky header, not clipped | `z-index: 60` under `thead`'s 1000, inside `overflow: hidden` |
+| weekday header aligned to the grid | the grid's 1px border offsetting its columns |
+
+Run it after any visual change. It found the last of those on its first run.
+
+
+
 - **Framework**: Jest. Tests live in `tests/`.
 - **`__mocks__/electron.js`** is a manual mock that Jest applies automatically to any test requiring `main.js`. It records every `ipcMain.handle()` registration so tests can call handlers directly via `__invoke(channel, ...args)`, and makes `app.getPath('userData')` return the directory named by the `TASKTORY_USERDATA` env var — so main-process tests do real file I/O against a temp dir.
 - **`tests/setup-timezone.js`** pins `TZ=Asia/Seoul` for the whole run, so tests covering the local-date vs UTC-date distinction behave identically on every machine.
@@ -286,6 +315,7 @@ on the way to the search box — and the panel then covers the table uninvited.
 Three separate bug reports came out of that one choice, each of them a different
 route to the same accident.
 
+The open state is the `.is-open` class; the stylesheet only reacts to it.
 It toggles on `click`, and closes on a click anywhere else, on `toggleCollapse`,
 `toggleViewMode`, `window` blur and `visibilitychange`. The blur and visibility
 cases matter because minimising does not move the pointer: `mouseleave` never
