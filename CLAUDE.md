@@ -253,7 +253,13 @@ dark-mode section **without** `body.dark-mode` — the identical mistake as the
 overridden, and a `li.standing` pair copy-pasted verbatim.
 
 Duplicate selectors in this file are not stylistic untidiness; every one is a
-rule silently losing to another somewhere else in the file.
+rule silently losing to another somewhere else in the file. A second sweep found
+eleven more, and among them the same failure again: `body.dark-mode thead` was
+declared twice, so the lighter header from 0.8.6 had never once applied in dark
+mode. `.color-example`'s eight colours were shadowed by a later block, and every
+`.action-btn` / `.edit-btn` / `.highlight-btn` rule was styling classes that
+stopped existing when the row buttons moved to the bar. The file is down to zero
+duplicate selectors; keep it there.
 
 ### The completed-today panel opens on a click
 
