@@ -2203,3 +2203,54 @@ describe('window drag grip', () => {
         expect(grip.querySelectorAll('button, input, select, a, [data-bulk]')).toHaveLength(0)
     })
 })
+
+// Leaving the strip moves the window back to the centre of the screen while the
+// pointer stays put, so it can land on the counter without any mouseenter. Under
+// a CSS :hover rule that opened the panel by itself, still holding whatever it
+// had fetched last time.
+describe('completed-today panel', () => {
+    const panel = () => document.getElementById('completedList')
+    const counter = () => document.getElementById('completionCounter')
+    const open = () => panel().classList.contains('is-open')
+
+    test('stays shut until the pointer actually arrives', async () => {
+        await boot([task('a')])
+
+        expect(open()).toBe(false)
+
+        counter().dispatchEvent(new window.Event('mouseenter'))
+        await settle()
+
+        expect(open()).toBe(true)
+    })
+
+    test('closes when the pointer leaves', async () => {
+        await boot([task('a')])
+        counter().dispatchEvent(new window.Event('mouseenter'))
+        await settle()
+
+        counter().dispatchEvent(new window.Event('mouseleave'))
+
+        expect(open()).toBe(false)
+    })
+
+    test('closes when the window collapses or comes back', async () => {
+        const manager = await boot([task('a')])
+        counter().dispatchEvent(new window.Event('mouseenter'))
+        await settle()
+
+        manager.toggleCollapse()
+
+        expect(open()).toBe(false)
+    })
+
+    test('closes when the view changes', async () => {
+        const manager = await boot([task('a')])
+        counter().dispatchEvent(new window.Event('mouseenter'))
+        await settle()
+
+        manager.toggleViewMode()
+
+        expect(open()).toBe(false)
+    })
+})

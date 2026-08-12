@@ -1720,7 +1720,11 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
     cursor: default;
 }
 
-.completion-counter:hover .completed-list {
+/* :hover 로 열지 않는다. 스티커에서 돌아올 때 창이 화면 중앙으로 옮겨가는데,
+   마우스는 가만히 있어도 포인터가 완료 칸 위에 얹히면서 저절로 열렸다.
+   그때는 mouseenter 가 뜨지 않아 내용도 지난번 것 그대로였다.
+   여는 것도 닫는 것도 JS가 맡는다(.is-open). */
+.completed-list.is-open {
     display: block;
 }
 

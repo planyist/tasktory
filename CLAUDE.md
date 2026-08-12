@@ -65,7 +65,7 @@ returns an empty buffer, so retry until the PNG has real length.
 ### 1. Always-on-Top Display
 - The application stays on top of all other windows like a sticky note program
 - Two separate settings, for two separate problems:
-  - `setAlwaysOnTop(true, 'screen-saver')` keeps it above full-screen apps. It changes stacking order only — never size or position.
+  - Plain `alwaysOnTop: true` — and **only** that. It was once raised to `setAlwaysOnTop(true, 'screen-saver')`, the level with nothing above it, to try to beat Win+D. It never could (see below), and meanwhile it outranked *everything*: other applications' windows all appeared to sink behind Tasktory, which reads as the whole machine misbehaving. The default level sits above ordinary windows and yields to dialogs, which is what a sticky note needs.
   - **`minimizable: false` is what survives Win+D.** Show Desktop *minimises* windows, and stacking order has nothing to say about that: measured, the window came back `minimized=true, visible=false` with the screen-saver level already set. Declaring the window non-minimisable makes Windows skip it. A sticky note has no use for minimise anyway — collapsing (Ctrl+M) is how you get it out of the way
 
 ### 2. Cross-Platform Compatibility
@@ -242,6 +242,15 @@ overridden, and a `li.standing` pair copy-pasted verbatim.
 
 Duplicate selectors in this file are not stylistic untidiness; every one is a
 rule silently losing to another somewhere else in the file.
+
+### The completed-today panel opens from JS, not `:hover`
+
+Leaving the strip moves the window back to the centre of the screen while the
+pointer stays where it was, so it can end up over the counter without any
+`mouseenter`. A CSS `:hover` rule opened the panel by itself there — and since
+`mouseenter` never fired, it showed whatever it had fetched last time. It is
+`.is-open`, added on `mouseenter` after the fill and removed on `mouseleave`,
+`toggleCollapse` and `toggleViewMode`.
 
 ### A popover has to leave the table's world
 

@@ -742,12 +742,15 @@ class TaskManager {
 
         // 완료 목록은 열 때마다 읽는다. 미리 채워두면 다른 창에서 완료한 것이나
         // 자정을 넘긴 뒤의 목록이 낡은 채로 뜬다.
-        document.getElementById('completionCounter').addEventListener('mouseenter', () => {
+        const counter = document.getElementById('completionCounter');
+        counter.addEventListener('mouseenter', () => {
             // 좌표를 먼저 잡는다. 내용은 IPC로 읽어오므로 한 박자 늦는데, 그 사이에
             // 지난번 자리에 잠깐 뜨는 것을 막는다.
             this.placeCompletedList();
             this.renderCompletedList();
+            document.getElementById('completedList').classList.add('is-open');
         });
+        counter.addEventListener('mouseleave', () => this.hideCompletedList());
 
         // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
     }
@@ -1761,6 +1764,7 @@ class TaskManager {
     }
 
     toggleViewMode() {
+        this.hideCompletedList();
         this.viewMode = this.viewMode === 'calendar' ? 'list' : 'calendar';
         localStorage.setItem('viewMode', this.viewMode);
         // 보기를 바꿀 때마다 이번 달로 돌아온다. 지난달을 보다 목록으로 갔다가
@@ -1814,6 +1818,11 @@ class TaskManager {
             console.error('Failed to read completed tasks:', error);
             return [];
         }
+    }
+
+    hideCompletedList() {
+        const box = document.getElementById('completedList');
+        if (box) box.classList.remove('is-open');
     }
 
     // position: fixed 라 좌표를 직접 준다. 카운터 바로 아래 왼쪽 끝에 맞추되,
@@ -2374,6 +2383,8 @@ class TaskManager {
     }
 
     toggleCollapse() {
+        // 창이 옮겨가면서 포인터가 어디에 얹힐지 알 수 없다. 열려 있었다면 닫는다.
+        this.hideCompletedList();
         this.isCollapsed = !this.isCollapsed;
         const container = document.querySelector('.container');
         const collapseBtn = document.getElementById('collapseBtn');

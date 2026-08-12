@@ -33,10 +33,11 @@ const createWindow = () => {
         }
     })
     
-    // 전체화면 앱 위에도 남으려면 기본 alwaysOnTop 만으로는 부족하다.
-    // 'screen-saver'는 그 위가 없는 레벨이다. (크기나 위치는 그대로 - 순서만 바뀐다)
-    // 단, 이것으로 Win+D 를 막지는 못한다. 그건 위의 minimizable: false 가 맡는다.
-    mainWindow.setAlwaysOnTop(true, 'screen-saver')
+    // 레벨은 올리지 않는다. 한때 Win+D 를 막으려고 'screen-saver'(그 위가 없는
+    // 레벨)로 올렸는데, 애초에 Win+D 는 최소화라서 이걸로 막히지도 않았고
+    // (minimizable: false 가 맡는다), 대신 다른 앱 창이 전부 뒤로 깔렸다.
+    // 기본 alwaysOnTop 은 보통 창들 위에만 서고 대화상자에는 양보한다 -
+    // 스티커에는 그 정도면 충분하다.
 
     mainWindow.loadFile('index.html')
     
