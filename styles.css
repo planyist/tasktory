@@ -1101,14 +1101,18 @@ body.dark-mode .date-format-preview {
     align-items: center;
 }
 
+/* .btn 은 오랫동안 두 번 선언돼 있었고, 뒤엣것이 조용히 이기고 있었다.
+   그 사이에 놓인 .icon-btn, .clear-search-btn 은 자기 테두리를 잃었고,
+   라이트에서는 안 보이고 다크에서만 보이는 버튼이 생겼다. 실제로 적용되던
+   값(뒤엣것)으로 한 곳에 모은다. */
 .btn {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 5px;
+    padding: 4px 8px;
+    border: 1px solid transparent;
+    border-radius: 4px;
     cursor: pointer;
-    font-size: 14px;
+    font-size: 10px;
     font-weight: 500;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
     text-decoration: none;
     display: inline-block;
 }
@@ -2108,16 +2112,6 @@ body:not(.calendar-mode) .collapsed-cal {
     width: 100%;
 }
 
-.btn {
-    padding: 4px 8px;
-    border: 1px solid transparent;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 10px;
-    font-weight: 500;
-    transition: all 0.2s ease;
-}
-
 .action-btn {
     padding: 2px;
     border: none;
@@ -2668,30 +2662,14 @@ body.dark-mode .status.overdue {
     font-weight: 700;
 }
 
-body.dark-mode .status.standing {
-    background-color: #e7e3f5;
-    color: #4b3f78;
-    border: 1px solid #c5bce4;
-}
+/* standing / li.standing 규칙은 위쪽(라이트 구역)에 이미 라이트·다크 한 쌍이
+   그대로 있다. 여기 있던 사본은 지운다. 그중 하나는 body.dark-mode 를 달고
+   있으면서 라이트 색을 담고 있었고, 바로 다음 규칙에 덮여 아무 일도 하지
+   않았다. */
 
-body.dark-mode .status.standing {
-    background-color: #35304a;
-    color: #c4b5fd;
-    border-color: #574d80;
-}
-
-.collapsed-task-list li.standing {
-    background-color: #e7e3f5 !important;
-    border-left: 2px solid #7c6bb5;
-}
-
-body.dark-mode .collapsed-task-list li.standing {
-    background-color: #35304a !important;
-    border-left: 2px solid #7c6bb5;
-    color: #c4b5fd;
-}
-
-.status.completed {
+/* body.dark-mode 를 빠뜨리면 다크 구역에 있어도 라이트까지 덮는다. 여기서도
+   그랬다 - 완료 배지가 라이트 모드에서 짙은 초록으로 나왔다. */
+body.dark-mode .status.completed {
     background-color: #2a4a2a;
     color: #66bb6a;
     border: 1px solid #3a5a3a;

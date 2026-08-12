@@ -9,7 +9,10 @@ const SOURCE = fs.readFileSync(path.join(root, 'renderer.js'), 'utf8')
 const HTML = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
 const BODY = HTML.slice(HTML.indexOf('<body>') + '<body>'.length, HTML.indexOf('</body>'))
 
-const TaskManager = new Function(`${SOURCE}\nreturn TaskManager;`)()
+// index.html loads i18n.js before renderer.js; the same order has to hold here,
+// because the class reads TRANSLATIONS as a global.
+const I18N = fs.readFileSync(path.join(root, 'i18n.js'), 'utf8')
+const TaskManager = new Function(`${I18N}\n${SOURCE}\nreturn TaskManager;`)()
 
 // init() is fired from the constructor and not awaited anywhere, so give its
 // promise chain room to settle before asserting on the DOM.

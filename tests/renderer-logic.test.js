@@ -8,7 +8,8 @@ const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'renderer.js'), 'utf8'
 
 // renderer.js is a classic browser script with no exports. Evaluate it and hand
 // back the class rather than adding an export just for tests.
-const TaskManager = new Function(`${SOURCE}\nreturn TaskManager;`)()
+const I18N = fs.readFileSync(path.join(__dirname, '..', 'i18n.js'), 'utf8')
+const TaskManager = new Function(`${I18N}\n${SOURCE}\nreturn TaskManager;`)()
 
 // Build an instance without running the constructor, which kicks off async
 // init() against a DOM that does not exist in this suite.

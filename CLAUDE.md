@@ -131,6 +131,7 @@ This is a complete Electron application with the following structure:
 - **styles.css**: Compact styling optimized for small window size
 - **preload.js**: Security bridge between main and renderer processes
 - **package.json**: Node.js project configuration with Electron dependency
+- **i18n.js**: every user-facing string, as a top-level `TRANSLATIONS` constant, loaded via `<script>` before `renderer.js`. It used to be a 1,000-line object literal *inside* `getLocalizedText`, rebuilt from scratch on every one of its 170 call sites — 40ms per 10,000 calls, now 1.6ms. Add new strings to all five languages; a missing key falls through to English, then to the key itself
 - **recurrence.js**: Pure recurring-task engine, loaded via `<script>` before `renderer.js` (see Recurring Tasks below)
 - **manifest.json**, **service-worker.js**, **register-sw.js**: PWA support, so the app installs to a phone home screen and opens offline. Registration is skipped under `file://`, where Electron runs
 - **docs/sync-architecture.md**: design proposal for multi-device sync. Not implemented
@@ -201,6 +202,23 @@ This is a complete Electron application with the following structure:
 - **The About dialog is the manual.** Every feature has to be reachable from it — views, search and filters, repeat rules, statuses, shortcuts. It went stale once (it still described the Actions column and a bell button in the row long after both were removed), which is worse than no help at all. Everything in it is localised — new sections were added in English only at first, which is the same failure in a different disguise. Register new ids in the `aboutText` / `aboutHeadings` maps in `updateUIText`. The version there reads from `app.getVersion()` over the `get-app-version` IPC; it used to be typed into the HTML by hand and sat at 0.6.4 for three releases
 - **Search functionality**: real-time filtering, optionally scoped to one column
 - **Pagination**: Smart pagination for large task lists
+
+### One rule, one place
+
+`styles.css` had `.btn` declared twice, and the later block quietly won. That
+single duplication produced two separate bugs: `.icon-btn` and
+`.clear-search-btn` both lost the borders they declared, which then reappeared
+in dark mode only, where `body.dark-mode .btn` filled the slot back in. Merged
+into one block carrying the values that were actually applying.
+
+The same sweep found `.status.completed` declared a second time inside the
+dark-mode section **without** `body.dark-mode` — the identical mistake as the
+`tbody tr:hover` one, painting the light theme with dark-green badges. Plus a
+`body.dark-mode .status.standing` holding light colours and immediately
+overridden, and a `li.standing` pair copy-pasted verbatim.
+
+Duplicate selectors in this file are not stylistic untidiness; every one is a
+rule silently losing to another somewhere else in the file.
 
 ### The table must not resize as you page
 

@@ -8,7 +8,9 @@ const root = path.join(__dirname, '..')
 const HTML = fs.readFileSync(path.join(root, 'index.html'), 'utf8')
 const BODY = HTML.slice(HTML.indexOf('<body>') + '<body>'.length, HTML.indexOf('</body>'))
 
+// index.html loads i18n.js first; the class reads TRANSLATIONS as a global.
 const TaskManager = new Function(
+    `${fs.readFileSync(path.join(root, 'i18n.js'), 'utf8')}\n` +
     `${fs.readFileSync(path.join(root, 'renderer.js'), 'utf8')}\nreturn TaskManager;`
 )()
 
