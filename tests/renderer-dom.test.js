@@ -927,18 +927,21 @@ describe('multi-select', () => {
 // A duplicated setupEventListeners block once bound the month arrows twice, so
 // a single click jumped two months. Guard the whole wiring, not just that one.
 describe('event wiring', () => {
+    // Asserts on the month the picker holds, not on its label. The label goes
+    // through toLocaleDateString, so checking for "August" would really be
+    // checking the machine's ICU data - and this test is about the wiring.
     test('binds each control exactly once', async () => {
-        await boot([task('a')])
+        const manager = await boot([task('a')])
 
         document.getElementById('startDateTime').value = '2026-08-04 15:30'
         document.querySelector('.datetime-pick-btn[data-target="startDateTime"]').click()
-        const label = () => document.getElementById('dtpMonthLabel').textContent
+        const month = () => manager.pickerMonth.getMonth()
 
-        expect(label()).toContain('August')
+        expect(month()).toBe(7) // 0-based: August
         document.getElementById('dtpNextMonth').click()
-        expect(label()).toContain('September')
+        expect(month()).toBe(8) // one step, not two
         document.getElementById('dtpPrevMonth').click()
-        expect(label()).toContain('August')
+        expect(month()).toBe(7)
     })
 
     test('a bulk button fires its action once per click', async () => {

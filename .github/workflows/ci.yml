@@ -11,11 +11,13 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      # v4 는 Node 20 위에서 도는데 러너가 더 이상 지원하지 않아 강제로 24 로
+      # 올려 실행된다는 경고가 뜬다. 액션 자체를 올려서 맞춘다.
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
 
       # electron 을 내려받을 필요는 없다. Jest 는 __mocks__/electron.js 로 돈다.
@@ -23,4 +25,6 @@ jobs:
         env:
           ELECTRON_SKIP_BINARY_DOWNLOAD: 1
 
-      - run: npm test
+      # 실패했을 때 어느 테스트인지 로그에 남기려면 나열이 필요하다.
+      # 기본 출력은 통과한 스위트를 접어버려서 원인을 좁히기 어렵다.
+      - run: npx jest --ci --verbose

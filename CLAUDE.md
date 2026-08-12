@@ -70,6 +70,12 @@ a real Electron binary, because `__mocks__/electron.js` stands in for it, and
 downloading ~100MB per run for nothing is wasteful. Verified by moving
 `node_modules/electron/dist` aside locally: all 322 tests still pass.
 
+Tests must not depend on the machine. One assertion checked the date picker's
+label for the string `August`, which really checked the runner's ICU data —
+`toLocaleDateString` is the only locale-sensitive call in the app. It asserts on
+`pickerMonth.getMonth()` now. Anything reading a formatted month, weekday or
+number belongs in the same category.
+
 `npm run check:ui` is **not** in CI. It needs a real window, which on a Linux
 runner means xvfb and a whole class of flakiness that would make the badge
 untrustworthy. Run it locally after visual work.
