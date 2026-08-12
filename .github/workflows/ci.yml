@@ -31,7 +31,7 @@ jobs:
       - name: Test
         run: |
           set -o pipefail
-          if npx jest --ci --verbose 2>&1 | tee jest.log; then
+          if npm test -- --ci --verbose 2>&1 | tee jest.log; then
             exit 0
           fi
           echo "--- 실패 요약 ---"

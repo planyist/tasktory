@@ -10,14 +10,15 @@
     ],
     "testPathIgnorePatterns": [
       "/node_modules/",
-      "/dist/"
+      "/dist/",
+      "/scripts/"
     ],
     "modulePathIgnorePatterns": [
       "<rootDir>/dist/"
     ]
   },
   "scripts": {
-    "test": "jest",
+    "test": "node scripts/run-tests.js",
     "start": "electron .",
     "build": "electron-builder",
     "build:win": "electron-builder --win",

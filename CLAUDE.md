@@ -120,7 +120,9 @@ Run it after any visual change. It found the last of those on its first run.
 
 - **Framework**: Jest. Tests live in `tests/`.
 - **`__mocks__/electron.js`** is a manual mock that Jest applies automatically to any test requiring `main.js`. It records every `ipcMain.handle()` registration so tests can call handlers directly via `__invoke(channel, ...args)`, and makes `app.getPath('userData')` return the directory named by the `TASKTORY_USERDATA` env var — so main-process tests do real file I/O against a temp dir.
-- **`tests/setup-timezone.js`** pins `TZ=Asia/Seoul` for the whole run, so tests covering the local-date vs UTC-date distinction behave identically on every machine.
+- **The timezone is pinned before Node starts, not inside the run.** `npm test` goes through `scripts/run-tests.js`, which spawns Jest with `TZ=Asia/Seoul` in its environment. `tests/setup-timezone.js` now only *verifies* the offset and throws a pointed error if it is wrong.
+
+  It used to assign `process.env.TZ` from `setupFiles`, which is too late: Node caches the zone the first time it touches a date, and Jest has already done so during start-up. On Linux the assignment is simply ignored. Nobody noticed for months because this machine's system timezone is Asia/Seoul, so the setting changed nothing either way — the first CI run on a UTC runner was what exposed it, by failing exactly the two tests that check log files are named by *local* date. A test that silently runs in the wrong zone is worse than one that fails: the local-vs-UTC assertions still pass in UTC while verifying nothing.
 - `renderer.js` and the inline script in `tasktory-standalone.html` are classic browser scripts with no exports. Tests evaluate the source with `new Function(src + '; return TaskManager;')` rather than adding an export purely for testing. For unit-level tests, build instances with `Object.create(TaskManager.prototype)` to skip the constructor's async `init()`.
 - Test files that need a DOM use the `@jest-environment jsdom` docblock; the default environment is `node`.
 - **Definition of done**: a bug fix ships with a test that fails before the change and passes after.
