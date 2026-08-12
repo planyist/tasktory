@@ -2254,3 +2254,33 @@ describe('completed-today panel', () => {
         expect(open()).toBe(false)
     })
 })
+
+// Minimising does not move the pointer, so mouseleave never fires and the panel
+// was still open when the window came back - showing the previous fetch.
+describe('completed-today panel and the window', () => {
+    const openIt = async () => {
+        document.getElementById('completionCounter').dispatchEvent(new window.Event('mouseenter'))
+        await settle()
+    }
+    const isOpen = () => document.getElementById('completedList').classList.contains('is-open')
+
+    test('closes when the window loses focus', async () => {
+        await boot([task('a')])
+        await openIt()
+        expect(isOpen()).toBe(true)
+
+        window.dispatchEvent(new window.Event('blur'))
+
+        expect(isOpen()).toBe(false)
+    })
+
+    test('closes when the window is hidden', async () => {
+        await boot([task('a')])
+        await openIt()
+
+        Object.defineProperty(document, 'hidden', { value: true, configurable: true })
+        document.dispatchEvent(new window.Event('visibilitychange'))
+
+        expect(isOpen()).toBe(false)
+    })
+})

@@ -752,6 +752,14 @@ class TaskManager {
         });
         counter.addEventListener('mouseleave', () => this.hideCompletedList());
 
+        // 열린 채로 창이 최소화되면 mouseleave 가 뜨지 않는다. 마우스가 움직인 게
+        // 아니라 창이 사라진 것이라서다. 그대로 두면 복원할 때 지난번 목록이
+        // 열린 채로 다시 나타난다. 창이 포커스를 잃거나 숨겨지면 닫는다.
+        window.addEventListener('blur', () => this.hideCompletedList());
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) this.hideCompletedList();
+        });
+
         // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
     }
 
