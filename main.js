@@ -501,31 +501,6 @@ ipcMain.handle('get-completed-tasks-count', async (event, dateStr) => {
 
 ipcMain.handle('get-completed-tasks', async (event, dateStr) => readCompleted(dateStr))
 
-// Resize window for collapsed mode
-ipcMain.handle('resize-window', async (event, width, height) => {
-    if (mainWindow) {
-        // 접힌 폭은 값이 바뀔 수 있으므로 특정 숫자가 아니라 "평소 최소폭보다 좁은가"로 판단한다
-        if (width < NORMAL_MIN_WIDTH) {
-            // Store original bounds before collapsing
-            originalWindowBounds = mainWindow.getBounds();
-            // Temporarily remove minimum size constraints for collapse
-            mainWindow.setMinimumSize(width, 400);
-        }
-        
-        mainWindow.setSize(width, height);
-        
-        if (width >= NORMAL_MIN_WIDTH && originalWindowBounds) {
-            // Restore original position and minimum size when expanding
-            mainWindow.setPosition(originalWindowBounds.x, originalWindowBounds.y);
-            mainWindow.setMinimumSize(900, 400);
-            originalWindowBounds = null;
-        }
-        
-        return true;
-    }
-    return false;
-})
-
 // Resize and position window with specific positioning
 ipcMain.handle('resize-and-position-window', async (event, width, height, position) => {
     if (!mainWindow) return false
