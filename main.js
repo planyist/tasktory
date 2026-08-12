@@ -1,10 +1,12 @@
-const { app, BrowserWindow, ipcMain } = require('electron')
+const { app, BrowserWindow, ipcMain, powerMonitor, screen } = require('electron')
 const fs = require('fs').promises
 const path = require('path')
 
 let mainWindow
 let unfocusedOpacity = 1.0
 let originalWindowBounds = null
+// 사용자가 마지막으로 둔 자리. 화면보호기/잠금 이후 창이 밀려나면 여기로 돌린다.
+let intendedBounds = null
 const NORMAL_MIN_WIDTH = 900 // 접힘 여부 판단 기준 (BrowserWindow의 minWidth와 같다)
 
 const createWindow = () => {
@@ -47,6 +49,54 @@ const createWindow = () => {
     if (process.env.NODE_ENV === 'development') {
         mainWindow.webContents.openDevTools()
     }
+
+    keepWindowWhereItWasPut()
+}
+
+// 화면보호기나 잠금에서 돌아오면 창이 제자리에 없다는 신고가 있었다.
+// 앱 안에서 창을 옮기는 곳은 접기/펴기 두 군데뿐이고 주기적으로 도는 것도 없으니,
+// 미는 쪽은 Windows다 - 화면보호기가 끝나거나 세션이 풀릴 때 디스플레이 구성이
+// 잠깐 바뀌고, 그때 alwaysOnTop 창이 작업 영역 기준으로 다시 놓인다.
+// 사용자가 둔 자리를 기억해 두었다가 그 순간에만 돌려놓는다.
+const keepWindowWhereItWasPut = () => {
+    if (!mainWindow) return
+
+    const remember = () => {
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized()) {
+            intendedBounds = mainWindow.getBounds()
+        }
+    }
+
+    mainWindow.on('moved', remember)
+    mainWindow.on('resized', remember)
+    remember()
+
+    const restore = () => {
+        if (!intendedBounds || !mainWindow || mainWindow.isDestroyed()) return
+        // OS가 배치를 끝낸 뒤에 되돌려야 한다. 곧바로 부르면 그 위에 다시 덮인다.
+        setTimeout(() => {
+            if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return
+            const now = mainWindow.getBounds()
+            if (now.x === intendedBounds.x && now.y === intendedBounds.y) return
+
+            // 기억해 둔 자리가 지금 연결된 화면 밖이면(모니터를 뺐다면) 그대로 둔다.
+            // 억지로 돌려놓으면 창이 보이지 않는 곳으로 사라진다.
+            const onScreen = screen.getAllDisplays().some(d => {
+                const a = d.workArea
+                return intendedBounds.x < a.x + a.width && intendedBounds.x + intendedBounds.width > a.x
+                    && intendedBounds.y < a.y + a.height && intendedBounds.y + intendedBounds.height > a.y
+            })
+            if (!onScreen) return
+
+            mainWindow.setBounds(intendedBounds)
+        }, 400)
+    }
+
+    powerMonitor.on('unlock-screen', restore)
+    powerMonitor.on('resume', restore)
+    screen.on('display-metrics-changed', restore)
+    screen.on('display-added', restore)
+    screen.on('display-removed', restore)
 }
 
 // GPU 가속 비활성화 (호환성 문제 해결)

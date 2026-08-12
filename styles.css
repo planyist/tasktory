@@ -1454,6 +1454,30 @@ td:nth-child(2) {
 
 /* 공용 입력 규칙이 width:100%를 걸기 때문에, 한 줄에 나란히 놓으려면
    두 컨트롤 모두 특이도를 이겨서 폭을 되돌려야 한다. */
+/* 반복 종료일 줄. 요일 버튼 아래, 도움말 위에 놓인다. */
+.repeat-until {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+.repeat-until label {
+    flex: 0 0 auto;
+    margin: 0;
+    font-size: 12px;
+    color: var(--text-secondary);
+}
+
+.repeat-until .datetime-field {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+body.dark-mode .repeat-until label {
+    color: #cbd5e0;
+}
+
 .repeat-row select {
     flex: 1 1 auto;
     width: auto;

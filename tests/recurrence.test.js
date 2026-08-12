@@ -202,3 +202,46 @@ describe('localKey', () => {
         expect(Recurrence.localKey(new Date(2026, 7, 5, 23, 30))).toBe('2026-08-05')
     })
 })
+
+// 언제까지 반복할지. 없으면 무기한이라는 기존 동작은 그대로다.
+describe('untilDate', () => {
+    const daily = (extra = {}) => ({
+        freq: 'daily', interval: 1, byWeekday: [], anchorDate: '2026-08-01',
+        startTimeOfDay: '09:00', targetTimeOfDay: '18:00', enabled: true, ...extra
+    })
+
+    test('stops after the end date', () => {
+        const rule = daily({ untilDate: '2026-08-05' })
+
+        expect(Recurrence.nextOccurrenceAfter(rule, '2026-08-03')).toBe('2026-08-04')
+        expect(Recurrence.nextOccurrenceAfter(rule, '2026-08-04')).toBe('2026-08-05')
+        // 종료일 다음은 없다
+        expect(Recurrence.nextOccurrenceAfter(rule, '2026-08-05')).toBeNull()
+    })
+
+    test('includes the end date itself', () => {
+        const rule = daily({ untilDate: '2026-08-10' })
+
+        expect(Recurrence.nextOccurrenceAfter(rule, '2026-08-09')).toBe('2026-08-10')
+    })
+
+    test('returns null when the end date is already behind', () => {
+        const rule = daily({ untilDate: '2026-08-02' })
+
+        expect(Recurrence.nextOccurrenceAfter(rule, '2026-08-20')).toBeNull()
+    })
+
+    // 종료일이 회차가 아닌 날일 수도 있다. 그 앞의 마지막 회차까지만 나온다.
+    test('does not invent an occurrence on the end date', () => {
+        const rule = daily({
+            freq: 'weekly', byWeekday: [1], anchorDate: '2026-08-03', untilDate: '2026-08-13'
+        })
+
+        expect(Recurrence.nextOccurrenceAfter(rule, '2026-08-03')).toBe('2026-08-10')
+        expect(Recurrence.nextOccurrenceAfter(rule, '2026-08-10')).toBeNull()
+    })
+
+    test('without one it keeps going as before', () => {
+        expect(Recurrence.nextOccurrenceAfter(daily(), '2027-05-01')).toBe('2027-05-02')
+    })
+})

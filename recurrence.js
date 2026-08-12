@@ -16,6 +16,8 @@
 //     byWeekday: [1, 3],            // weekly 전용, 0=일요일
 //     byMonthDay: 15,               // monthly 전용, 말일 초과 시 그 달 마지막 날로 클램프
 //     anchorDate: 'YYYY-MM-DD',     // 규칙 시작일. interval의 기준점(위상)
+//     untilDate: 'YYYY-MM-DD',      // 있으면 그 날까지만 반복한다 (그 날 포함).
+//                                   // 없으면 끝없이 이어진다.
 //     startTimeOfDay: 'HH:MM',      // 절대 시각이 아니라 "벽시계 시각"만 저장한다.
 //     targetTimeOfDay: 'HH:MM',     // 타임존이 바뀌어도 "매일 09시"의 의미가 유지된다.
 //     enabled: true
@@ -102,7 +104,16 @@ const Recurrence = (() => {
         const start = dayNumber(parseKey(afterKey)) + 1
         // 병적인 입력에서도 멈추도록 상한을 둔다. 가장 성긴 규칙(수년 간격)도
         // 이 안에서는 반드시 걸린다.
-        const limit = start + 366 * 12
+        let limit = start + 366 * 12
+
+        // 종료일이 있으면 그 날까지만 본다. 그 다음은 없다(null)는 뜻이고,
+        // 호출하는 쪽에서는 "더 이상 넘길 회차가 없다"로 읽혀 일반 작업처럼
+        // 완료된다.
+        if (rule.untilDate) {
+            const until = dayNumber(parseKey(rule.untilDate))
+            if (until < start) return null
+            limit = Math.min(limit, until)
+        }
 
         for (let dn = start; dn <= limit; dn++) {
             if (matches(rule, dn)) return toKey(fromDayNumber(dn))

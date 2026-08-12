@@ -1167,6 +1167,8 @@ class TaskManager {
                 'showAll': 'All',
                 'totalCount': '{n} tasks',
                 'dragToMove': 'Drag to move the window',
+                'repeatUntil': 'Repeat until',
+                'repeatUntilHint': 'leave empty for no end',
                 'views': 'Views',
                 'searchAndFilters': 'Search and Filters',
                 'repeatingTasks': 'Repeating Tasks',
@@ -1362,6 +1364,8 @@ class TaskManager {
                 'showAll': '전체',
                 'totalCount': '{n}건',
                 'dragToMove': '끌어서 창 옮기기',
+                'repeatUntil': '반복 종료일',
+                'repeatUntilHint': '비우면 계속 반복',
                 'views': '보기',
                 'searchAndFilters': '검색과 필터',
                 'repeatingTasks': '반복 작업',
@@ -1557,6 +1561,8 @@ class TaskManager {
                 'showAll': '全部',
                 'totalCount': '共 {n} 项',
                 'dragToMove': '拖动以移动窗口',
+                'repeatUntil': '重复截止日',
+                'repeatUntilHint': '留空则一直重复',
                 'views': '视图',
                 'searchAndFilters': '搜索与筛选',
                 'repeatingTasks': '重复任务',
@@ -1752,6 +1758,8 @@ class TaskManager {
                 'showAll': 'すべて',
                 'totalCount': '{n}件',
                 'dragToMove': 'ドラッグでウィンドウを移動',
+                'repeatUntil': '繰り返し終了日',
+                'repeatUntilHint': '空欄なら無期限',
                 'views': '表示',
                 'searchAndFilters': '検索とフィルター',
                 'repeatingTasks': '繰り返しタスク',
@@ -1947,6 +1955,8 @@ class TaskManager {
                 'showAll': 'Todas',
                 'totalCount': '{n} tareas',
                 'dragToMove': 'Arrastre para mover la ventana',
+                'repeatUntil': 'Repetir hasta',
+                'repeatUntilHint': 'vacío = sin fin',
                 'views': 'Vistas',
                 'searchAndFilters': 'Búsqueda y filtros',
                 'repeatingTasks': 'Tareas repetidas',
@@ -3563,6 +3573,8 @@ class TaskManager {
 
         label.textContent = this.getLocalizedText('repeat');
         help.textContent = this.getLocalizedText('repeatHelp');
+        document.getElementById('labelRepeatUntil').textContent = this.getLocalizedText('repeatUntil');
+        document.getElementById('taskRepeatUntil').placeholder = this.getLocalizedText('repeatUntilHint');
 
         const optionKeys = { none: 'repeatNone', daily: 'repeatDaily', weekly: 'repeatWeekly', monthly: 'repeatMonthly', yearly: 'repeatYearly' };
         for (const option of select.options) {
@@ -3594,6 +3606,7 @@ class TaskManager {
 
         document.getElementById('repeatIntervalWrap').style.display = freq === 'none' ? 'none' : 'inline-flex';
         document.getElementById('repeatWeekdays').style.display = freq === 'weekly' ? 'flex' : 'none';
+        document.getElementById('repeatUntilRow').style.display = freq === 'none' ? 'none' : 'flex';
         document.getElementById('repeatHelpText').style.display = freq === 'none' ? 'none' : 'block';
 
         if (freq !== 'none') {
@@ -3610,6 +3623,10 @@ class TaskManager {
 
         document.getElementById('taskRepeat').value = rule.freq;
         document.getElementById('taskRepeatInterval').value = String(rule.interval || 1);
+        // 종료일은 날짜만 쓰지만 화면에는 설정한 표기 형식으로 보여준다
+        document.getElementById('taskRepeatUntil').value = rule.untilDate
+            ? formatWithPattern(new Date(`${rule.untilDate}T00:00:00`), this.dateFormat)
+            : '';
         (rule.byWeekday || []).forEach(day => {
             const button = document.querySelector(`#repeatWeekdays .weekday-btn[data-weekday="${day}"]`);
             if (button) button.classList.add('selected');
@@ -3654,6 +3671,7 @@ class TaskManager {
     resetRepeatControls() {
         document.getElementById('taskRepeat').value = 'none';
         document.getElementById('taskRepeatInterval').value = '1';
+        document.getElementById('taskRepeatUntil').value = '';
         document.querySelectorAll('#repeatWeekdays .weekday-btn').forEach(btn => btn.classList.remove('selected'));
         this.updateRepeatVisibility();
     }
@@ -3679,8 +3697,19 @@ class TaskManager {
             anchorDate,
             startTimeOfDay,
             targetTimeOfDay,
+            // 비워두면 끝없이 반복한다. 넣으면 그 날까지만.
+            untilDate: this.readRepeatUntil(),
             enabled: true
         };
+    }
+
+    // 종료일 입력을 'YYYY-MM-DD'로 읽는다. 비었거나 형식이 안 맞으면 null(무기한).
+    // 시각은 버린다 - 규칙이 정하는 것은 "며칠까지"이지 "몇 시까지"가 아니다.
+    readRepeatUntil() {
+        const typed = document.getElementById('taskRepeatUntil').value.trim();
+        if (!typed) return null;
+        const parsed = parseWithPattern(typed, this.dateFormat);
+        return parsed ? formatWithPattern(parsed, 'YYYY-MM-DD') : null;
     }
 
     showModal(task = null) {

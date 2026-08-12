@@ -31,8 +31,25 @@ This is the Todoist model, not the calendar model. It was chosen deliberately:
 - **Times are wall-clock, not instants.** A rule stores `startTimeOfDay: '09:00'`, not an absolute datetime, so "every day at 09:00" keeps its meaning across timezones and DST. Dates are assembled in local time, matching how log files are named.
 - `ensureRuleRows()` on start-up gives a row back to any enabled rule that has none — old data from the previous per-occurrence model, or an imported backup.
 - Month-end is clamped: a "31st of each month" rule fires on 28/29 February and 30 April; a 29 February yearly rule fires on the 28th in common years.
+- **`untilDate` ends the repeat** (inclusive). Empty means forever, which stays the default. Past the end `nextOccurrenceAfter` returns null, and the caller reads that as "nothing left to advance to", so the last occurrence completes like an ordinary task and its row leaves the list. The end date need not fall on an occurrence — a Monday rule ending on a Thursday simply stops at the Monday before.
 
 `recurrence.js` is pure date maths and holds no policy: `nextOccurrenceAfter(rule, afterKey)`, `occurrenceTimes(rule, key)`, `localKey(date)`.
+
+## Driving the real app
+
+`npm start` is the human path. To look at the UI from here, the scratchpad holds
+throwaway Electron scripts (`shoot.js`, `audit.js`, `themes.js`…) that load
+`index.html`, seed `taskManager` over `executeJavaScript`, and `capturePage()`.
+
+**Every one of them must call `app.setPath('userData', …)` before `ready`.**
+They run the real renderer, so anything that reaches `saveTasks` writes the
+user's actual `tasks.json`. One of these scripts called `saveTask()` against the
+live directory; it happened to fail form validation, but had it passed it would
+have replaced the task list with test data.
+
+Two other traps: seed *after* `init()` has finished its async `loadTasks`, or the
+seed is silently overwritten (~3s is enough); and the first `capturePage()` often
+returns an empty buffer, so retry until the PNG has real length.
 
 ## Testing
 

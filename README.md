@@ -116,6 +116,8 @@ Set a repeat in the task's edit form. The row then *is* the rule:
 - Deleting the row deletes the repeat rule with it
 - Month ends are clamped: a "31st of each month" rule fires on 28/29 February
 - A task with no target time cannot repeat
+- **Until**: set an end date to stop the repeat there. Leave it empty and it
+  carries on indefinitely. The last occurrence completes like any other task
 
 ### Calendar view
 

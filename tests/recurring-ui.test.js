@@ -701,3 +701,93 @@ describe('completing a repeating task', () => {
         expect(manager.tasks.filter((t) => t.ruleId === 'rule-1')).toHaveLength(1)
     })
 })
+
+// 언제까지 반복할지. 비워두면 예전처럼 끝없이 이어진다.
+describe('repeat end date', () => {
+    const until = () => document.getElementById('taskRepeatUntil')
+    const row = () => document.getElementById('repeatUntilRow')
+
+    test('appears only once a repeat is chosen', async () => {
+        const manager = await boot()
+
+        document.getElementById('taskRepeat').value = 'none'
+        manager.updateRepeatVisibility()
+        expect(row().style.display).toBe('none')
+
+        document.getElementById('taskRepeat').value = 'daily'
+        manager.updateRepeatVisibility()
+        expect(row().style.display).not.toBe('none')
+    })
+
+    test('is written onto the rule in storage format', async () => {
+        const manager = await boot()
+
+        document.getElementById('taskRepeat').value = 'daily'
+        until().value = '2026-12-31 00:00'
+
+        const rule = manager.buildRuleFromForm({
+            content: 'x', tags: '',
+            startDateTime: '2026-08-12 09:00',
+            targetDateTime: '2026-08-12 18:00'
+        })
+
+        expect(rule.untilDate).toBe('2026-12-31')
+    })
+
+    // 비워두는 것이 기본이고, 그 뜻은 "끝없이"다.
+    test('an empty field means no end', async () => {
+        const manager = await boot()
+
+        document.getElementById('taskRepeat').value = 'daily'
+        until().value = ''
+
+        const rule = manager.buildRuleFromForm({
+            content: 'x', tags: '',
+            startDateTime: '2026-08-12 09:00',
+            targetDateTime: '2026-08-12 18:00'
+        })
+
+        expect(rule.untilDate).toBeNull()
+    })
+
+    // 종료일을 넘긴 반복은 더 넘길 회차가 없으므로 보통 작업처럼 끝난다.
+    test('completing past the end date finishes the task instead of advancing', async () => {
+        const manager = await boot({
+            rules: [{
+                id: 'rule-1', content: 'standup', tags: '', freq: 'daily', interval: 1,
+                byWeekday: [], anchorDate: '2026-08-01', startTimeOfDay: '09:00',
+                targetTimeOfDay: '10:00', untilDate: '2026-08-05', enabled: true
+            }],
+            tasks: [{
+                id: 'task-1', content: 'standup', tags: '',
+                startDateTime: '2026-08-05 09:00', targetDateTime: '2026-08-05 10:00',
+                completed: false, ruleId: 'rule-1'
+            }]
+        })
+
+        await manager.doCompleteTask('task-1', null)
+        await settle()
+
+        expect(manager.tasks).toHaveLength(0)
+    })
+
+    test('before the end date it still advances', async () => {
+        const manager = await boot({
+            rules: [{
+                id: 'rule-1', content: 'standup', tags: '', freq: 'daily', interval: 1,
+                byWeekday: [], anchorDate: '2026-08-01', startTimeOfDay: '09:00',
+                targetTimeOfDay: '10:00', untilDate: '2026-08-20', enabled: true
+            }],
+            tasks: [{
+                id: 'task-1', content: 'standup', tags: '',
+                startDateTime: '2026-08-05 09:00', targetDateTime: '2026-08-05 10:00',
+                completed: false, ruleId: 'rule-1'
+            }]
+        })
+
+        await manager.doCompleteTask('task-1', null)
+        await settle()
+
+        expect(manager.tasks[0].startDateTime).toBe('2026-08-06 09:00')
+    })
+})
