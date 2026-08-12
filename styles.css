@@ -730,14 +730,6 @@ body.dark-mode .page-size-select {
     font-size: 12px;
 }
 
-/* 입력 아래 붙는 짧은 설명 */
-.field-hint {
-    margin-top: 5px;
-    font-size: 11px;
-    color: var(--text-muted);
-    line-height: 1.5;
-}
-
 /* 다중 선택 / 일괄 처리 */
 .select-col {
     text-align: center;
@@ -1197,17 +1189,6 @@ body.dark-mode .btn.icon-btn:hover {
     margin-bottom: 20px;
     font-size: 12px;
     color: #7f8c8d;
-}
-
-.log-path-info {
-    background-color: #f8f9fa;
-    padding: 2px 6px;
-    border-radius: 2px;
-    font-size: 9px;
-    color: #6c757d;
-    border-left: 2px solid #007bff;
-    margin: 0;
-    margin-top: 2px;
 }
 
 .hidden {
@@ -2119,11 +2100,6 @@ body:not(.calendar-mode) .collapsed-cal {
     background-color: transparent;
 }
 
-.up-btn:hover, .down-btn:hover {
-    color: #42a5f5;
-    background-color: transparent;
-}
-
 /* Settings Modal */
 .settings-group {
     margin-bottom: 15px;
@@ -2472,10 +2448,6 @@ body.dark-mode .icon-btn:hover {
 
 .delete-btn svg {
     color: var(--color-danger);
-}
-
-.up-btn svg, .down-btn svg {
-    color: var(--text-secondary);
 }
 
 /* .pagination-btn 은 위에서 한 번 정의한다. 여기 두 번째 정의가 있어서

@@ -259,7 +259,24 @@ declared twice, so the lighter header from 0.8.6 had never once applied in dark
 mode. `.color-example`'s eight colours were shadowed by a later block, and every
 `.action-btn` / `.edit-btn` / `.highlight-btn` rule was styling classes that
 stopped existing when the row buttons moved to the bar. The file is down to zero
-duplicate selectors; keep it there.
+duplicate selectors and zero unreferenced classes; keep it there.
+
+The same audit is worth re-running after any sweep, because "I removed the dead
+code" has been wrong here more than once:
+
+```
+중복 선택자        styles.css 안에서 같은 선택자가 두 번 이상 (미디어쿼리 제외)
+죽은 CSS 클래스    index.html / renderer.js 어디에도 없는 클래스
+죽은 번역 키       TRANSLATIONS 에 있으나 아무데서도 안 불리는 키
+번역 키 일치       다섯 언어의 키 집합이 동일한가
+HTML id 참조       renderer 가 찾는 id 가 실제로 있는가
+패키지 내용물      npx asar list — build.files 는 allowlist다
+```
+
+Beware false positives when writing these: classes built by template string
+(`quick-${kind}`), keys looked up through a variable (`optionKeys[freq]`), and
+ids that only appear as bare object keys in the `aboutText` maps all look dead
+to a naive grep.
 
 ### The completed-today panel opens on a click
 
