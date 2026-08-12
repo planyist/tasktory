@@ -203,6 +203,27 @@ This is a complete Electron application with the following structure:
 - **Search functionality**: real-time filtering, optionally scoped to one column
 - **Pagination**: Smart pagination for large task lists
 
+### Wiring lives in one method per screen area
+
+`setupEventListeners` was 329 lines — every listener in the app in one run, so
+finding where a control was bound meant reading the whole thing. It is now a list
+of `wireToolbar()`, `wireSearchBox()`, `wireModals()`, `wireSelection()`,
+`wireListControls()`, `wireDateTimePicker()`, `wireTaskTable()`,
+`wireCalendar()`, `wireQuickFilters()`, `wireConfirmDialog()`, `wireSettings()`,
+called in the original order. Order matters only where two listeners share an
+element and an event, and splitting on verified statement boundaries preserved
+it exactly.
+
+Splitting it surfaced a dead delegation: a `click` handler on `#tasksTable`
+looking for `.action-btn`, which has not existed in a row since the actions moved
+to the bar in 0.6.0.
+
+`updateUIText` was 285 lines of `getElementById` / `if (el)` / assign, repeated
+about 80 times. `setText(id, key, suffix)`, `setTitle`, `setPlaceholder` fold each
+of those to one line — 161 lines gone, and a new label is now one line instead of
+three. They keep silently skipping absent elements, which matters because the
+collapsed strip and the modals are not always in the DOM.
+
 ### One rule, one place
 
 `styles.css` had `.btn` declared twice, and the later block quietly won. That

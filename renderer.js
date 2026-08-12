@@ -194,117 +194,117 @@ class TaskManager {
         }
     }
 
+    // 화면 문구를 넣는 자리는 대부분 "요소를 찾아 없으면 넘어가고 있으면 문구를
+    // 넣는다"의 반복이다. 그 세 줄을 한 줄로 접는다. 없는 요소를 조용히 넘기는
+    // 것은 그대로다 - 접힘/모달처럼 그때그때 없는 요소가 섞여 있다.
+    setText(id, key, suffix = '') {
+        const el = document.getElementById(id);
+        if (el) el.textContent = this.getLocalizedText(key) + suffix;
+    }
+
+    setTitle(id, key) {
+        const el = document.getElementById(id);
+        if (el) el.title = this.getLocalizedText(key);
+    }
+
+    setPlaceholder(id, key) {
+        const el = document.getElementById(id);
+        if (el) el.placeholder = this.getLocalizedText(key);
+    }
+
+
     updateUIText() {
         // Update all UI text with localized versions
         
         // Header buttons tooltips
-        document.getElementById('addTaskBtn').title = this.getLocalizedText('addTask');
+        this.setTitle('addTaskBtn', 'addTask');
         this.updateDateFormatControls();
         this.updateSearchColumnControl();
-        document.getElementById('exportBtn').title = this.getLocalizedText('downloadExport');
-        document.getElementById('importBtn').title = this.getLocalizedText('uploadImport');
-        document.getElementById('statisticsBtn').title = this.getLocalizedText('statistics');
-        document.getElementById('settingsBtn').title = this.getLocalizedText('settings');
-        document.getElementById('aboutBtn').title = this.getLocalizedText('about');
-        document.getElementById('collapseBtn').title = this.getLocalizedText('collapseView');
-        document.getElementById('collapsedExpandBtn').title = this.getLocalizedText('expand');
-        document.getElementById('clearSearchBtn').title = this.getLocalizedText('clearSearch');
-        document.getElementById('dragBar').title = this.getLocalizedText('dragToMove');
+        this.setTitle('exportBtn', 'downloadExport');
+        this.setTitle('importBtn', 'uploadImport');
+        this.setTitle('statisticsBtn', 'statistics');
+        this.setTitle('settingsBtn', 'settings');
+        this.setTitle('aboutBtn', 'about');
+        this.setTitle('collapseBtn', 'collapseView');
+        this.setTitle('collapsedExpandBtn', 'expand');
+        this.setTitle('clearSearchBtn', 'clearSearch');
+        this.setTitle('dragBar', 'dragToMove');
         
         // Search input
-        document.getElementById('searchInput').placeholder = this.getLocalizedText('search');
+        this.setPlaceholder('searchInput', 'search');
         
         // Table headers
-        document.getElementById('thNumber').textContent = this.getLocalizedText('number');
-        document.getElementById('thStartTime').textContent = this.getLocalizedText('startTime');
-        document.getElementById('thTargetTime').textContent = this.getLocalizedText('targetTime');
-        document.getElementById('thTags').textContent = this.getLocalizedText('tags');
-        document.getElementById('thTaskContent').textContent = this.getLocalizedText('taskContent');
-        document.getElementById('thStatus').textContent = this.getLocalizedText('status');
+        this.setText('thNumber', 'number');
+        this.setText('thStartTime', 'startTime');
+        this.setText('thTargetTime', 'targetTime');
+        this.setText('thTags', 'tags');
+        this.setText('thTaskContent', 'taskContent');
+        this.setText('thStatus', 'status');
         
         // Modal form labels
-        document.getElementById('labelStartTime').textContent = this.getLocalizedText('startTime');
-        document.getElementById('labelTargetTime').textContent = this.getLocalizedText('targetTime');
-        document.getElementById('labelTags').textContent = this.getLocalizedText('tags');
-        document.getElementById('labelTaskContent').textContent = this.getLocalizedText('taskContent');
+        this.setText('labelStartTime', 'startTime');
+        this.setText('labelTargetTime', 'targetTime');
+        this.setText('labelTags', 'tags');
+        this.setText('labelTaskContent', 'taskContent');
         this.renderRepeatControls();
-        document.getElementById('labelPosition').textContent = this.getLocalizedText('position');
+        this.setText('labelPosition', 'position');
         
         // Modal form placeholders
-        document.getElementById('taskTags').placeholder = this.getLocalizedText('tagsPlaceholder');
-        document.getElementById('taskContent').placeholder = this.getLocalizedText('taskContentPlaceholder');
+        this.setPlaceholder('taskTags', 'tagsPlaceholder');
+        this.setPlaceholder('taskContent', 'taskContentPlaceholder');
         
         // Modal buttons
-        document.getElementById('cancelBtn').textContent = this.getLocalizedText('cancel');
-        document.getElementById('saveBtn').textContent = this.getLocalizedText('save');
+        this.setText('cancelBtn', 'cancel');
+        this.setText('saveBtn', 'save');
         
         // Confirmation modal buttons
-        document.getElementById('confirmCancelBtn').textContent = this.getLocalizedText('cancel');
+        this.setText('confirmCancelBtn', 'cancel');
         
         // Completion counter text
         this.updateCompletionCounterText();
         
         // Settings modal elements
-        const settingsTitle = document.getElementById('settingsTitle');
-        if (settingsTitle) settingsTitle.textContent = this.getLocalizedText('settingsTitle');
+        this.setText('settingsTitle', 'settingsTitle');
         
-        const settingsLanguageLabel = document.getElementById('settingsLanguageLabel');
-        if (settingsLanguageLabel) settingsLanguageLabel.textContent = this.getLocalizedText('language');
+        this.setText('settingsLanguageLabel', 'language');
         
-        const settingsThemeModeLabel = document.getElementById('settingsThemeModeLabel');
-        if (settingsThemeModeLabel) settingsThemeModeLabel.textContent = this.getLocalizedText('themeMode');
+        this.setText('settingsThemeModeLabel', 'themeMode');
         
-        const lightModeBtn = document.getElementById('lightModeBtn');
-        if (lightModeBtn) lightModeBtn.title = this.getLocalizedText('lightMode');
+        this.setTitle('lightModeBtn', 'lightMode');
         
-        const darkModeBtn = document.getElementById('darkModeBtn');
-        if (darkModeBtn) darkModeBtn.title = this.getLocalizedText('darkMode');
+        this.setTitle('darkModeBtn', 'darkMode');
         
-        const settingsDefaultNotificationLabel = document.getElementById('settingsDefaultNotificationLabel');
-        if (settingsDefaultNotificationLabel) settingsDefaultNotificationLabel.textContent = this.getLocalizedText('defaultNotification');
+        this.setText('settingsDefaultNotificationLabel', 'defaultNotification');
         
-        const notificationOnBtn = document.getElementById('notificationOnBtn');
-        if (notificationOnBtn) notificationOnBtn.title = this.getLocalizedText('notificationsOn');
+        this.setTitle('notificationOnBtn', 'notificationsOn');
         
-        const notificationOffBtn = document.getElementById('notificationOffBtn');
-        if (notificationOffBtn) notificationOffBtn.title = this.getLocalizedText('notificationsOff');
+        this.setTitle('notificationOffBtn', 'notificationsOff');
         
-        const settingsUnfocusedOpacityLabel = document.getElementById('settingsUnfocusedOpacityLabel');
-        if (settingsUnfocusedOpacityLabel) settingsUnfocusedOpacityLabel.textContent = this.getLocalizedText('unfocusedOpacity');
+        this.setText('settingsUnfocusedOpacityLabel', 'unfocusedOpacity');
         
-        const settingsTagPresetsLabel = document.getElementById('settingsTagPresetsLabel');
-        if (settingsTagPresetsLabel) settingsTagPresetsLabel.textContent = this.getLocalizedText('tagPresets');
+        this.setText('settingsTagPresetsLabel', 'tagPresets');
         
         const settingsUseColorsText = document.getElementById('settingsUseColorsText');
         if (settingsUseColorsText) settingsUseColorsText.childNodes[0].textContent = this.getLocalizedText('useColors') + ' ';
         
-        const addTagPresetBtn = document.getElementById('addTagPresetBtn');
-        if (addTagPresetBtn) addTagPresetBtn.textContent = this.getLocalizedText('add');
+        this.setText('addTagPresetBtn', 'add');
         
         // About modal elements
-        const aboutViewHistoryTitle = document.getElementById('aboutViewHistoryTitle');
-        if (aboutViewHistoryTitle) aboutViewHistoryTitle.textContent = this.getLocalizedText('viewHistory');
+        this.setText('aboutViewHistoryTitle', 'viewHistory');
         
-        const aboutHowToUseTitle = document.getElementById('aboutHowToUseTitle');
-        if (aboutHowToUseTitle) aboutHowToUseTitle.textContent = this.getLocalizedText('howToUse');
+        this.setText('aboutHowToUseTitle', 'howToUse');
         
-        const aboutNotificationsTitle = document.getElementById('aboutNotificationsTitle');
-        if (aboutNotificationsTitle) aboutNotificationsTitle.textContent = this.getLocalizedText('notifications');
+        this.setText('aboutNotificationsTitle', 'notifications');
         
-        const aboutTaskStatusTitle = document.getElementById('aboutTaskStatusTitle');
-        if (aboutTaskStatusTitle) aboutTaskStatusTitle.textContent = this.getLocalizedText('taskStatus');
+        this.setText('aboutTaskStatusTitle', 'taskStatus');
         
-        const aboutKeyboardShortcutsTitle = document.getElementById('aboutKeyboardShortcutsTitle');
-        if (aboutKeyboardShortcutsTitle) aboutKeyboardShortcutsTitle.textContent = this.getLocalizedText('keyboardShortcuts');
+        this.setText('aboutKeyboardShortcutsTitle', 'keyboardShortcuts');
         
-        const aboutAddNewTask = document.getElementById('aboutAddNewTask');
-        if (aboutAddNewTask) aboutAddNewTask.textContent = this.getLocalizedText('addNewTaskShortcut');
+        this.setText('aboutAddNewTask', 'addNewTaskShortcut');
         
-        const aboutCollapseView = document.getElementById('aboutCollapseView');
-        if (aboutCollapseView) aboutCollapseView.textContent = this.getLocalizedText('collapseViewShortcut');
+        this.setText('aboutCollapseView', 'collapseViewShortcut');
         
-        const aboutCloseModal = document.getElementById('aboutCloseModal');
-        if (aboutCloseModal) aboutCloseModal.textContent = this.getLocalizedText('closeModalShortcut');
+        this.setText('aboutCloseModal', 'closeModalShortcut');
         
         // 뒤에 붙인 절들은 표로 묶어 돌린다. 위쪽처럼 한 줄씩 늘어놓으면 번역
         // 키가 늘 때마다 세 줄씩 붙고, 새로 넣은 항목을 여기 등록하는 걸 잊기
@@ -350,132 +350,84 @@ class TaskManager {
             if (element) element.textContent = this.getLocalizedText(key) + ':';
         }
 
-        const aboutVersionLabel = document.getElementById('aboutVersionLabel');
-        if (aboutVersionLabel) aboutVersionLabel.textContent = this.getLocalizedText('version') + ':';
+        this.setText('aboutVersionLabel', 'version', ':');
         
-        const aboutLicenseLabel = document.getElementById('aboutLicenseLabel');
-        if (aboutLicenseLabel) aboutLicenseLabel.textContent = this.getLocalizedText('license') + ':';
+        this.setText('aboutLicenseLabel', 'license', ':');
         
-        const aboutAuthorLabel = document.getElementById('aboutAuthorLabel');
-        if (aboutAuthorLabel) aboutAuthorLabel.textContent = this.getLocalizedText('author') + ':';
+        this.setText('aboutAuthorLabel', 'author', ':');
         
         // About modal - How to Use instructions
-        const aboutAddTaskTitle = document.getElementById('aboutAddTaskTitle');
-        if (aboutAddTaskTitle) aboutAddTaskTitle.textContent = this.getLocalizedText('addTask') + ':';
-        const aboutAddTaskDesc = document.getElementById('aboutAddTaskDesc');
-        if (aboutAddTaskDesc) aboutAddTaskDesc.textContent = this.getLocalizedText('addTaskInstruction');
-        const aboutAddTaskDescEnd = document.getElementById('aboutAddTaskDescEnd');
-        if (aboutAddTaskDescEnd) aboutAddTaskDescEnd.textContent = this.getLocalizedText('addTaskInstructionEnd');
+        this.setText('aboutAddTaskTitle', 'addTask', ':');
+        this.setText('aboutAddTaskDesc', 'addTaskInstruction');
+        this.setText('aboutAddTaskDescEnd', 'addTaskInstructionEnd');
         
-        const aboutEditTitle = document.getElementById('aboutEditTitle');
-        if (aboutEditTitle) aboutEditTitle.textContent = this.getLocalizedText('edit') + ':';
-        const aboutEditDesc = document.getElementById('aboutEditDesc');
-        if (aboutEditDesc) aboutEditDesc.textContent = this.getLocalizedText('editInstruction');
-        const aboutEditDescEnd = document.getElementById('aboutEditDescEnd');
-        if (aboutEditDescEnd) aboutEditDescEnd.textContent = this.getLocalizedText('editInstructionEnd');
+        this.setText('aboutEditTitle', 'edit', ':');
+        this.setText('aboutEditDesc', 'editInstruction');
+        this.setText('aboutEditDescEnd', 'editInstructionEnd');
         
-        const aboutCompleteTitle = document.getElementById('aboutCompleteTitle');
-        if (aboutCompleteTitle) aboutCompleteTitle.textContent = this.getLocalizedText('complete') + ':';
-        const aboutCompleteDesc = document.getElementById('aboutCompleteDesc');
-        if (aboutCompleteDesc) aboutCompleteDesc.textContent = this.getLocalizedText('completeInstruction');
-        const aboutCompleteDescEnd = document.getElementById('aboutCompleteDescEnd');
-        if (aboutCompleteDescEnd) aboutCompleteDescEnd.textContent = this.getLocalizedText('completeInstructionEnd');
+        this.setText('aboutCompleteTitle', 'complete', ':');
+        this.setText('aboutCompleteDesc', 'completeInstruction');
+        this.setText('aboutCompleteDescEnd', 'completeInstructionEnd');
         
-        const aboutDeleteTitle = document.getElementById('aboutDeleteTitle');
-        if (aboutDeleteTitle) aboutDeleteTitle.textContent = this.getLocalizedText('delete') + ':';
-        const aboutDeleteDesc = document.getElementById('aboutDeleteDesc');
-        if (aboutDeleteDesc) aboutDeleteDesc.textContent = this.getLocalizedText('deleteInstruction');
-        const aboutDeleteDescEnd = document.getElementById('aboutDeleteDescEnd');
-        if (aboutDeleteDescEnd) aboutDeleteDescEnd.textContent = this.getLocalizedText('deleteInstructionEnd');
+        this.setText('aboutDeleteTitle', 'delete', ':');
+        this.setText('aboutDeleteDesc', 'deleteInstruction');
+        this.setText('aboutDeleteDescEnd', 'deleteInstructionEnd');
         
-        const aboutHighlightTitle = document.getElementById('aboutHighlightTitle');
-        if (aboutHighlightTitle) aboutHighlightTitle.textContent = this.getLocalizedText('highlight') + ':';
-        const aboutHighlightDesc = document.getElementById('aboutHighlightDesc');
-        if (aboutHighlightDesc) aboutHighlightDesc.textContent = this.getLocalizedText('highlightInstruction');
-        const aboutHighlightDescEnd = document.getElementById('aboutHighlightDescEnd');
-        if (aboutHighlightDescEnd) aboutHighlightDescEnd.textContent = this.getLocalizedText('highlightInstructionEnd');
+        this.setText('aboutHighlightTitle', 'highlight', ':');
+        this.setText('aboutHighlightDesc', 'highlightInstruction');
+        this.setText('aboutHighlightDescEnd', 'highlightInstructionEnd');
         
         const aboutReorderTitle = document.getElementById('aboutReorderTitle');
         if (aboutReorderTitle) aboutReorderTitle.textContent = this.getLocalizedText('moveUp') + '/' + this.getLocalizedText('moveDown') + ':';
-        const aboutReorderDesc = document.getElementById('aboutReorderDesc');
-        if (aboutReorderDesc) aboutReorderDesc.textContent = this.getLocalizedText('reorderInstruction');
-        const aboutReorderDescEnd = document.getElementById('aboutReorderDescEnd');
-        if (aboutReorderDescEnd) aboutReorderDescEnd.textContent = this.getLocalizedText('reorderInstructionEnd');
+        this.setText('aboutReorderDesc', 'reorderInstruction');
+        this.setText('aboutReorderDescEnd', 'reorderInstructionEnd');
         
         const aboutExportImportTitle = document.getElementById('aboutExportImportTitle');
         if (aboutExportImportTitle) aboutExportImportTitle.textContent = this.getLocalizedText('downloadExport') + '/' + this.getLocalizedText('uploadImport') + ':';
-        const aboutExportImportDesc = document.getElementById('aboutExportImportDesc');
-        if (aboutExportImportDesc) aboutExportImportDesc.textContent = this.getLocalizedText('exportImportInstruction');
-        const aboutExportImportDescEnd = document.getElementById('aboutExportImportDescEnd');
-        if (aboutExportImportDescEnd) aboutExportImportDescEnd.textContent = this.getLocalizedText('exportImportInstructionEnd');
+        this.setText('aboutExportImportDesc', 'exportImportInstruction');
+        this.setText('aboutExportImportDescEnd', 'exportImportInstructionEnd');
         
-        const aboutTagsTitle = document.getElementById('aboutTagsTitle');
-        if (aboutTagsTitle) aboutTagsTitle.textContent = this.getLocalizedText('tags') + ':';
-        const aboutTagsDesc = document.getElementById('aboutTagsDesc');
-        if (aboutTagsDesc) aboutTagsDesc.textContent = this.getLocalizedText('tagsInstruction');
+        this.setText('aboutTagsTitle', 'tags', ':');
+        this.setText('aboutTagsDesc', 'tagsInstruction');
         
-        const aboutNotificationsInstructionTitle = document.getElementById('aboutNotificationsInstructionTitle');
-        if (aboutNotificationsInstructionTitle) aboutNotificationsInstructionTitle.textContent = this.getLocalizedText('notifications') + ':';
-        const aboutNotificationsInstructionDesc = document.getElementById('aboutNotificationsInstructionDesc');
-        if (aboutNotificationsInstructionDesc) aboutNotificationsInstructionDesc.textContent = this.getLocalizedText('notificationsInstruction');
-        const aboutNotificationsInstructionDescEnd = document.getElementById('aboutNotificationsInstructionDescEnd');
-        if (aboutNotificationsInstructionDescEnd) aboutNotificationsInstructionDescEnd.textContent = this.getLocalizedText('notificationsInstructionEnd');
+        this.setText('aboutNotificationsInstructionTitle', 'notifications', ':');
+        this.setText('aboutNotificationsInstructionDesc', 'notificationsInstruction');
+        this.setText('aboutNotificationsInstructionDescEnd', 'notificationsInstructionEnd');
         
         // About modal - Notifications section
-        const aboutAutoAlertsTitle = document.getElementById('aboutAutoAlertsTitle');
-        if (aboutAutoAlertsTitle) aboutAutoAlertsTitle.textContent = this.getLocalizedText('autoAlerts') + ':';
-        const aboutAutoAlertsDesc = document.getElementById('aboutAutoAlertsDesc');
-        if (aboutAutoAlertsDesc) aboutAutoAlertsDesc.textContent = this.getLocalizedText('autoAlertsDesc');
+        this.setText('aboutAutoAlertsTitle', 'autoAlerts', ':');
+        this.setText('aboutAutoAlertsDesc', 'autoAlertsDesc');
         
-        const aboutOverdueAlertTitle = document.getElementById('aboutOverdueAlertTitle');
-        if (aboutOverdueAlertTitle) aboutOverdueAlertTitle.textContent = this.getLocalizedText('overdueAlert') + ':';
-        const aboutOverdueAlertDesc = document.getElementById('aboutOverdueAlertDesc');
-        if (aboutOverdueAlertDesc) aboutOverdueAlertDesc.textContent = this.getLocalizedText('overdueAlertDesc');
+        this.setText('aboutOverdueAlertTitle', 'overdueAlert', ':');
+        this.setText('aboutOverdueAlertDesc', 'overdueAlertDesc');
         
-        const aboutTogglePerTaskTitle = document.getElementById('aboutTogglePerTaskTitle');
-        if (aboutTogglePerTaskTitle) aboutTogglePerTaskTitle.textContent = this.getLocalizedText('togglePerTask') + ':';
-        const aboutTogglePerTaskDesc = document.getElementById('aboutTogglePerTaskDesc');
-        if (aboutTogglePerTaskDesc) aboutTogglePerTaskDesc.textContent = this.getLocalizedText('togglePerTaskDesc');
+        this.setText('aboutTogglePerTaskTitle', 'togglePerTask', ':');
+        this.setText('aboutTogglePerTaskDesc', 'togglePerTaskDesc');
         
-        const aboutDefaultSettingTitle = document.getElementById('aboutDefaultSettingTitle');
-        if (aboutDefaultSettingTitle) aboutDefaultSettingTitle.textContent = this.getLocalizedText('defaultSetting') + ':';
-        const aboutDefaultSettingDesc = document.getElementById('aboutDefaultSettingDesc');
-        if (aboutDefaultSettingDesc) aboutDefaultSettingDesc.textContent = this.getLocalizedText('defaultSettingDesc');
-        const aboutDefaultSettingEnd = document.getElementById('aboutDefaultSettingEnd');
-        if (aboutDefaultSettingEnd) aboutDefaultSettingEnd.textContent = this.getLocalizedText('defaultSettingEnd');
+        this.setText('aboutDefaultSettingTitle', 'defaultSetting', ':');
+        this.setText('aboutDefaultSettingDesc', 'defaultSettingDesc');
+        this.setText('aboutDefaultSettingEnd', 'defaultSettingEnd');
         
         // About modal - Task Status descriptions
-        const aboutPendingStatus = document.getElementById('aboutPendingStatus');
-        if (aboutPendingStatus) aboutPendingStatus.textContent = this.getLocalizedText('pending');
-        const aboutPendingStatusDesc = document.getElementById('aboutPendingStatusDesc');
-        if (aboutPendingStatusDesc) aboutPendingStatusDesc.textContent = this.getLocalizedText('pendingStatusDesc');
+        this.setText('aboutPendingStatus', 'pending');
+        this.setText('aboutPendingStatusDesc', 'pendingStatusDesc');
         
-        const aboutInProgressStatus = document.getElementById('aboutInProgressStatus');
-        if (aboutInProgressStatus) aboutInProgressStatus.textContent = this.getLocalizedText('inprogress');
-        const aboutInProgressStatusDesc = document.getElementById('aboutInProgressStatusDesc');
-        if (aboutInProgressStatusDesc) aboutInProgressStatusDesc.textContent = this.getLocalizedText('inProgressStatusDesc');
+        this.setText('aboutInProgressStatus', 'inprogress');
+        this.setText('aboutInProgressStatusDesc', 'inProgressStatusDesc');
         
-        const aboutDueSoonStatus = document.getElementById('aboutDueSoonStatus');
-        if (aboutDueSoonStatus) aboutDueSoonStatus.textContent = this.getLocalizedText('urgent');
-        const aboutDueSoonStatusDesc = document.getElementById('aboutDueSoonStatusDesc');
-        if (aboutDueSoonStatusDesc) aboutDueSoonStatusDesc.textContent = this.getLocalizedText('dueSoonStatusDesc');
+        this.setText('aboutDueSoonStatus', 'urgent');
+        this.setText('aboutDueSoonStatusDesc', 'dueSoonStatusDesc');
         
-        const aboutOverdueStatus = document.getElementById('aboutOverdueStatus');
-        if (aboutOverdueStatus) aboutOverdueStatus.textContent = this.getLocalizedText('overdue');
-        const aboutOverdueStatusDesc = document.getElementById('aboutOverdueStatusDesc');
-        if (aboutOverdueStatusDesc) aboutOverdueStatusDesc.textContent = this.getLocalizedText('overdueStatusDesc');
+        this.setText('aboutOverdueStatus', 'overdue');
+        this.setText('aboutOverdueStatusDesc', 'overdueStatusDesc');
         
-        const aboutCompletedStatus = document.getElementById('aboutCompletedStatus');
-        if (aboutCompletedStatus) aboutCompletedStatus.textContent = this.getLocalizedText('done');
-        const aboutCompletedStatusDesc = document.getElementById('aboutCompletedStatusDesc');
-        if (aboutCompletedStatusDesc) aboutCompletedStatusDesc.textContent = this.getLocalizedText('completedStatusDesc');
+        this.setText('aboutCompletedStatus', 'done');
+        this.setText('aboutCompletedStatusDesc', 'completedStatusDesc');
         
         // About modal - Completion Counter section
-        const aboutCompletionCounterTitle = document.getElementById('aboutCompletionCounterTitle');
-        if (aboutCompletionCounterTitle) aboutCompletionCounterTitle.textContent = this.getLocalizedText('completionCounterTitle');
+        this.setText('aboutCompletionCounterTitle', 'completionCounterTitle');
         
-        const aboutCompletionCounterDesc = document.getElementById('aboutCompletionCounterDesc');
-        if (aboutCompletionCounterDesc) aboutCompletionCounterDesc.textContent = this.getLocalizedText('completionCounterDescription');
+        this.setText('aboutCompletionCounterDesc', 'completionCounterDescription');
     }
 
 
@@ -537,7 +489,24 @@ class TaskManager {
         }
     }
 
+    // 배선은 화면 영역별로 나눠 둔다. 예전에는 329줄짜리 메서드 하나였고,
+    // 어디에 무엇이 붙는지 보려면 처음부터 끝까지 읽어야 했다.
     setupEventListeners() {
+        this.wireToolbar();
+        this.wireSearchBox();
+        this.wireModals();
+        this.wireSelection();
+        this.wireListControls();
+        this.wireDateTimePicker();
+        this.wireTaskTable();
+        this.wireCalendar();
+        this.wireQuickFilters();
+        this.wireConfirmDialog();
+        this.wireSettings();
+    }
+
+    // 상단 아이콘 줄과 접기/펴기
+    wireToolbar() {
         // Add new task button
         document.getElementById('addTaskBtn').addEventListener('click', () => {
             this.showModal();
@@ -593,6 +562,11 @@ class TaskManager {
         });
 
         // Clear search button
+    }
+
+    // 검색창과 지우기 버튼
+    wireSearchBox() {
+        // Clear search button
         document.getElementById('clearSearchBtn').addEventListener('click', () => {
             this.clearSearch();
         });
@@ -607,6 +581,11 @@ class TaskManager {
             }
         });
 
+        // Close modals
+    }
+
+    // 모달 닫기, 작업 폼, 반복 주기 변경
+    wireModals() {
         // Close modals
         document.querySelectorAll('.close').forEach(closeBtn => {
             closeBtn.addEventListener('click', (e) => {
@@ -645,6 +624,11 @@ class TaskManager {
         });
 
         // 다중 선택
+    }
+
+    // 전체 선택, 행 체크박스, 일괄 버튼
+    wireSelection() {
+        // 다중 선택
         document.getElementById('selectAllTasks').addEventListener('change', (e) => {
             this.toggleSelectAll(e.target.checked);
         });
@@ -655,8 +639,10 @@ class TaskManager {
         document.querySelectorAll('[data-bulk]').forEach(button => {
             button.addEventListener('click', () => this.runBulkAction(button.dataset.bulk));
         });
+    }
 
-
+    // 쪽당 개수, 검색 대상 컬럼, 날짜 표시 형식
+    wireListControls() {
         document.getElementById('pageSizeSelect').addEventListener('change', (e) => {
             this.tasksPerPage = Number(e.target.value);
             localStorage.setItem('tasksPerPage', String(this.tasksPerPage));
@@ -677,6 +663,11 @@ class TaskManager {
             this.changeDateFormat(e.target.value);
         });
 
+        // 날짜/시간 선택기
+    }
+
+    // 직접 만든 날짜/시간 선택기
+    wireDateTimePicker() {
         // 날짜/시간 선택기
         document.querySelectorAll('.datetime-pick-btn').forEach(button => {
             button.addEventListener('click', () => this.openDateTimePicker(button.dataset.target));
@@ -699,6 +690,14 @@ class TaskManager {
         // 예전에는 칩을 누르면 검색으로 빠졌는데, 빠른 필터가 같은 일을 늘 같은
         // 자리에서 여러 개까지 걸 수 있게 하면서 쓸모가 없어졌다. 남겨두면 행을
         // 고르려다 칩을 스치기만 해도 목록이 통째로 바뀌어 버린다.
+    }
+
+    // 표 클릭 = 행 선택
+    wireTaskTable() {
+        // 표 안에서는 어디를 눌러도 그 행이 선택된다. 태그·상태 칩도 예외가 아니다.
+        // 예전에는 칩을 누르면 검색으로 빠졌는데, 빠른 필터가 같은 일을 늘 같은
+        // 자리에서 여러 개까지 걸 수 있게 하면서 쓸모가 없어졌다. 남겨두면 행을
+        // 고르려다 칩을 스치기만 해도 목록이 통째로 바뀌어 버린다.
         document.getElementById('tasksTable').addEventListener('click', (e) => {
             // 행 어디를 눌러도 선택된다. 체크박스만 노리기에는 표적이 작다.
             // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
@@ -712,6 +711,11 @@ class TaskManager {
             this.toggleTaskSelection(box.dataset.taskId, box.checked);
         });
 
+        // 달력 보기
+    }
+
+    // 보기 전환, 달 이동, 접힘 미니 달력, 완료 목록
+    wireCalendar() {
         // 달력 보기
         document.getElementById('viewModeBtn').addEventListener('click', () => this.toggleViewMode());
         document.getElementById('calPrev').addEventListener('click', () => this.moveCalendarMonth(-1));
@@ -743,6 +747,11 @@ class TaskManager {
         });
 
         // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
+    }
+
+    // 빠른 필터 칩
+    wireQuickFilters() {
+        // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
         document.getElementById('quickFilters').addEventListener('click', (e) => {
             const chip = e.target.closest('.quick-chip');
             if (!chip) return;
@@ -768,6 +777,11 @@ class TaskManager {
         });
 
         // Confirmation form submission
+    }
+
+    // 완료·삭제 확인 모달
+    wireConfirmDialog() {
+        // Confirmation form submission
         document.getElementById('confirmForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleConfirmAction();
@@ -778,23 +792,10 @@ class TaskManager {
         });
 
         // Table button click events (event delegation)
-        document.getElementById('tasksTable').addEventListener('click', (e) => {
-            // Find the closest action button (handles nested SVG elements)
-            const button = e.target.closest('.action-btn');
-            if (button) {
-                const taskId = button.getAttribute('data-task-id');
-                const action = button.getAttribute('data-action');
-                
-                if (taskId && action) {
-                    this.runTaskAction(action, taskId);
-                }
-            }
-        });
+    }
 
-        // 날짜 형식 검증은 하지 않는다. 입력이 datetime-local이라 브라우저가
-        // 형식을 보장하고, 값은 'T'로 구분된다. 예전 검증은 텍스트 입력 시절의
-        // 공백 구분 형식을 기대해서 정상 입력에도 항상 빨간 테두리를 씌웠다.
-
+    // 설정 창: 투명도, 언어, 테마, 알림 기본값, 태그 프리셋
+    wireSettings() {
         document.getElementById('settingsOpacitySlider').addEventListener('input', (e) => {
             this.changeUnfocusedOpacity(parseFloat(e.target.value));
         });
