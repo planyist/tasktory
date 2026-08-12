@@ -64,7 +64,9 @@ returns an empty buffer, so retry until the PNG has real length.
 
 ### 1. Always-on-Top Display
 - The application stays on top of all other windows like a sticky note program
-- `alwaysOnTop: true` alone is not enough — Win+D (show desktop) and full-screen apps still bury it. `setAlwaysOnTop(true, 'screen-saver')` raises it to the top level, which survives both. It changes only stacking order, never size or position
+- Two separate settings, for two separate problems:
+  - `setAlwaysOnTop(true, 'screen-saver')` keeps it above full-screen apps. It changes stacking order only — never size or position.
+  - **`minimizable: false` is what survives Win+D.** Show Desktop *minimises* windows, and stacking order has nothing to say about that: measured, the window came back `minimized=true, visible=false` with the screen-saver level already set. Declaring the window non-minimisable makes Windows skip it. A sticky note has no use for minimise anyway — collapsing (Ctrl+M) is how you get it out of the way
 
 ### 2. Cross-Platform Compatibility
 - Works on Windows, Linux, and macOS
@@ -240,6 +242,17 @@ overridden, and a `li.standing` pair copy-pasted verbatim.
 
 Duplicate selectors in this file are not stylistic untidiness; every one is a
 rule silently losing to another somewhere else in the file.
+
+### A popover has to leave the table's world
+
+The completed-today list hangs off the counter, which lives inside `main` — and
+`main` is `overflow: hidden` so the table can scroll inside it. An absolutely
+positioned popover there is clipped at the table's edge, and the table's sticky
+`thead` carries `z-index: 1000`, so even the unclipped part paints underneath.
+
+It is `position: fixed` with `z-index: 1200`, and `placeCompletedList()` sets its
+coordinates from the counter's rect when the pointer arrives — before the async
+fill, so it never flashes at the previous position.
 
 ### The table must not resize as you page
 

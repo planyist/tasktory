@@ -1696,12 +1696,13 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
 /* ---- 오늘 완료 목록 ----------------------------------------------------
    "오늘 7개"는 뿌듯하지만 무엇이었는지 기억나지 않으면 회고에도 보고에도 쓸 수
    없다. 카운터 위에 올리면 그 일곱 개가 무엇인지 보여준다. */
+/* 화면 기준(fixed)으로 띄운다. absolute 로 두면 두 가지에 걸린다:
+   main 이 overflow: hidden 이라 표 위로 나가는 부분이 잘리고, 표의 sticky 헤더가
+   z-index 1000 이라 그 아래로 깔린다. 위치는 열 때 카운터 좌표로 계산한다. */
 .completed-list {
     display: none;
-    position: absolute;
-    top: calc(100% + 6px);
-    left: 0;
-    z-index: 60;
+    position: fixed;
+    z-index: 1200;
     min-width: 220px;
     max-width: 340px;
     max-height: 260px;

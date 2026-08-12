@@ -743,6 +743,9 @@ class TaskManager {
         // 완료 목록은 열 때마다 읽는다. 미리 채워두면 다른 창에서 완료한 것이나
         // 자정을 넘긴 뒤의 목록이 낡은 채로 뜬다.
         document.getElementById('completionCounter').addEventListener('mouseenter', () => {
+            // 좌표를 먼저 잡는다. 내용은 IPC로 읽어오므로 한 박자 늦는데, 그 사이에
+            // 지난번 자리에 잠깐 뜨는 것을 막는다.
+            this.placeCompletedList();
             this.renderCompletedList();
         });
 
@@ -1811,6 +1814,21 @@ class TaskManager {
             console.error('Failed to read completed tasks:', error);
             return [];
         }
+    }
+
+    // position: fixed 라 좌표를 직접 준다. 카운터 바로 아래 왼쪽 끝에 맞추되,
+    // 화면 오른쪽으로 넘치면 안쪽으로 당긴다.
+    placeCompletedList() {
+        const box = document.getElementById('completedList');
+        const counter = document.getElementById('completionCounter');
+        if (!box || !counter) return;
+
+        const at = counter.getBoundingClientRect();
+        const width = box.offsetWidth || 260;
+        const left = Math.min(at.left, window.innerWidth - width - 8);
+
+        box.style.top = `${Math.round(at.bottom + 6)}px`;
+        box.style.left = `${Math.round(Math.max(8, left))}px`;
     }
 
     async renderCompletedList() {

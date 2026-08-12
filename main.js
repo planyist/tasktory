@@ -16,6 +16,12 @@ const createWindow = () => {
         minWidth: 900,
         minHeight: 400,
         alwaysOnTop: true,
+        // Win+D(바탕화면 보기)는 창을 최소화한다. alwaysOnTop 은 보이는 창들
+        // 사이의 순서만 정하므로 최소화는 못 막는다 - 실제로 재보면 Win+D 뒤에
+        // minimized=true, visible=false 였다.
+        // 최소화할 수 없는 창이라고 선언하면 Windows 가 바탕화면 보기에서 건너뛴다.
+        // 스티커에는 최소화 자체가 필요 없다 - 비켜둘 때는 접기(Ctrl+M)를 쓴다.
+        minimizable: false,
         resizable: true,
         x: 100,
         y: 50,
@@ -27,10 +33,9 @@ const createWindow = () => {
         }
     })
     
-    // 그냥 alwaysOnTop: true 면 Win+D(바탕화면 보기)나 전체화면 앱에 밀려 사라진다.
-    // 스티커처럼 남아 있으라는 것이 이 앱의 요구사항이므로 한 단계 위로 올린다.
-    // 'screen-saver'는 그 위가 없는 레벨이라 바탕화면 보기에도 살아남는다.
-    // (창 크기나 위치는 그대로다 - 쌓이는 순서만 달라진다)
+    // 전체화면 앱 위에도 남으려면 기본 alwaysOnTop 만으로는 부족하다.
+    // 'screen-saver'는 그 위가 없는 레벨이다. (크기나 위치는 그대로 - 순서만 바뀐다)
+    // 단, 이것으로 Win+D 를 막지는 못한다. 그건 위의 minimizable: false 가 맡는다.
     mainWindow.setAlwaysOnTop(true, 'screen-saver')
 
     mainWindow.loadFile('index.html')
