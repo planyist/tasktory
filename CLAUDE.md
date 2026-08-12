@@ -202,6 +202,24 @@ This is a complete Electron application with the following structure:
 - **Search functionality**: real-time filtering, optionally scoped to one column
 - **Pagination**: Smart pagination for large task lists
 
+### The table must not resize as you page
+
+Two independent causes made the header and cells shift every time you turned a
+page, and both are fixed in place:
+
+- **`table-layout: fixed`.** The `th` percentages are only a suggestion under the
+  default `auto`, which recomputes every column from the text actually in it. A
+  page of long task names produced different columns than a page of short ones.
+  The declared widths must keep summing to exactly 100%, and `td` carries
+  `overflow-wrap: break-word` because a fixed column no longer stretches for an
+  unbreakable string.
+- **`scrollbar-gutter: stable` on `.table-container`.** A full page has a
+  vertical scrollbar and the last page usually does not, so the table grew by the
+  scrollbar's 19px and dragged every column with it.
+
+Measured before: page 1 `[33,41,124,124,107,297,99]` at 825px wide, page 2
+`[34,42,126,126,109,303,101]` at 842px. Both are identical now.
+
 ### Visual weight
 
 A pass in 0.8.6 took weight off everything that is not the task list, because
