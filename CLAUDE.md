@@ -37,6 +37,17 @@ This is the Todoist model, not the calendar model. It was chosen deliberately:
 
 ## Driving the real app
 
+**Never automate the user's desktop.** Testing whether the window survived Win+D,
+I drove `Shell.Application.ToggleDesktop()` from PowerShell in a loop. It toggles;
+it does not set. A run that ended between the two calls left Windows stuck in
+Show Desktop, so afterwards other applications opened without coming to the
+front — which looks exactly like the app bug being investigated, and wasted a
+round of diagnosis chasing the wrong thing. `Shell.Application.UndoMinimizeALL()`
+restores it. Test window behaviour on windows this process owns, and leave the
+desktop alone.
+
+
+
 `npm start` is the human path. To look at the UI from here, the scratchpad holds
 throwaway Electron scripts (`shoot.js`, `audit.js`, `themes.js`…) that load
 `index.html`, seed `taskManager` over `executeJavaScript`, and `capturePage()`.
