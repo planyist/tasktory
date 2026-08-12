@@ -16,12 +16,11 @@ const createWindow = () => {
         minWidth: 900,
         minHeight: 400,
         alwaysOnTop: true,
-        // Win+D(바탕화면 보기)는 창을 최소화한다. alwaysOnTop 은 보이는 창들
-        // 사이의 순서만 정하므로 최소화는 못 막는다 - 실제로 재보면 Win+D 뒤에
-        // minimized=true, visible=false 였다.
-        // 최소화할 수 없는 창이라고 선언하면 Windows 가 바탕화면 보기에서 건너뛴다.
-        // 스티커에는 최소화 자체가 필요 없다 - 비켜둘 때는 접기(Ctrl+M)를 쓴다.
-        minimizable: false,
+        // minimizable: false 로 Win+D 를 건너뛰게 해봤지만 대가가 너무 컸다.
+        // 항상 위에 뜨는 창에서 최소화를 빼면 치울 방법이 없어진다 - 작업표시줄에서
+        // 다른 앱을 불러도 그 위를 계속 가리고, 사용자는 창을 내릴 수가 없다.
+        // 최소화는 남긴다. Win+D 로 내려가는 것은 정상 동작으로 받아들이고,
+        // 화면에 두되 작게 하고 싶을 때는 접기(Ctrl+M)를 쓴다.
         resizable: true,
         x: 100,
         y: 50,
