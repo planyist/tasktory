@@ -262,7 +262,10 @@ pointer stays where it was, so it can end up over the counter without any
 `mouseenter`. A CSS `:hover` rule opened the panel by itself there — and since
 `mouseenter` never fired, it showed whatever it had fetched last time. It is
 `.is-open`, added on `mouseenter` after the fill and removed on `mouseleave`,
-`toggleCollapse` and `toggleViewMode`.
+`toggleCollapse`, `toggleViewMode`, `window` blur and `visibilitychange`. Those
+last two matter because **minimising does not move the pointer**: `mouseleave`
+never fires, so a panel open at that moment was still open — and still holding
+the previous fetch — when the window came back.
 
 ### A popover has to leave the table's world
 
