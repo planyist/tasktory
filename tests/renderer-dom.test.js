@@ -2212,11 +2212,15 @@ describe('completed-today panel', () => {
     const counter = () => document.getElementById('completionCounter')
     const open = () => panel().classList.contains('is-open')
     const show = async () => {
-        counter().dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+        counter().dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true }))
         await settle()
     }
 
-    test('ignores the pointer passing over it', async () => {
+    // The window moving under a stationary pointer raises mouseenter but never
+    // mousemove. That is the whole difference between "I pointed at it" and
+    // "it slid under my cursor", and it is why the panel used to open itself
+    // after leaving the strip or restoring from minimise.
+    test('ignores the window sliding under a still pointer', async () => {
         await boot([task('a')])
 
         counter().dispatchEvent(new window.Event('mouseenter'))
@@ -2225,24 +2229,48 @@ describe('completed-today panel', () => {
         expect(open()).toBe(false)
     })
 
-    test('opens on a click and closes on the next one', async () => {
+    test('opens once the pointer actually moves over it', async () => {
         await boot([task('a')])
 
         await show()
-        expect(open()).toBe(true)
 
-        await show()
-        expect(open()).toBe(false)
+        expect(open()).toBe(true)
     })
 
-    test('closes when something else is clicked', async () => {
-        await boot([task('a')])
-        await show()
+    test('closes shortly after the pointer leaves', async () => {
+        jest.useFakeTimers()
+        try {
+            await boot([task('a')])
+            await show()
+            expect(open()).toBe(true)
 
-        document.getElementById('searchInput')
-            .dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+            counter().dispatchEvent(new window.Event('mouseleave'))
+            jest.advanceTimersByTime(300)
 
-        expect(open()).toBe(false)
+            expect(open()).toBe(false)
+        } finally {
+            jest.useRealTimers()
+        }
+    })
+
+    // The panel sits 6px below the counter, so reaching it to scroll crosses a
+    // gap that belongs to neither. Closing on the spot would make the list
+    // unreachable.
+    test('survives crossing the gap on the way to the list', async () => {
+        jest.useFakeTimers()
+        try {
+            await boot([task('a')])
+            await show()
+
+            counter().dispatchEvent(new window.Event('mouseleave'))
+            jest.advanceTimersByTime(100)
+            counter().dispatchEvent(new window.Event('mouseenter'))
+            jest.advanceTimersByTime(500)
+
+            expect(open()).toBe(true)
+        } finally {
+            jest.useRealTimers()
+        }
     })
 
     test('closes when the window collapses or comes back', async () => {
@@ -2269,7 +2297,7 @@ describe('completed-today panel', () => {
 describe('completed-today panel and the window', () => {
     const openIt = async () => {
         document.getElementById('completionCounter')
-            .dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+            .dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true }))
         await settle()
     }
     const isOpen = () => document.getElementById('completedList').classList.contains('is-open')

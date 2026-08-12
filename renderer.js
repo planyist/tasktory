@@ -742,16 +742,16 @@ class TaskManager {
 
         // 완료 목록은 열 때마다 읽는다. 미리 채워두면 다른 창에서 완료한 것이나
         // 자정을 넘긴 뒤의 목록이 낡은 채로 뜬다.
-        // 눌러야 열린다. 호버로 열었더니 마우스가 스쳐 지나가기만 해도 표를 덮었고,
-        // 창이 옮겨가거나 최소화에서 돌아올 때 포인터가 우연히 얹히면서 부르지도
-        // 않은 목록이 저절로 떴다. 여는 것은 사용자가 정한다.
+        // 마우스를 올리면 열린다. 단, **실제로 움직여서** 들어왔을 때만이다.
+        // 예전에는 mouseenter 만 보고 열었는데, 스티커에서 펼치거나 최소화에서
+        // 돌아올 때 창이 포인터 밑으로 옮겨오면서 mouseenter 가 떴다. 손을 대지도
+        // 않았는데 목록이 표를 덮었고, 마우스가 움직인 게 아니라 내용도 낡은
+        // 것이었다. 창이 움직여 들어온 경우에는 mousemove 가 뜨지 않으므로,
+        // 그것을 조건으로 삼으면 의도한 호버만 남는다.
         const counter = document.getElementById('completionCounter');
-        counter.addEventListener('click', () => {
+        counter.addEventListener('mousemove', () => {
             const box = document.getElementById('completedList');
-            if (box.classList.contains('is-open')) {
-                this.hideCompletedList();
-                return;
-            }
+            if (box.classList.contains('is-open')) return;
             // 좌표를 먼저 잡는다. 내용은 IPC로 읽어오므로 한 박자 늦는데, 그 사이에
             // 지난번 자리에 잠깐 뜨는 것을 막는다.
             this.placeCompletedList();
@@ -759,10 +759,14 @@ class TaskManager {
             box.classList.add('is-open');
         });
 
-        // 바깥을 누르면 닫는다 (목록 안을 누르는 것은 빼고 - 스크롤해야 하므로)
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('#completionCounter')) return;
-            this.hideCompletedList();
+        // 목록은 카운터의 자식이라, 목록 위로 옮겨가도 여기서는 벗어난 것이 아니다.
+        // 다만 둘 사이 6px 틈을 지날 때 잠깐 벗어나므로 조금 기다렸다 닫는다.
+        let closing = null;
+        counter.addEventListener('mouseleave', () => {
+            closing = setTimeout(() => this.hideCompletedList(), 220);
+        });
+        counter.addEventListener('mouseenter', () => {
+            if (closing) { clearTimeout(closing); closing = null; }
         });
 
         // 창이 사라지면 닫는다. 열린 채로 최소화되면 다시 나타날 때 그대로 남는다.

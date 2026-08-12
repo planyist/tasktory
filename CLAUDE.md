@@ -307,20 +307,24 @@ Beware false positives when writing these: classes built by template string
 ids that only appear as bare object keys in the `aboutText` maps all look dead
 to a naive grep.
 
-### The completed-today panel opens on a click
+### The completed-today panel opens on movement, not on arrival
 
-Never on hover. Hovering only requires the pointer to come to rest on the
-counter — after the window is moved or recentred, after a restore from minimise,
-on the way to the search box — and the panel then covers the table uninvited.
-Three separate bug reports came out of that one choice, each of them a different
-route to the same accident.
+Hovering is what was asked for and hovering is what it does — but it waits for a
+`mousemove` inside the counter, not merely a `mouseenter`.
 
-The open state is the `.is-open` class; the stylesheet only reacts to it.
-It toggles on `click`, and closes on a click anywhere else, on `toggleCollapse`,
-`toggleViewMode`, `window` blur and `visibilitychange`. The blur and visibility
-cases matter because minimising does not move the pointer: `mouseleave` never
-fires, so a panel open at that moment was still open — and still holding the
-previous fetch — when the window came back.
+That one distinction is the whole bug. Leaving the strip recentres the window and
+restoring un-minimises it, both while the pointer sits still; the counter slides
+under the cursor and the browser raises `mouseenter`. `mousemove` needs actual
+movement, so it separates "I pointed at this" from "it slid under my hand". The
+panel used to open by itself in both cases, and since `mouseenter` had fired
+without a fresh fetch it showed the previous contents.
+
+Closing waits ~220ms after `mouseleave`, cancelled by a re-entry: the panel sits
+6px below the counter and that gap belongs to neither element, so closing on the
+spot made the list impossible to reach and scroll. The open state is the
+`.is-open` class; the stylesheet only reacts to it. It also closes on
+`toggleCollapse`, `toggleViewMode`, `window` blur and `visibilitychange` —
+minimising never moves the pointer, so `mouseleave` would not fire on its own.
 
 ### A popover has to leave the table's world
 

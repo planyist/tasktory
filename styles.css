@@ -98,7 +98,6 @@ body {
    화면에서 가장 눈에 띄는 요소였다. 검색 줄과 같은 키에 맞춰 조용히 둔다. */
 .completion-counter {
     position: relative;
-    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 6px;
