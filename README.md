@@ -1,10 +1,35 @@
 # Tasktory
 
+[![CI](https://github.com/planyist/tasktory/actions/workflows/ci.yml/badge.svg)](https://github.com/planyist/tasktory/actions/workflows/ci.yml)
+
 A compact, always-on-top task manager. It sits in the corner of your screen like
 a sticky note so the things you have to do stay visible while you work.
 
 It exists to solve one problem: when you are busy, you forget what you were
 meant to do — and you forget what you already did. Tasktory keeps both.
+
+![The task list](docs/screenshots/list.png)
+
+Colours carry the status, so a glance is enough: overdue, due soon, in progress,
+pending. The row you highlighted stays highlighted.
+
+<table>
+<tr>
+<td width="50%"><img src="docs/screenshots/calendar.png" alt="Calendar view"></td>
+<td width="50%"><img src="docs/screenshots/list-dark.png" alt="Dark mode"></td>
+</tr>
+<tr>
+<td>A month at a time, to see where the work piles up.</td>
+<td>Dark mode throughout.</td>
+</tr>
+</table>
+
+<img src="docs/screenshots/collapsed.png" alt="Collapsed side strip" align="right" width="150">
+
+Collapsed, it becomes a 150px strip that stays out of the way — today's work in
+time order, with a mini calendar above it. Ctrl+M toggles it.
+
+<br clear="right">
 
 ## Features
 
