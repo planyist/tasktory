@@ -58,15 +58,43 @@ const createWindow = () => {
     keepWindowWhereItWasPut()
 }
 
-// 화면보호기나 잠금에서 돌아오면 창이 제자리에 없다는 신고가 있었다.
+// 잠금·화면보호기에서 돌아오면 창이 제자리에 없다는 신고가 있었다.
 // 앱 안에서 창을 옮기는 곳은 접기/펴기 두 군데뿐이고 주기적으로 도는 것도 없으니,
-// 미는 쪽은 Windows다 - 화면보호기가 끝나거나 세션이 풀릴 때 디스플레이 구성이
-// 잠깐 바뀌고, 그때 alwaysOnTop 창이 작업 영역 기준으로 다시 놓인다.
-// 사용자가 둔 자리를 기억해 두었다가 그 순간에만 돌려놓는다.
+// 미는 쪽은 Windows다 - 세션이 풀릴 때 디스플레이 구성이 잠깐 바뀌고, 그때 창이
+// 작업 영역 기준으로 다시 놓인다.
+//
+// 첫 시도는 'moved'/'resized' 를 계속 지켜보며 마지막 자리를 기억하는 방식이었는데,
+// 그 이벤트는 **Windows가 옮겼을 때도 똑같이 뜬다**. 그래서 밀려난 자리가 곧
+// "사용자가 둔 자리"로 덮여 기준 자체가 오염됐고, 되돌릴 것이 없어졌다.
+// 접힌 창이 화면 한가운데 떠 있게 된 것이 그 결과다.
+//
+// 그래서 잠기기 **전에** 찍어두고, 풀린 뒤 그것으로 되돌린다. 그 사이에 들어오는
+// 이동 이벤트는 전부 무시한다 - 그때 움직이는 것은 사용자가 아니다.
+
+// 되돌릴지, 어디로 되돌릴지 판단만 하는 순수 함수. 창도 이벤트도 모르므로
+// 그대로 테스트할 수 있다.
+const boundsToRestore = (saved, current, displays) => {
+    if (!saved || !current) return null
+    if (saved.x === current.x && saved.y === current.y
+        && saved.width === current.width && saved.height === current.height) return null
+
+    // 기억해 둔 자리가 지금 연결된 화면 밖이면(모니터를 뺐다면) 그대로 둔다.
+    // 억지로 돌려놓으면 창이 보이지 않는 곳으로 사라진다.
+    const visible = displays.some(d => {
+        const a = d.workArea
+        return saved.x < a.x + a.width && saved.x + saved.width > a.x
+            && saved.y < a.y + a.height && saved.y + saved.height > a.y
+    })
+    return visible ? saved : null
+}
+
 const keepWindowWhereItWasPut = () => {
     if (!mainWindow) return
 
+    let disrupted = false
+
     const remember = () => {
+        if (disrupted) return // 지금 움직이는 것은 사용자가 아니다
         if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized()) {
             intendedBounds = mainWindow.getBounds()
         }
@@ -76,26 +104,27 @@ const keepWindowWhereItWasPut = () => {
     mainWindow.on('resized', remember)
     remember()
 
+    const disrupt = () => {
+        remember()        // 아직 밀리기 전이라면 이 값이 가장 정확하다
+        disrupted = true
+    }
+
     const restore = () => {
-        if (!intendedBounds || !mainWindow || mainWindow.isDestroyed()) return
+        disrupted = true
         // OS가 배치를 끝낸 뒤에 되돌려야 한다. 곧바로 부르면 그 위에 다시 덮인다.
         setTimeout(() => {
-            if (!mainWindow || mainWindow.isDestroyed() || mainWindow.isMinimized()) return
-            const now = mainWindow.getBounds()
-            if (now.x === intendedBounds.x && now.y === intendedBounds.y) return
-
-            // 기억해 둔 자리가 지금 연결된 화면 밖이면(모니터를 뺐다면) 그대로 둔다.
-            // 억지로 돌려놓으면 창이 보이지 않는 곳으로 사라진다.
-            const onScreen = screen.getAllDisplays().some(d => {
-                const a = d.workArea
-                return intendedBounds.x < a.x + a.width && intendedBounds.x + intendedBounds.width > a.x
-                    && intendedBounds.y < a.y + a.height && intendedBounds.y + intendedBounds.height > a.y
-            })
-            if (!onScreen) return
-
-            mainWindow.setBounds(intendedBounds)
-        }, 400)
+            if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized()) {
+                const target = boundsToRestore(intendedBounds, mainWindow.getBounds(),
+                                               screen.getAllDisplays())
+                if (target) mainWindow.setBounds(target)
+            }
+            disrupted = false
+        }, 600)
     }
+
+    // 잠기는 순간을 잡아 그때 자리를 확정해 둔다
+    powerMonitor.on('lock-screen', disrupt)
+    powerMonitor.on('suspend', disrupt)
 
     powerMonitor.on('unlock-screen', restore)
     powerMonitor.on('resume', restore)
@@ -103,6 +132,9 @@ const keepWindowWhereItWasPut = () => {
     screen.on('display-added', restore)
     screen.on('display-removed', restore)
 }
+
+// 테스트에서 판단 로직만 따로 확인한다 (Electron 런타임 없이)
+module.exports = { boundsToRestore }
 
 // GPU 가속 비활성화 (호환성 문제 해결)
 app.disableHardwareAcceleration()

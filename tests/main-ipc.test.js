@@ -414,3 +414,43 @@ describe('get-log-path', () => {
         await expect(electron.__invoke('get-log-path')).resolves.toBe(logsDir)
     })
 })
+
+// 잠금에서 돌아오면 창이 밀려 있다는 신고에서 나온 로직. 첫 시도는 'moved' 를
+// 지켜보며 마지막 자리를 기억했는데, 그 이벤트는 Windows 가 옮겼을 때도 뜬다.
+// 밀려난 자리가 "사용자가 둔 자리"로 덮이면서 되돌릴 기준이 사라졌다.
+// 판단 부분만 떼어냈으므로 Electron 없이 확인한다.
+describe('boundsToRestore', () => {
+    // beforeEach 가 환경변수를 세운 뒤 main.js 를 다시 읽는다. 그 전에 require 하면
+    // userData 경로가 undefined 라 모듈 로딩 자체가 터진다.
+    const boundsToRestore = (...args) => require('../main.js').boundsToRestore(...args)
+    const screens = [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }]
+    const at = (x, y, width = 150, height = 400) => ({ x, y, width, height })
+
+    test('puts the window back where it was before the screen locked', () => {
+        expect(boundsToRestore(at(1700, 20), at(880, 340), screens)).toEqual(at(1700, 20))
+    })
+
+    // 접힌 창이 한가운데 떠 있던 증상. 크기까지 되돌려야 한다.
+    test('restores the size too, not just the position', () => {
+        const saved = at(1700, 20, 150, 400)
+        expect(boundsToRestore(saved, at(1700, 20, 900, 500), screens)).toEqual(saved)
+    })
+
+    test('does nothing when the window never moved', () => {
+        expect(boundsToRestore(at(1700, 20), at(1700, 20), screens)).toBeNull()
+    })
+
+    // 모니터를 뽑고 돌아온 경우. 억지로 돌려놓으면 보이지 않는 곳으로 사라진다.
+    test('leaves it alone when the remembered spot is off every display', () => {
+        expect(boundsToRestore(at(3000, 20), at(400, 200), screens)).toBeNull()
+    })
+
+    test('still restores a spot that only partly overlaps a display', () => {
+        const saved = at(1850, 20) // 오른쪽 끝에 살짝 걸쳐 있다
+        expect(boundsToRestore(saved, at(400, 200), screens)).toEqual(saved)
+    })
+
+    test('does nothing without a remembered position', () => {
+        expect(boundsToRestore(null, at(400, 200), screens)).toBeNull()
+    })
+})

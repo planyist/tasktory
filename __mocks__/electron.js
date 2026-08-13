@@ -41,8 +41,13 @@ module.exports = {
     Notification,
     shell: { openPath: () => {} },
     screen: {
-        getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1080 } })
+        getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1080 } }),
+        getAllDisplays: () => [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }],
+        on: () => {}
     },
+    // main.js 가 잠금·복귀에 반응해 창을 제자리로 돌린다. 목에 없으면 구조 분해에서
+    // undefined 가 되어, 나중에 그 경로를 건드리는 순간 조용히 터진다.
+    powerMonitor: { on: () => {} },
 
     // Test helpers
     __invoke: (channel, ...args) => {
