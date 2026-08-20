@@ -3508,7 +3508,12 @@ class TaskManager {
                 const fireFrom = new Date(targetDate.getTime() - minutes * 60 * 1000);
 
                 if (now >= fireFrom && now < targetDate && !this.notifiedTasks.has(key)) {
-                    await this.showTaskNotification(task, this.describeLead(minutes));
+                    // 예정된 리드가 아니라 **실제로 남은 시간**을 말한다. 40분 남은
+                    // 작업을 방금 추가하면 60분 창에 이미 들어와 있어 곧바로 울리는데,
+                    // 그때 "1시간 남았습니다"는 사실이 아니다. 앱을 껐다 켠 뒤에도
+                    // 마찬가지다 - 8분 남았는데 15분이라고 하게 된다.
+                    const remaining = Math.round((targetDate - now) / 60000);
+                    await this.showTaskNotification(task, this.describeLead(remaining));
                     this.rememberNotified(key);
                 }
             }

@@ -2325,3 +2325,44 @@ describe('completed-today panel and the window', () => {
         expect(isOpen()).toBe(false)
     })
 })
+
+// The lead windows are [60, 15]. A task added with 40 minutes left is already
+// inside the 60-minute window, so it fires at once - and used to announce
+// "1 hour remaining" when 40 minutes were left. The same happens after a
+// restart: reopening at 8 minutes left announced 15.
+describe('notification wording', () => {
+    const inMinutes = (n) => {
+        const t = new Date(Date.now() + n * 60000)
+        const pad = (v) => String(v).padStart(2, '0')
+        return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ` +
+            `${pad(t.getHours())}:${pad(t.getMinutes())}`
+    }
+    const said = () =>
+        electronAPI.showNotification.mock.calls.map((c) => c.join(' ')).join(' | ')
+
+    test('reports the time actually left, not the lead it tripped', async () => {
+        const manager = await boot([task('a', { targetDateTime: inMinutes(40) })])
+
+        await manager.checkUpcomingTasks()
+
+        expect(said()).toContain('40')
+        expect(said()).not.toContain('1 hour')
+    })
+
+    test('still reads as hours when a whole hour is left', async () => {
+        const manager = await boot([task('a', { targetDateTime: inMinutes(60) })])
+
+        await manager.checkUpcomingTasks()
+
+        expect(said()).toContain('1 hour')
+    })
+
+    test('a task caught late reports what remains, not the window', async () => {
+        const manager = await boot([task('a', { targetDateTime: inMinutes(8) })])
+
+        await manager.checkUpcomingTasks()
+
+        expect(said()).toContain('8')
+        expect(said()).not.toContain('15')
+    })
+})
