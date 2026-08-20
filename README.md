@@ -101,8 +101,10 @@ Output goes to `dist/`.
 
 ### In a browser
 
-Open `tasktory-standalone.html` — a single self-contained file. No always-on-top
-and no log files; it keeps everything in `localStorage`.
+Open `index.html` — the same app, minus the parts that need a desktop:
+no always-on-top and no log files, with tasks kept in `localStorage`. Use
+export/import to move them. Served over http(s) it also installs as a PWA and
+opens offline.
 
 ## Usage
 
@@ -260,7 +262,6 @@ recurrence.js            pure date maths for repeat rules
 manifest.json            PWA manifest
 service-worker.js        offline cache
 register-sw.js           service-worker registration (skipped under file://)
-tasktory-standalone.html single-file browser build, independent of renderer.js
 tests/                   Jest suite
 __mocks__/               manual electron mock for main-process tests
 assets/                  icons

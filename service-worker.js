@@ -4,12 +4,15 @@
 // 데이터는 캐시하지 않는다. 작업과 규칙은 localStorage에 있고, 여기서는
 // 화면을 띄우는 데 필요한 파일만 다룬다.
 
-const CACHE = 'tasktory-shell-v1';
+// 캐시 이름은 SHELL 목록이 바뀔 때마다 올린다. 그대로 두면 예전 캐시가 살아남아
+// 새 파일(i18n.js)만 빠진 화면이 뜬다.
+const CACHE = 'tasktory-shell-v2';
 
 const SHELL = [
     './',
     './index.html',
     './styles.css',
+    './i18n.js',
     './recurrence.js',
     './renderer.js',
     './manifest.json',
