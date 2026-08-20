@@ -258,6 +258,8 @@ class TaskManager {
         this.setText('thNumber', 'number');
         this.setText('thStartTime', 'startTime');
         this.setText('thTargetTime', 'targetTime');
+        this.setTitle('thStartTime', 'sortHint');
+        this.setTitle('thTargetTime', 'sortHint');
         this.setText('thTags', 'tags');
         this.setText('thTaskContent', 'taskContent');
         this.setText('thStatus', 'status');
@@ -1585,7 +1587,20 @@ class TaskManager {
     addAttachments(items) {
         const existing = new Set(this.editingAttachments.map(a => a.path));
         const added = items.filter(item => item.path && !existing.has(item.path));
-        if (added.length) this.setEditingAttachments([...this.editingAttachments, ...added]);
+        if (!added.length) return;
+        this.setEditingAttachments([...this.editingAttachments, ...added]);
+
+        // 첨부 칸은 편집 창 아래쪽이라, 붙인 항목이 화면 밖에 그려지기 쉽다.
+        // 그러면 눌렀는데 아무 일도 안 일어난 것처럼 보인다. 방금 붙은 줄을
+        // 가운데로 끌어와 잠깐 반짝인다. 'nearest' 로는 아래 모서리에 딱 붙어서
+        // 스크롤이 됐는데도 눈에 띄지 않는다.
+        // 새로 붙은 것은 늘 목록 맨 뒤에 온다. 경로로 선택자를 짜면 CSS.escape 가
+        // 필요한데 jsdom 에는 없을 수 있다.
+        const rows = document.querySelectorAll('#attachmentList .attachment-item');
+        for (const li of [...rows].slice(-added.length)) {
+            li.classList.add('just-added');
+            if (li.scrollIntoView) li.scrollIntoView({ block: 'center' });
+        }
     }
 
     removeAttachment(filePath) {
@@ -1595,6 +1610,15 @@ class TaskManager {
     async renderAttachmentList() {
         const list = document.getElementById('attachmentList');
         if (!list) return;
+
+        // 개수를 라벨에 적는다. 목록이 접힌 창 아래로 밀려 안 보일 때도
+        // 몇 개가 붙어 있는지는 알 수 있어야 한다.
+        const label = document.getElementById('labelAttachments');
+        if (label) {
+            const count = this.editingAttachments.length;
+            label.textContent = this.getLocalizedText('attachments')
+                + (count ? ` (${count})` : '');
+        }
 
         list.innerHTML = this.editingAttachments.map(item => `
             <li class="attachment-item" data-path="${this.escapeHtml(item.path)}">

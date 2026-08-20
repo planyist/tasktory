@@ -2102,6 +2102,26 @@ body:not(.calendar-mode) .collapsed-cal {
     text-decoration: line-through;
 }
 
+/* 방금 붙은 줄. 목록이 창 아래쪽에 있어 스크롤로 끌어와도 그냥 늘어난 것처럼
+   보인다 - 한 번 반짝여야 "들어갔다"로 읽힌다. */
+@keyframes attachment-just-added {
+    0% { background-color: rgba(52, 152, 219, 0.45); }
+    100% { background-color: #f4f6f9; }
+}
+
+.attachment-item.just-added {
+    animation: attachment-just-added 1.1s ease-out;
+}
+
+body.dark-mode .attachment-item.just-added {
+    animation-name: attachment-just-added-dark;
+}
+
+@keyframes attachment-just-added-dark {
+    0% { background-color: rgba(52, 152, 219, 0.55); }
+    100% { background-color: #3a3f46; }
+}
+
 .attachment-reveal,
 .attachment-remove {
     flex: 0 0 auto;
@@ -2144,18 +2164,41 @@ th.sortable:hover {
     color: #2c3e50;
 }
 
-/* 자리를 늘 잡아둔다. 정렬할 때만 화살표가 나타나면 그 칸의 글자가 밀린다. */
+/* 정렬이 된다는 사실은 눌러보기 전에 보여야 한다. 흐린 ↕ 를 늘 띄워두고,
+   정렬 중일 때만 진한 화살표로 바꾼다. 세 상태의 자리가 같아서 글자가 밀리지
+   않는다. 머리글이 작아 크기는 따로 준다 - 물려받으면 눈에 띄지 않는다. */
 th.sortable::after {
-    content: '';
+    content: '↕';
     display: inline-block;
-    width: 10px;
-    margin-left: 4px;
-    opacity: 0;
+    width: 13px;
+    margin-left: 5px;
+    font-size: 15px;
+    line-height: 1;
+    vertical-align: -2px;
+    opacity: 0.45;
+}
+
+/* 누를 수 있는 칸이라는 신호는 칸 전체가 준다. 화살표 하나만 밝아지는 것보다
+   훨씬 먼저 눈에 들어온다. */
+th.sortable:hover {
+    background-color: rgba(0, 0, 0, 0.05);
+}
+
+th.sortable:hover::after {
+    opacity: 0.9;
+}
+
+/* 켜진 정렬은 핀과 같은 파랑을 쓴다 - 이 앱에서 파랑은 "지금 걸려 있다"는 뜻이다.
+   화살표만이 아니라 칸 이름까지 물들여야, 무엇이 순서를 정하고 있는지 표를
+   훑는 중에도 보인다. */
+th.sortable.sorted {
+    color: #2a7fb8;
 }
 
 th.sortable.sorted::after {
     content: '↑';
     opacity: 1;
+    font-weight: 700;
 }
 
 th.sortable.sorted.descending::after {
@@ -2164,6 +2207,12 @@ th.sortable.sorted.descending::after {
 
 body.dark-mode th.sortable:hover {
     color: #e0e0e0;
+    background-color: rgba(255, 255, 255, 0.07);
+}
+
+body.dark-mode th.sortable.sorted,
+body.dark-mode th.sortable.sorted:hover {
+    color: #7fc4ef;
 }
 
 /* ---- 설정: 글자가 든 선택 토글과 백업 버튼 ----------------------------

@@ -128,7 +128,9 @@ Rows carry no buttons. Tick the rows you want and use the bar above the table:
 
 **Double-click a row** to open it for editing.
 
-**Click a time header** to sort by it — original order, ascending, descending,
+**Click a time header** to sort by it — the two time columns carry a faint `↕`
+to show they can be sorted, and turn blue while one is driving the order.
+Pressing cycles original order, ascending, descending,
 then back. Sorting is only a way of looking: the numbers stay with their rows, so
 out-of-sequence numbers tell you the list is not in its stored order, and a
 restart brings that order back. Reordering is disabled while sorted.

@@ -204,6 +204,13 @@ backup, so a copied 400MB video would be in every backup.
   stored path; neither is given anything the user did not choose.
 - **No count limit.** Ten rows of attachments is less than the list already
   holds in a single page.
+- **Adding one has to be visible.** The attachment box sits near the bottom of a
+  scrolling modal, so a newly linked file renders below the fold and pressing
+  *Choose files* looks like it did nothing. `addAttachments` scrolls the new row
+  to `block: 'center'` and flashes it once, and the label carries a count
+  (`첨부 (2)`) so the number is readable even when the list is not. `'nearest'`
+  is not enough — it parks the row flush against the bottom edge, which measures
+  as visible and reads as absent.
 - **A path is an opaque string, so there is nothing to branch per platform.**
   The OS hands it over (`getPathForFile`, `showOpenDialog`) and the OS takes it
   back (`openPath`, `showItemInFolder`, `fs.access`); nothing in `renderer.js`
@@ -273,7 +280,7 @@ This is a complete Electron application with the following structure:
 
 ### Key Features Implemented:
 - **Always-on-top window**: BrowserWindow configured with `alwaysOnTop: true`
-- **Compact UI**: Table-based interface optimized for 600x400 window
+- **Compact UI**: Table-based interface optimized for a small window (900x750 by default, clamped to the work area so it never opens taller than the screen)
 - **Modal forms**: Popup forms for adding/editing tasks
 - **IPC communication**: Secure file operations between main and renderer
 - **Task persistence**: JSON file for active tasks, one dated TSV log per day for history
@@ -331,6 +338,8 @@ This is a complete Electron application with the following structure:
 - **Double-click a row to edit.** Both clicks toggle the selection, which sounds wrong but lands correctly: an even number of toggles returns to the starting state. Suppressing the first click until a double-click can be ruled out would freeze every ordinary selection for the OS threshold — 500ms on this machine — which is far worse than a flicker the modal immediately covers
 - **Chips in a row are just part of the row** — clicking one selects it like anything else. They used to jump to a search, but the quick filters do that from a fixed place and hold several at once, so the row version only meant brushing a chip while aiming for the row replaced the whole list. (The repeat cadence lost its one-click filter with it; it is still reachable by picking *Repeat* in the search column.)
 - **The `#` column is the order the user arranged**, not a row count — the up/down buttons and the position field write it. Sorting is therefore a *way of looking*, never a change: `sortForDisplay()` runs on the way to the screen, `this.tasks` is untouched, nothing is saved, and a restart comes back unsorted.
+
+  **A column that can be sorted has to say so before it is pressed.** The two time headers carry a dimmed `↕` at all times, brighten it on hover, and tint the whole header — label and arrow — the same blue the pin uses when a sort is actually on. An arrow that only appears *after* sorting teaches nobody that sorting exists; a header that changes colour is visible while you are reading the rows underneath it, which is when you want to know what is driving the order. The glyph carries its own `font-size` because the header text is 11px and an inherited arrow disappears at that size.
 - **Sorted rows keep the number they had.** Renumbering 1,2,3 would look like the manual order had been rewritten; numbers reading 2,1,3 are what tell you this is temporary. Clicking a header cycles original → ascending → descending → original, and **reordering is disabled while sorted** — under a sort the neighbour on screen is not the neighbour in the list, so "move up" would send the row somewhere invisible. Tasks with no target time stay at the end in both directions rather than swapping ends, which would read as vanishing.
 - **Quick filters are multi-select and independent of the search box.** Several can be on at once — OR within a kind (tag A or B), AND across kinds (overdue *and* tag A). They used to write into the search box, which holds one value, so every second chip undid the first. `All` clears both them and the search. The empty-state message checks the filters too; looking only at `searchQuery` put "All tasks completed!" on a table emptied by a filter.
 - **Editing clears the selection; the toggles keep it.** Saving an edit usually changes the status or the date, so the row drops out of whatever filter is on — leaving an invisible row ticked, ready to be swept into the next bulk action. Highlight and notification are the opposite case: undoing one needs a second press, so their selection has to survive.

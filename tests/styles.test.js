@@ -23,7 +23,7 @@ const selectorsIn = (text) => {
     while ((match = rule.exec(text))) {
         const selector = match[2].trim().replace(/\s+/g, ' ')
         if (selector.startsWith('@') || selector.startsWith('/*')) continue
-        if (/^\d+%$/.test(selector)) continue // @keyframes 안의 단계
+        if (/^(\d+%|from|to)$/.test(selector)) continue // @keyframes 안의 단계
         found.set(selector, (found.get(selector) || 0) + 1)
     }
     return found
