@@ -118,6 +118,9 @@ class TaskManager {
         // 있어서, 여기서 저장해 두고 시작할 때 다시 밀어주지 않으면 재시작마다
         // 1.0으로 돌아간다.
         this.unfocusedOpacity = this.loadUnfocusedOpacity();
+        // 항상 위로 둘지. main.js 는 창을 만들 때 alwaysOnTop: true 로 시작하므로
+        // 저장된 값이 false 일 때만 시작하면서 내려준다.
+        this.alwaysOnTop = localStorage.getItem('alwaysOnTop') !== 'false';
         // 'list' | 'calendar'. 목록은 무엇이 있는지, 달력은 언제 몰리는지에 강하다.
         this.viewMode = localStorage.getItem('viewMode') === 'calendar' ? 'calendar' : 'list';
         this.calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -177,15 +180,15 @@ class TaskManager {
             if (infoBar) infoBar.style.display = 'block';
         }
         
-        // Always show export/import buttons (now visible by default in HTML)
-        const exportBtn = document.getElementById('exportBtn');
-        const importBtn = document.getElementById('importBtn');
-        if (exportBtn) exportBtn.style.display = 'inline-block';
-        if (importBtn) importBtn.style.display = 'inline-block';
-
         // main.js는 투명도를 메모리에만 두므로 시작할 때마다 다시 알려줘야 한다
         this.updateOpacityControl();
-        if (this.isElectron) window.electronAPI.setUnfocusedOpacity(this.unfocusedOpacity);
+        this.applyAlwaysOnTopControl();
+        if (this.isElectron) {
+            window.electronAPI.setUnfocusedOpacity(this.unfocusedOpacity);
+            if (window.electronAPI.setAlwaysOnTop) {
+                window.electronAPI.setAlwaysOnTop(this.alwaysOnTop);
+            }
+        }
 
         // 정보 창의 버전. 손으로 적어두면 릴리스마다 잊는다.
         const version = document.getElementById('aboutVersionValue');
@@ -220,8 +223,14 @@ class TaskManager {
         this.setTitle('addTaskBtn', 'addTask');
         this.updateDateFormatControls();
         this.updateSearchColumnControl();
-        this.setTitle('exportBtn', 'downloadExport');
-        this.setTitle('importBtn', 'uploadImport');
+        this.setText('settingsAlwaysOnTopLabel', 'alwaysOnTop');
+        this.setText('settingsAlwaysOnTopHint', 'alwaysOnTopHint');
+        this.setText('alwaysOnTopOnBtn', 'on');
+        this.setText('alwaysOnTopOffBtn', 'off');
+        this.setText('settingsBackupLabel', 'backup');
+        this.setText('settingsBackupHint', 'backupHint');
+        this.setText('exportBtn', 'downloadExport');
+        this.setText('importBtn', 'uploadImport');
         this.setTitle('statisticsBtn', 'statistics');
         this.setTitle('settingsBtn', 'settings');
         this.setTitle('aboutBtn', 'about');
@@ -711,6 +720,19 @@ class TaskManager {
             this.toggleTaskSelection(box.dataset.taskId, box.checked);
         });
 
+        // 두 번 누르면 편집. 클릭을 미뤘다가 더블클릭인지 보고 판단하는 방법도 있지만,
+        // Windows 의 더블클릭 인식 시간이 500ms 라 평범한 선택 클릭이 전부 그만큼
+        // 굳는다. 대신 토글이 두 번 일어나도록 두는데, 짝수 번 토글은 제자리로
+        // 돌아오므로 선택 상태는 누르기 전과 같다. 남는 것은 잠깐의 깜빡임뿐이고
+        // 그마저 바로 열리는 모달이 덮는다.
+        document.getElementById('tasksTable').addEventListener('dblclick', (e) => {
+            if (e.target.closest('.task-select')) return;
+            const row = e.target.closest('#tasksBody tr');
+            const box = row && row.querySelector('.task-select');
+            if (!box) return;
+            this.editTask(box.dataset.taskId);
+        });
+
         // 달력 보기
     }
 
@@ -825,6 +847,12 @@ class TaskManager {
 
     // 설정 창: 투명도, 언어, 테마, 알림 기본값, 태그 프리셋
     wireSettings() {
+        document.querySelectorAll('[data-always-on-top]').forEach(button => {
+            button.addEventListener('click', () => {
+                this.changeAlwaysOnTop(button.dataset.alwaysOnTop === 'on');
+            });
+        });
+
         document.getElementById('settingsOpacitySlider').addEventListener('input', (e) => {
             this.changeUnfocusedOpacity(parseFloat(e.target.value));
         });
@@ -1494,6 +1522,22 @@ class TaskManager {
         localStorage.setItem('unfocusedOpacity', String(opacity));
         this.updateOpacityControl();
         if (this.isElectron) window.electronAPI.setUnfocusedOpacity(opacity);
+    }
+
+    changeAlwaysOnTop(onTop) {
+        this.alwaysOnTop = onTop;
+        localStorage.setItem('alwaysOnTop', String(onTop));
+        this.applyAlwaysOnTopControl();
+        if (this.isElectron && window.electronAPI.setAlwaysOnTop) {
+            window.electronAPI.setAlwaysOnTop(onTop);
+        }
+    }
+
+    applyAlwaysOnTopControl() {
+        const on = document.getElementById('alwaysOnTopOnBtn');
+        const off = document.getElementById('alwaysOnTopOffBtn');
+        if (on) on.classList.toggle('active', this.alwaysOnTop);
+        if (off) off.classList.toggle('active', !this.alwaysOnTop);
     }
 
     updateOpacityControl() {

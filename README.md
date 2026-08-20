@@ -71,6 +71,8 @@ time order, with a mini calendar above it. Ctrl+M toggles it.
 
 ### The rest
 
+- **Always-on-top can be turned off** in settings, if you would rather it
+  behaved like an ordinary window
 - **Dark mode**
 - **Five languages**: English, Korean, Chinese, Japanese, Spanish
 - **Configurable date format** — the display changes, the stored data does not
@@ -120,6 +122,8 @@ Rows carry no buttons. Tick the rows you want and use the bar above the table:
 | Bin | Delete. Asks first |
 | Bolt | Highlight |
 | Up / down | Reorder — needs exactly one row selected |
+
+**Double-click a row** to open it for editing.
 
 Clicking **anywhere in a row** selects it. Tags and status chips are the
 exception: clicking those filters the list instead.

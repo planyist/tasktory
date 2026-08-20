@@ -456,6 +456,14 @@ ipcMain.handle('move-window-by', async (event, dx, dy) => {
 })
 
 // Opacity 설정
+// 항상 위로 둘지. 스티커처럼 쓰는 사람도 있고, 접었을 때만 눈에 두고 평소에는
+// 다른 창에 자리를 내주고 싶은 사람도 있다.
+ipcMain.handle('set-always-on-top', async (event, onTop) => {
+    if (!mainWindow) return false
+    mainWindow.setAlwaysOnTop(Boolean(onTop))
+    return true
+})
+
 ipcMain.handle('set-unfocused-opacity', async (event, opacity) => {
     unfocusedOpacity = opacity
     if (!mainWindow.isFocused()) {

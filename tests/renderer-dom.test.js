@@ -694,15 +694,50 @@ describe('multi-select', () => {
         expect(barBtn('complete').disabled).toBe(false)
     })
 
-    // Editing goes through the bar. A double-click shortcut was never asked
-    // for, and with row clicks toggling selection it flickers the selection
-    // twice before opening the modal.
-    test('double-clicking a row does not open the modal', async () => {
+    // Reaching edit through the bar means select, then aim for a small icon.
+    // A double-click is the shortcut people expect from a table.
+    test('double-clicking a row opens it for editing', async () => {
         const manager = await boot([task('a')])
         jest.spyOn(manager, 'showModal').mockImplementation(() => {})
 
         document
             .querySelector('#tasksBody tr')
+            .dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
+
+        expect(manager.showModal).toHaveBeenCalledWith(
+            expect.objectContaining({ id: 'a' })
+        )
+    })
+
+    // Delaying the first click until a double-click could be ruled out would
+    // freeze every ordinary selection for the OS threshold (500ms on Windows).
+    // Instead both clicks toggle - and an even number of toggles lands back
+    // where it started, so the selection is untouched.
+    test('a double-click leaves the selection exactly as it was', async () => {
+        const manager = await boot([task('a'), task('b')])
+        jest.spyOn(manager, 'showModal').mockImplementation(() => {})
+        const row = document.querySelector('#tasksBody tr')
+        const twoClicks = () => {
+            row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+            row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+            row.dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
+        }
+
+        twoClicks()
+        expect(manager.selectedTaskIds.has('a')).toBe(false)
+
+        // and from the selected state it stays selected
+        pick('a')
+        twoClicks()
+        expect(manager.selectedTaskIds.has('a')).toBe(true)
+    })
+
+    test('double-clicking the checkbox does not open the modal', async () => {
+        const manager = await boot([task('a')])
+        jest.spyOn(manager, 'showModal').mockImplementation(() => {})
+
+        document
+            .querySelector('#tasksBody .task-select')
             .dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
 
         expect(manager.showModal).not.toHaveBeenCalled()
@@ -2339,22 +2374,31 @@ describe('notification wording', () => {
     }
     const said = () =>
         electronAPI.showNotification.mock.calls.map((c) => c.join(' ')).join(' | ')
+    // Targets are stored to the minute, so the seconds already elapsed are lost
+    // and the gap lands just under a whole number. What matters is that it
+    // tracks the clock, not the window it tripped.
+    const minutesSaid = () => Number((said().match(/(\d+) minutes?/) || [])[1])
 
     test('reports the time actually left, not the lead it tripped', async () => {
         const manager = await boot([task('a', { targetDateTime: inMinutes(40) })])
 
         await manager.checkUpcomingTasks()
 
-        expect(said()).toContain('40')
-        expect(said()).not.toContain('1 hour')
+        expect(minutesSaid()).toBeGreaterThanOrEqual(39)
+        expect(minutesSaid()).toBeLessThanOrEqual(40)
+        expect(said()).not.toContain('hour')
     })
 
-    test('still reads as hours when a whole hour is left', async () => {
-        const manager = await boot([task('a', { targetDateTime: inMinutes(60) })])
+    // The wording itself is a pure function; test it there rather than trying to
+    // hit an exact whole hour through the clock, which the minute-precision
+    // target makes almost impossible.
+    test('reads whole hours as hours and the rest as minutes', async () => {
+        const manager = await boot([task('a')])
 
-        await manager.checkUpcomingTasks()
-
-        expect(said()).toContain('1 hour')
+        expect(manager.describeLead(60)).toContain('1 hour')
+        expect(manager.describeLead(120)).toContain('2 hour')
+        expect(manager.describeLead(45)).toContain('45 minutes')
+        expect(manager.describeLead(8)).toContain('8 minutes')
     })
 
     test('a task caught late reports what remains, not the window', async () => {
@@ -2362,7 +2406,7 @@ describe('notification wording', () => {
 
         await manager.checkUpcomingTasks()
 
-        expect(said()).toContain('8')
-        expect(said()).not.toContain('15')
+        expect(minutesSaid()).toBeGreaterThanOrEqual(7)
+        expect(minutesSaid()).toBeLessThanOrEqual(8)
     })
 })
