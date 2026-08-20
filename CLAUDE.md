@@ -165,7 +165,7 @@ Run it after any visual change. It found the last of those on its first run.
 - Logs all user actions (add, complete, edit, delete) to persistent files
 - Completed tasks are automatically moved from active list to log file
 - Maintains historical record of all task activities
-- One file per day under `<userData>/logs/`, named `YYYY-MM-DD.tsv` by **local** date. Columns: `TIMESTAMP ACTION STATUS TASK_ID START_TIME TARGET_TIME TAGS CONTENT`.
+- One file per day under `<userData>/logs/`, named `YYYY-MM-DD.tsv` by **local** date. Columns: `TIMESTAMP ACTION STATUS TASK_ID START_TIME TARGET_TIME TAGS CONTENT ATTACHMENTS`.
 - `TIMESTAMP` carries the UTC offset (`2026-08-04T14:30:00+09:00`) because a log is a permanent record — without it the zone cannot be recovered later, and in DST regions the same wall-clock time occurs twice. `START_TIME`/`TARGET_TIME` deliberately stay zone-less: they express wall-clock intent, not an instant.
 - v0.2.5 and earlier wrote `YYYY-MM-DD.log` in a fixed-width format instead (ACTION at characters 25–40). `get-completed-tasks-count` still reads those as a fallback so the daily counter and the 30-day chart keep pre-upgrade history. Do not drop that fallback.
 - `add-log` is serialized through a promise queue: the renderer fires it without awaiting, and the header write would otherwise truncate rows a concurrent call had already appended.
@@ -210,6 +210,15 @@ backup, so a copied 400MB video would be in every backup.
   stored path; neither is given anything the user did not choose.
 - **No count limit.** Ten rows of attachments is less than the list already
   holds in a single page.
+- **The TSV log carries them, full paths and all.** Completing a one-off deletes
+  its row, so the log is the only thing left that can say what was attached —
+  the very fact the split name/path was meant to preserve. Paths are not
+  redacted: the same file already records the task's content and tags, which is
+  freer text than a folder name, and a name with no path will not lead anyone
+  back to the file. `ATTACHMENTS` is **last** in the row, because
+  `completedFromTsv` reads `columns[7]` by position and anything inserted
+  earlier would shift every line already on disk. Files written before the
+  upgrade keep their 8-column header and read back unchanged.
 - **Adding one has to be visible.** The attachment box sits near the bottom of a
   scrolling modal, so a newly linked file renders below the fold and pressing
   *Choose files* looks like it did nothing. `addAttachments` scrolls the new row
@@ -243,7 +252,9 @@ exactly like a broken handler.
 with `completed: true`; the TSV log is the history.
 
 The log's `COMPLETE` line already carries `TASK_ID`, `START_TIME`, `TARGET_TIME`,
-`TAGS` and `CONTENT` — everything the kept row held. Nothing ever read the kept
+`TAGS`, `CONTENT` and `ATTACHMENTS` — everything the kept row held. That last
+column exists *because* of this rule: without it, completing a one-off would
+erase the only record that anything was attached. Nothing ever read the kept
 copy: the daily counter, the 30-day chart and the hover list all read the TSV,
 and the only three places that touched `t.completed` were carrying the rows along
 while reordering the active ones. So it was pure duplication that grew

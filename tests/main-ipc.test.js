@@ -82,8 +82,52 @@ describe('add-log', () => {
 
         const contents = await readLog()
         expect(contents.split('\n')[0]).toBe(
-            'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT'
+            'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS'
         )
+    })
+
+    // Completing a one-off deletes its row, so if the attachment is not written
+    // here nothing anywhere remembers what was on the task. The path goes in
+    // whole: the name alone will not lead you back to the file, and this log
+    // already carries the task's content and tags.
+    test('records the attachments, paths and all', async () => {
+        await electron.__invoke('add-log', makeEntry('COMPLETE', {
+            status: 'completed',
+            attachments: [
+                { name: 'quote.xlsx', path: 'C:' + String.fromCharCode(92) + 'docs' + String.fromCharCode(92) + 'quote.xlsx' },
+                { name: 'notes.txt', path: '/home/me/notes.txt' }
+            ]
+        }))
+
+        const [row] = dataLines(await readLog())
+        const columns = row.split('\t')
+
+        expect(columns[8]).toBe(
+            'C:' + String.fromCharCode(92) + 'docs' + String.fromCharCode(92) + 'quote.xlsx; /home/me/notes.txt'
+        )
+    })
+
+    test('leaves the column empty for a task with no attachments', async () => {
+        await electron.__invoke('add-log', makeEntry('ADD'))
+
+        const [row] = dataLines(await readLog())
+
+        expect(row.split('\t')[8]).toBe('')
+    })
+
+    // The column is last on purpose: the readers index by position, so anything
+    // inserted earlier would shift every row already on disk.
+    test('the new column does not move the ones the readers index', async () => {
+        await electron.__invoke('add-log', makeEntry('COMPLETE', {
+            status: 'completed',
+            attachments: [{ name: 'a.txt', path: '/tmp/a.txt' }]
+        }))
+
+        const [row] = dataLines(await readLog())
+        const columns = row.split('\t')
+
+        expect(columns[1]).toBe('COMPLETE')
+        expect(columns[7]).toBe('write tests')
     })
 
     test('writes one tab-separated row per entry in column order', async () => {
@@ -92,7 +136,7 @@ describe('add-log', () => {
         const [row] = dataLines(await readLog())
         const columns = row.split('\t')
 
-        expect(columns).toHaveLength(8)
+        expect(columns).toHaveLength(9)
         expect(columns[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/)
         expect(columns[1]).toBe('COMPLETE')
         expect(columns[2]).toBe('COMPLETED')
@@ -130,7 +174,7 @@ describe('add-log', () => {
 
         const rows = dataLines(await readLog())
         expect(rows).toHaveLength(1)
-        expect(rows[0].split('\t')).toHaveLength(8)
+        expect(rows[0].split('\t')).toHaveLength(9)
         expect(rows[0].split('\t')[7]).toBe('a b c d')
     })
 

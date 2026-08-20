@@ -265,7 +265,8 @@ repeating task is the exception: its row is the rule, so it stays and moves on
 to its next occurrence.
 
 The log columns are `TIMESTAMP ACTION STATUS TASK_ID START_TIME TARGET_TIME
-TAGS CONTENT`. `TIMESTAMP` carries the UTC offset, because a log is a permanent
+TAGS CONTENT ATTACHMENTS`. Attachment paths are written in full, so the history
+can still lead you to the file after the task itself is gone. `TIMESTAMP` carries the UTC offset, because a log is a permanent
 record and without the offset the zone cannot be recovered later. `START_TIME`
 and `TARGET_TIME` deliberately do not — they express wall-clock intent, not an
 instant.

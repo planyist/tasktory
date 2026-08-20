@@ -243,7 +243,7 @@ const writeLogEntry = async (logEntry) => {
         }
         
         if (!fileExists) {
-            const header = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\n';
+            const header = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\n';
             await fs.writeFile(todayLogFile, header);
         }
         
@@ -294,6 +294,14 @@ const writeLogEntry = async (logEntry) => {
         const startTime = logEntry.task.startDateTime || '';
         const targetTime = logEntry.task.targetDateTime || '';
         const tags = logEntry.task.tags || '';
+
+        // 경로째로 적는다. 이름만으로는 나중에 그 파일을 찾아갈 수 없고, 이
+        // 로그에는 이미 작업 내용과 태그가 그대로 들어 있어 경로만 가릴 이유가
+        // 없다.
+        const attachments = (logEntry.task.attachments || [])
+            .map(item => item.path || item.name || '')
+            .filter(Boolean)
+            .join('; ');
         
         let content = logEntry.details || logEntry.task.content || '';
         
@@ -303,7 +311,7 @@ const writeLogEntry = async (logEntry) => {
             return value.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, ' ');
         };
         
-        const logLine = `${escapeTsvValue(timestamp)}\t${escapeTsvValue(action)}\t${escapeTsvValue(status)}\t${escapeTsvValue(taskId)}\t${escapeTsvValue(startTime)}\t${escapeTsvValue(targetTime)}\t${escapeTsvValue(tags)}\t${escapeTsvValue(content)}\n`;
+        const logLine = `${escapeTsvValue(timestamp)}\t${escapeTsvValue(action)}\t${escapeTsvValue(status)}\t${escapeTsvValue(taskId)}\t${escapeTsvValue(startTime)}\t${escapeTsvValue(targetTime)}\t${escapeTsvValue(tags)}\t${escapeTsvValue(content)}\t${escapeTsvValue(attachments)}\n`;
         
         console.log('IPC: Writing log line:', logLine.substring(0, 100) + '...');
         
