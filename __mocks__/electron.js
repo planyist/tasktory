@@ -39,7 +39,8 @@ module.exports = {
     ipcMain,
     BrowserWindow,
     Notification,
-    shell: { openPath: () => {} },
+    shell: { openPath: () => '', showItemInFolder: () => {} },
+    dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }) },
     screen: {
         getPrimaryDisplay: () => ({ workAreaSize: { width: 1920, height: 1080 } }),
         getAllDisplays: () => [{ workArea: { x: 0, y: 0, width: 1920, height: 1080 } }],

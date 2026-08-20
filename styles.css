@@ -681,11 +681,14 @@ body.dark-mode .page-size-select {
 
 .color-example {
     display: inline-block;
-    padding: 2px 6px;
-    border-radius: 8px;
+    padding: 2px 4px;
+    border-radius: 3px;
     font-size: 11px;
     margin: 0 2px;
     border: 1px solid;
+    cursor: pointer;
+    font-weight: bold;
+    transition: opacity 0.2s ease;
 }
 
 /* Statistics chart styles */
@@ -2025,6 +2028,97 @@ body:not(.calendar-mode) .collapsed-cal {
     display: none;
 }
 
+/* ---- 첨부 -------------------------------------------------------------
+   경로만 가리키므로 목록은 이름 + 여는 버튼 + 폴더 + 빼기로 끝난다. */
+.attachment-drop {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 12px;
+    border: 1px dashed #d8dee6;
+    border-radius: 6px;
+    font-size: 12px;
+    color: #868e96;
+}
+
+.attachment-drop.over {
+    border-color: #3498db;
+    background-color: rgba(52, 152, 219, 0.06);
+    color: #2c7fb8;
+}
+
+.attachment-list {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.attachment-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 6px;
+    border-radius: 4px;
+    background-color: #f4f6f9;
+}
+
+.attachment-open {
+    flex: 1 1 auto;
+    min-width: 0;
+    text-align: left;
+    border: none;
+    background: none;
+    padding: 0;
+    font-size: 12px;
+    color: #1565c0;
+    cursor: pointer;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachment-open:hover {
+    text-decoration: underline;
+}
+
+/* 없는 파일은 눌러보기 전에 알려준다 */
+.attachment-item.missing .attachment-open {
+    color: #b0b7c3;
+    text-decoration: line-through;
+}
+
+.attachment-reveal,
+.attachment-remove {
+    flex: 0 0 auto;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 13px;
+    color: #868e96;
+    padding: 0 4px;
+    line-height: 1;
+}
+
+.attachment-remove {
+    font-size: 16px;
+}
+
+.attachment-reveal:hover,
+.attachment-remove:hover {
+    color: #2c3e50;
+}
+
+body.dark-mode .attachment-drop { border-color: #4a5058; color: #9aa5b1; }
+body.dark-mode .attachment-item { background-color: #3a3f46; }
+body.dark-mode .attachment-open { color: #64b5f6; }
+body.dark-mode .attachment-item.missing .attachment-open { color: #6b7280; }
+body.dark-mode .attachment-reveal:hover,
+body.dark-mode .attachment-remove:hover { color: #e0e0e0; }
+
 /* ---- 정렬 가능한 헤더 -------------------------------------------------
    정렬은 임시 보기다. 화살표로 지금 어떤 순서인지 보여주되, 표의 번호는
    원래 값을 그대로 달고 다닌다 - 3, 1, 7 처럼 어긋난 번호가 곧 "지금은 다르게
@@ -3087,16 +3181,6 @@ body.dark-mode .page-number.active {
 }
 
 /* Color example buttons */
-.color-example {
-    cursor: pointer;
-    padding: 2px 4px;
-    border-radius: 3px;
-    display: inline-block;
-    margin: 0 2px;
-    font-weight: bold;
-    transition: opacity 0.2s ease;
-}
-
 .color-example:hover {
     opacity: 0.8;
 }

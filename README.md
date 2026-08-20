@@ -48,18 +48,20 @@ time order, with a mini calendar above it. Ctrl+M toggles it.
 - **Repeating tasks**: daily, weekly, monthly or yearly. One row *is* the rule
 - **Highlight** anything you want to keep your eye on
 - **Tags** with colours, and a preset list for the ones you use often
+- **Attachments**: drop files on a task to link them. The file stays where it
+  is — Tasktory keeps the path, not a copy
 
 ### Views
 
 - **List** — the table. Everything you can do to a task happens here
-- **Calendar** — a month grid; a task shows on every day it spans. View-only
+- **Calendar** — a month grid; a task sits on its target day. View-only
 - **Side strip** — 150px, read-only, for when you want it out of the way
 
 ### Finding things
 
 - Search as you type, optionally **scoped to one column**
-- **Click a chip** — a tag, a status, a repeat cadence — to filter by it
-- **Quick filters** under the search box: the statuses and tags actually in use
+- **Quick filters** under the search box: the statuses and tags actually in use,
+  several at a time
 
 ### History
 
@@ -131,13 +133,31 @@ then back. Sorting is only a way of looking: the numbers stay with their rows, s
 out-of-sequence numbers tell you the list is not in its stored order, and a
 restart brings that order back. Reordering is disabled while sorted.
 
-Clicking **anywhere in a row** selects it. Tags and status chips are the
-exception: clicking those filters the list instead.
+Clicking **anywhere in a row** selects it, chips included.
 
 With several rows selected, the two toggles gather the whole selection onto one
 state rather than flipping each row on its own. If any selected task is not
 highlighted, they all become highlighted; only when every one already is does
 pressing again clear them. Notifications work the same way around muting.
+
+### Attachments
+
+The edit form has an attachment area. Drop files on it, or press **Choose
+files**. There is no limit on how many.
+
+**A file is linked, never copied.** Tasktory stores the path and the file name
+and nothing else, so attaching a 400MB video costs two short strings — your
+`tasks.json` and every backup of it stay the size they were. Click the name to
+open the file in whatever your system uses for it, or the folder icon to show it
+in the file manager.
+
+The trade is that a link can break. Move or rename the file and Tasktory cannot
+reach it: the entry stays, struck through, so you can still see *what* was
+attached and go looking. Remove it with the ×.
+
+The check runs whenever the list is drawn — opening the form, adding, removing —
+not on a timer. A file that vanishes while the form sits open still looks fine
+until you press it, and then the entry updates.
 
 ### Repeating tasks
 
@@ -181,7 +201,8 @@ The dropdown beside the search box narrows the search to one column, so
 searching "overdue" under *Status* will not also match a task with the word in
 its title.
 
-Clicking a chip in the table sets both the search text and the column.
+Chips in a table row are part of the row — clicking one selects it, like
+clicking anywhere else in the row. Filtering is the quick filters' job.
 
 The quick filter row under the search box works differently: the chips are
 **toggles and you can hold several at once**. Two tags means either tag; a tag
@@ -198,7 +219,7 @@ tags never look alike. Give one an explicit colour with `#[RED]name`.
 |---|---|
 | Pending | Before the start time |
 | In Progress | Between start and target |
-| Due Soon | Less than an hour to the target |
+| Due Soon | Inside the notification lead time — an hour by default |
 | Overdue | Past the target time |
 | Ongoing | No target time — never overdue, never due soon |
 | Completed | Done |
@@ -247,6 +268,11 @@ instant.
 
 Times are stored as `YYYY-MM-DD HH:mm` whatever display format you pick, so
 changing the setting never rewrites your data.
+
+Attachments are two strings in `tasks.json` — the name and the path. No file is
+ever copied into the data directory, so a backup of it never carries your
+documents, and restoring it on another machine restores links that machine may
+not be able to follow.
 
 In a browser, everything lives in `localStorage`; use export/import to move it.
 

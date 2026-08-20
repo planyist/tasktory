@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, powerMonitor, screen } = require('electron')
+const { app, BrowserWindow, ipcMain, powerMonitor, screen, dialog, shell } = require('electron')
 const fs = require('fs').promises
 const path = require('path')
 
@@ -440,6 +440,56 @@ ipcMain.handle('open-log-folder', async () => {
         console.error('Failed to open log folder:', error)
         return false
     }
+})
+
+// 첨부는 파일을 복사하지 않고 경로만 가리킨다. 완료한 작업은 tasks.json 에서
+// 아예 사라지므로, 사본을 두면 아무도 참조하지 않는 파일이 남는다. 원본은 어차피
+// 사용자 디스크에 그대로 있다.
+ipcMain.handle('pick-attachments', async () => {
+    const result = await dialog.showOpenDialog(mainWindow, {
+        properties: ['openFile', 'multiSelections']
+    })
+    if (result.canceled) return []
+    return result.filePaths.map(filePath => ({
+        name: path.basename(filePath),
+        path: filePath
+    }))
+})
+
+// 열 수 없으면 그 사실을 돌려준다. 조용히 실패하면 눌러도 아무 일이 없는 것처럼
+// 보여서, 파일이 옮겨졌는지 앱이 고장났는지 구분할 수 없다.
+ipcMain.handle('open-attachment', async (event, filePath) => {
+    try {
+        await fs.access(filePath)
+    } catch {
+        return { ok: false, reason: 'missing' }
+    }
+    const error = await shell.openPath(filePath)
+    return error ? { ok: false, reason: error } : { ok: true }
+})
+
+ipcMain.handle('reveal-attachment', async (event, filePath) => {
+    try {
+        await fs.access(filePath)
+    } catch {
+        return { ok: false, reason: 'missing' }
+    }
+    shell.showItemInFolder(filePath)
+    return { ok: true }
+})
+
+// 어떤 첨부가 아직 살아 있는지. 목록을 그릴 때 한 번에 물어본다.
+ipcMain.handle('check-attachments', async (event, paths) => {
+    const alive = {}
+    await Promise.all((paths || []).map(async filePath => {
+        try {
+            await fs.access(filePath)
+            alive[filePath] = true
+        } catch {
+            alive[filePath] = false
+        }
+    }))
+    return alive
 })
 
 ipcMain.handle('get-app-version', async () => app.getVersion())

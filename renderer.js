@@ -101,6 +101,8 @@ class TaskManager {
         this.logs = [];
         this.rules = []; // 반복 규칙 (태스크와 별도로 저장)
         this.editingTaskId = null;
+        // 편집 중인 첨부. 저장을 눌러야 작업에 반영된다.
+        this.editingAttachments = [];
         this.isElectron = typeof window.electronAPI !== 'undefined';
         this.locale = this.getSelectedLanguage();
         this.darkMode = localStorage.getItem('darkMode') === 'true';
@@ -243,6 +245,9 @@ class TaskManager {
         this.setText('settingsLeadLabel', 'notifyBefore');
         this.setText('settingsLeadHint', 'notifyBeforeHint');
         this.setText('labelTaskLead', 'notifyBefore');
+        this.setText('labelAttachments', 'attachments');
+        this.setText('attachmentHint', 'attachmentHint');
+        this.setText('attachmentPickBtn', 'chooseFiles');
         this.updateLeadControls();
         this.setText('settingsAlwaysOnTopLabel', 'alwaysOnTop');
         this.setText('settingsAlwaysOnTopHint', 'alwaysOnTopHint');
@@ -351,6 +356,9 @@ class TaskManager {
             aboutSearchColumnDesc: 'aboutSearchColumnDesc',
             aboutChipFilterDesc: 'aboutChipFilterDesc',
             aboutQuickFilterDesc: 'aboutQuickFilterDesc',
+            aboutSortDesc: 'aboutSortDesc',
+            aboutAttachmentsDesc: 'aboutAttachmentsDesc',
+            aboutAlwaysOnTopDesc: 'aboutAlwaysOnTopDesc',
             aboutRepeatRowDesc: 'aboutRepeatRowDesc',
             aboutRepeatStepDesc: 'aboutRepeatStepDesc',
             aboutRepeatDeleteDesc: 'aboutRepeatDeleteDesc',
@@ -366,6 +374,9 @@ class TaskManager {
             aboutSearchColumnTitle: 'aboutSearchColumnTitle',
             aboutChipFilterTitle: 'aboutChipFilterTitle',
             aboutQuickFilterTitle: 'aboutQuickFilterTitle',
+            aboutSortTitle: 'aboutSortTitle',
+            aboutAttachmentsTitle: 'aboutAttachmentsTitle',
+            aboutAlwaysOnTopTitle: 'aboutAlwaysOnTopTitle',
             aboutRepeatRowTitle: 'aboutRepeatRowTitle',
             aboutRepeatStepTitle: 'aboutRepeatStepTitle',
             aboutRepeatDeleteTitle: 'aboutRepeatDeleteTitle',
@@ -415,8 +426,7 @@ class TaskManager {
         const aboutExportImportTitle = document.getElementById('aboutExportImportTitle');
         if (aboutExportImportTitle) aboutExportImportTitle.textContent = this.getLocalizedText('downloadExport') + '/' + this.getLocalizedText('uploadImport') + ':';
         this.setText('aboutExportImportDesc', 'exportImportInstruction');
-        this.setText('aboutExportImportDescEnd', 'exportImportInstructionEnd');
-        
+
         this.setText('aboutTagsTitle', 'tags', ':');
         this.setText('aboutTagsDesc', 'tagsInstruction');
         
@@ -739,6 +749,39 @@ class TaskManager {
 
             box.checked = !box.checked;
             this.toggleTaskSelection(box.dataset.taskId, box.checked);
+        });
+
+        // 첨부: 고르기 / 끌어다 놓기 / 열기·폴더보기·빼기
+        document.getElementById('attachmentPickBtn').addEventListener('click', async () => {
+            if (!this.isElectron) return;
+            this.addAttachments(await window.electronAPI.pickAttachments());
+        });
+
+        const drop = document.getElementById('attachmentDrop');
+        // dragover 에서 기본 동작을 막지 않으면 브라우저가 파일을 열어버려
+        // drop 이 아예 오지 않는다.
+        drop.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            drop.classList.add('over');
+        });
+        drop.addEventListener('dragleave', () => drop.classList.remove('over'));
+        drop.addEventListener('drop', (e) => {
+            e.preventDefault();
+            drop.classList.remove('over');
+            if (!this.isElectron) return;
+            // Electron 32 에서 File.path 가 사라져 preload 의 webUtils 를 거친다
+            this.addAttachments([...e.dataTransfer.files]
+                .map(file => ({ name: file.name, path: window.electronAPI.pathForFile(file) }))
+                .filter(item => item.path));
+        });
+
+        document.getElementById('attachmentList').addEventListener('click', (e) => {
+            const item = e.target.closest('.attachment-item');
+            if (!item) return;
+            const filePath = item.dataset.path;
+            if (e.target.closest('[data-remove]')) this.removeAttachment(filePath);
+            else if (e.target.closest('[data-reveal]')) window.electronAPI.revealAttachment(filePath);
+            else if (e.target.closest('[data-open]')) this.openAttachment(filePath);
         });
 
         // 시작/목표 시각 헤더를 누르면 임시로 정렬한다.
@@ -1601,6 +1644,66 @@ class TaskManager {
             return this.getLocalizedText('leadChoiceHours').replace('{n}', minutes / 60);
         }
         return this.getLocalizedText('leadChoiceMinutes').replace('{n}', minutes);
+    }
+
+    // ---- 첨부 -------------------------------------------------------------
+    // 파일을 복사하지 않고 경로만 가리킨다. 완료한 작업은 tasks.json 에서 아예
+    // 사라지므로 사본을 두면 아무도 참조하지 않는 파일이 남고, 백업도 첨부 용량만큼
+    // 커진다. 원본은 어차피 사용자 디스크에 그대로 있다.
+    //
+    // 대신 경로가 바뀌면 열 수 없다. 그래서 이름을 경로와 따로 저장한다 - 링크가
+    // 죽어도 "이 작업에 견적서.xlsx 가 붙어 있었다"는 남고, 그게 첨부의 알맹이다.
+
+    // 편집 중인 첨부 목록. 저장을 눌러야 작업에 반영된다.
+    setEditingAttachments(list) {
+        this.editingAttachments = list;
+        this.renderAttachmentList();
+    }
+
+    addAttachments(items) {
+        const existing = new Set(this.editingAttachments.map(a => a.path));
+        const added = items.filter(item => item.path && !existing.has(item.path));
+        if (added.length) this.setEditingAttachments([...this.editingAttachments, ...added]);
+    }
+
+    removeAttachment(filePath) {
+        this.setEditingAttachments(this.editingAttachments.filter(a => a.path !== filePath));
+    }
+
+    async renderAttachmentList() {
+        const list = document.getElementById('attachmentList');
+        if (!list) return;
+
+        list.innerHTML = this.editingAttachments.map(item => `
+            <li class="attachment-item" data-path="${this.escapeHtml(item.path)}">
+                <button type="button" class="attachment-open" data-open
+                        title="${this.escapeHtml(item.path)}">${this.escapeHtml(item.name)}</button>
+                <button type="button" class="attachment-reveal" data-reveal
+                        title="${this.getLocalizedText('revealInFolder')}">📂</button>
+                <button type="button" class="attachment-remove" data-remove
+                        title="${this.getLocalizedText('delete')}">×</button>
+            </li>`).join('');
+
+        // 사라진 파일은 눌러보기 전에 표시해 준다
+        if (!this.isElectron || !window.electronAPI.checkAttachments) return;
+        const alive = await window.electronAPI.checkAttachments(
+            this.editingAttachments.map(a => a.path));
+        for (const li of list.querySelectorAll('.attachment-item')) {
+            if (alive[li.dataset.path] === false) {
+                li.classList.add('missing');
+                li.querySelector('[data-open]').title = this.getLocalizedText('fileMissing');
+            }
+        }
+    }
+
+    async openAttachment(filePath) {
+        if (!this.isElectron) return;
+        const result = await window.electronAPI.openAttachment(filePath);
+        if (!result || !result.ok) {
+            alert(`${this.getLocalizedText('fileMissing')}
+${filePath}`);
+            this.renderAttachmentList();
+        }
     }
 
     // 작업 편집 창의 선택지를 만든다 (첫 항목 '기본값 따름'은 HTML에 있다)
@@ -2962,6 +3065,7 @@ class TaskManager {
             // "미리 알리지 마라"가 '기본값 따름'으로 되돌아간다.
             document.getElementById('taskLead').value =
                 Number.isFinite(task.leadMinutes) ? String(task.leadMinutes) : '';
+            this.setEditingAttachments([...(task.attachments || [])]);
 
             // 편집에서도 반복 설정을 그대로 보여주고 고칠 수 있게 한다
             document.getElementById('repeatGroup').style.display = '';
@@ -2971,6 +3075,7 @@ class TaskManager {
             modalTitle.textContent = this.getLocalizedText('addNewTask');
             form.reset();
             document.getElementById('taskLead').value = '';
+            this.setEditingAttachments([]);
             document.getElementById('repeatGroup').style.display = '';
             this.resetRepeatControls();
             
@@ -3341,6 +3446,10 @@ class TaskManager {
             tags,
             completed: false,
             highlighted: false,
+            // 없으면 필드를 만들지 않는다 - 대부분의 작업에는 첨부가 없다
+            ...(this.editingAttachments.length
+                ? { attachments: this.editingAttachments.map(a => ({ name: a.name, path: a.path })) }
+                : {}),
             // 비워두면 필드 자체를 넣지 않는다 - 그래야 나중에 기본값을 바꿨을 때
             // 따라온다. 0을 저장해 버리면 '알리지 않음'으로 굳는다.
             ...(document.getElementById('taskLead').value === ''

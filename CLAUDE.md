@@ -164,6 +164,52 @@ Run it after any visual change. It found the last of those on its first run.
 - v0.2.5 and earlier wrote `YYYY-MM-DD.log` in a fixed-width format instead (ACTION at characters 25–40). `get-completed-tasks-count` still reads those as a fallback so the daily counter and the 30-day chart keep pre-upgrade history. Do not drop that fallback.
 - `add-log` is serialized through a promise queue: the renderer fires it without awaiting, and the header write would otherwise truncate rows a concurrent call had already appended.
 
+## Attachments
+
+**A file is linked, never copied.** `attachments` is an array of
+`{ name, path }` on the task, and nothing else is stored — no copy in
+`userData`, no id, no size, no hash.
+
+Copying was rejected on one fact: **completing a one-off deletes its row**
+(see below). A copied file would then outlive every reference to it, sitting in
+`userData` forever with nothing left to say which task it belonged to — and
+pruning it would need the very completed-tasks screen the app deliberately does
+not have. Linking has no such tail: the row goes, the two strings go with it,
+and the user's file was never touched.
+
+The size argument is secondary but real: `tasks.json` is exported whole as the
+backup, so a copied 400MB video would be in every backup.
+
+- **The name is stored apart from the path on purpose.** When the link breaks,
+  "이 작업에 견적서.xlsx 가 붙어 있었다" is what survives, and that is most of
+  what an attachment was for. Deriving the name from the path would still work,
+  but storing it says the name is the part meant to outlive the file.
+- **Broken links are shown, not hidden.** `check-attachments` returns a
+  `path → boolean` map and `renderAttachmentList` marks the dead ones
+  `.missing`. The row stays, struck through, with `fileMissing` as its tooltip.
+  Removing it is the user's decision.
+- The check runs on every `renderAttachmentList` — open, add, remove — and again
+  when an open fails, which is the one path that learns the truth from the OS
+  rather than a stat. There is no watcher and no timer.
+- **Most tasks carry no `attachments` key at all.** `saveTask` spreads it
+  conditionally, so an empty list writes nothing. Old rows stay byte-identical,
+  and `task.attachments || []` is the read side.
+- Dedup is by path, in `addAttachments`. Dropping the same file twice is a
+  no-op; two different files with the same name are both kept.
+- **`webUtils.getPathForFile(file)`, not `file.path`.** Electron 32 removed the
+  latter, so a drop handler reading `file.path` gets `undefined` and silently
+  attaches nothing. It lives in `preload.js` as `pathForFile` because `webUtils`
+  is not reachable from the renderer.
+- `shell.openPath` opens, `shell.showItemInFolder` reveals. Both take the raw
+  stored path; neither is given anything the user did not choose.
+- **No count limit.** Ten rows of attachments is less than the list already
+  holds in a single page.
+
+Testing the drop end-to-end needs `Input.dispatchDragEvent` over CDP, and the
+drop zone must be **scrolled into view first** — the modal scrolls, and a
+coordinate below the fold dispatches the drag at nothing at all, which looks
+exactly like a broken handler.
+
 ## Completed tasks
 
 **Completing a one-off removes its row from `tasks.json`.** The row is not kept

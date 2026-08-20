@@ -2578,3 +2578,104 @@ describe('sorting the table', () => {
         expect(manager.sortBy).toBe('start')
     })
 })
+
+// Attachments are links, not copies. A completed task leaves tasks.json
+// entirely, so a copied file would outlive every reference to it - and the
+// original is sitting on the user's disk regardless.
+describe('attachments', () => {
+    const list = () =>
+        Array.from(document.querySelectorAll('#attachmentList .attachment-item'))
+    const names = () => list().map((li) => li.querySelector('[data-open]').textContent)
+    const openModal = async (manager, task) => {
+        manager.showModal(task)
+        await settle()
+    }
+
+    test('stores the path and the name, and copies nothing', async () => {
+        const manager = await boot([task('a')])
+        await openModal(manager, manager.tasks[0])
+
+        manager.addAttachments([{ name: 'quote.xlsx', path: 'C:/docs/quote.xlsx' }])
+        document.getElementById('taskContent').value = 'with a file'
+        await manager.saveTask()
+        await settle()
+
+        expect(manager.tasks[0].attachments).toEqual([
+            { name: 'quote.xlsx', path: 'C:/docs/quote.xlsx' }
+        ])
+    })
+
+    // The name is kept apart from the path precisely so a broken link still
+    // says what was attached.
+    test('shows the name and keeps the path as the tooltip', async () => {
+        const manager = await boot([
+            task('a', { attachments: [{ name: 'quote.xlsx', path: 'C:/docs/quote.xlsx' }] })
+        ])
+
+        await openModal(manager, manager.tasks[0])
+
+        expect(names()).toEqual(['quote.xlsx'])
+        expect(list()[0].querySelector('[data-open]').title).toBe('C:/docs/quote.xlsx')
+    })
+
+    test('drops the same file twice into one entry', async () => {
+        const manager = await boot([task('a')])
+        await openModal(manager, manager.tasks[0])
+
+        manager.addAttachments([{ name: 'a.txt', path: 'C:/a.txt' }])
+        manager.addAttachments([{ name: 'a.txt', path: 'C:/a.txt' }])
+
+        expect(names()).toEqual(['a.txt'])
+    })
+
+    test('removes one without touching the rest', async () => {
+        const manager = await boot([task('a')])
+        await openModal(manager, manager.tasks[0])
+        manager.addAttachments([
+            { name: 'a.txt', path: 'C:/a.txt' },
+            { name: 'b.txt', path: 'C:/b.txt' }
+        ])
+
+        manager.removeAttachment('C:/a.txt')
+
+        expect(names()).toEqual(['b.txt'])
+    })
+
+    // Most tasks have no attachment; adding an empty array to every row would
+    // grow tasks.json and every backup for nothing.
+    test('adds no field when there is nothing attached', async () => {
+        const manager = await boot([task('a')])
+        await openModal(manager, manager.tasks[0])
+
+        document.getElementById('taskContent').value = 'plain'
+        await manager.saveTask()
+        await settle()
+
+        expect('attachments' in manager.tasks[0]).toBe(false)
+    })
+
+    test('opening a task without attachments shows an empty list', async () => {
+        const manager = await boot([
+            task('a', { attachments: [{ name: 'x.txt', path: 'C:/x.txt' }] }),
+            task('b')
+        ])
+
+        await openModal(manager, manager.tasks[0])
+        expect(names()).toEqual(['x.txt'])
+
+        await openModal(manager, manager.tasks[1])
+        expect(names()).toEqual([])
+    })
+
+    // Silently doing nothing would look like the app was broken rather than
+    // the file being gone.
+    test('says so when the file is no longer there', async () => {
+        const manager = await boot([task('a')])
+        electronAPI.openAttachment = jest.fn().mockResolvedValue({ ok: false, reason: 'missing' })
+        jest.spyOn(window, 'alert').mockImplementation(() => {})
+
+        await manager.openAttachment('C:/gone.txt')
+
+        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('C:/gone.txt'))
+    })
+})
