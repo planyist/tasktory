@@ -2194,6 +2194,9 @@ th.sortable:hover {
     justify-content: center;
     gap: 2px;
     margin-left: 6px;
+    /* 높이를 붙박이로 둔다. 세모 하나를 지워도 묶음이 줄지 않아 칸 이름이
+       움직이지 않고, 남은 하나는 이 높이의 한가운데에 선다. */
+    height: 12px;
     /* 글자의 가운데에 맞춘다. 기준선(baseline)에 두면 세모 묶음이 통째로 글자
        아래로 내려가 붙는다 - 이 묶음에는 기준선에 앉을 글자가 없다.
        middle 은 기준선 + x높이의 절반이라 진짜 중심보다 2px 낮으므로 그만큼
@@ -2241,20 +2244,20 @@ th.sortable.sorted {
     color: #2a7fb8;
 }
 
-/* 정렬이 걸리면 그 방향 하나만 남는다. 반대쪽을 흐리게라도 남겨두면 "지금 어느
-   쪽인가"를 두 세모의 농도 차이로 읽어야 해서, 곁에 비교할 것이 없으면 헷갈린다.
-   자리는 visibility 로 지켜 칸 이름이 밀리지 않는다. */
+/* 정렬이 걸리면 그 방향 하나만 남고, 묶음의 고정 높이 덕에 가운데에 선다.
+   반대쪽을 흐리게라도 남겨두면 "지금 어느 쪽인가"를 두 세모의 농도 차이로
+   읽어야 해서, 곁에 비교할 것이 없으면 헷갈린다. */
 th.sortable.sorted .sort-arrows i {
     opacity: 1;
 }
 
 th.sortable.sorted .sort-down,
 th.sortable.sorted.descending .sort-up {
-    visibility: hidden;
+    display: none;
 }
 
 th.sortable.sorted.descending .sort-down {
-    visibility: visible;
+    display: block;
 }
 
 body.dark-mode th.sortable:hover {
