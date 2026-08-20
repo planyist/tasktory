@@ -366,6 +366,13 @@ This is a complete Electron application with the following structure:
 
   The window is created with it on and the renderer pushes the stored value at start-up, the same shape as unfocused opacity — `main.js` keeps neither across launches
 - **Backup lives in Settings, with words on the buttons.** As two unlabelled icons next to Add, people pressed them without knowing what they did — and import cannot be undone. It is used rarely enough that a dialog is the right home
+- **Backup and history are separate, and history does not come back in.** Backup is one JSON: export writes it, import replaces everything from it. History is the TSV: export writes the daily logs out as one sheet, and that is all it does.
+
+  They used to share a button — one press dropped a JSON *and* a TSV — and one import that switched behaviour on the file extension, silently doing something completely different for each. A button whose effect you can only learn by reading the filenames afterwards is not a button anyone can use.
+
+  **There is no history import.** A log is what the app writes and a person reads; no program takes one back in. Moving to another machine is a matter of copying `<userData>/logs/`, and the History group has the button that opens it. `parseHistoryTsv` and `importHistoryTsv` are gone with the feature; `buildHistoryTsv` stays for the export.
+
+  `LOG_HEADER` in `renderer.js` must match the header `main.js` writes. It did not after `ATTACHMENTS` was added, and nothing noticed until the export test compared them
 - **Double-click a row to edit, and it does nothing to the selection.** The toggle waits `DOUBLE_CLICK_MS` (130ms) to see whether a second click arrives; `dblclick` cancels it. Two earlier attempts were both wrong in ways worth not repeating: letting both clicks toggle relies on an even number cancelling out, but the select-then-deselect is visible; skipping the second click via `e.detail` alone means the first toggle has already happened. Only holding the first click gives "either select, or edit — not both".
 
   **The wait must not be shorter than the user's own double-click.** 130ms was tried and reported straight back: the toggle fires, the second click undoes it, and although the end state is right, the flash in between is exactly the thing being complained about. Undoing is a safety net for anything slower than the window, not a licence to shrink it. 200ms.

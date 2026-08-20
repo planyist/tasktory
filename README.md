@@ -69,7 +69,10 @@ time order, with a mini calendar above it. Ctrl+M toggles it.
 - One tab-separated file per day, so a spreadsheet opens it directly
 - A **daily completion counter** — hover it to see *what* you finished today
 - A 30-day chart of completion trends
-- **Export/import** for backup, or for moving to another machine
+- **Export/import** for backup, or for moving to another machine — one JSON,
+  and importing replaces what you have
+- **Export the history** as a single sheet, separately. It is written out, never
+  read back: to carry your logs to another machine, copy the folder
 
 ### The rest
 

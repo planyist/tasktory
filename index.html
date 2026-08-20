@@ -432,6 +432,17 @@
                 </div>
                 <small id="settingsBackupHint" class="settings-hint"></small>
             </div>
+
+            <!-- 이력은 내보내기만 있다. 로그는 앱이 쓰고 사람이 읽는 산출물이지
+                 되돌려 넣는 것이 아니다. 다른 기기로 옮기려면 폴더째 복사한다. -->
+            <div class="settings-group">
+                <label id="settingsHistoryLabel">History</label>
+                <div class="backup-actions">
+                    <button type="button" id="exportHistoryBtn" class="backup-btn"></button>
+                    <button type="button" id="openLogFolderBtn" class="backup-btn"></button>
+                </div>
+                <small id="settingsHistoryHint" class="settings-hint"></small>
+            </div>
         </div>
     </div>
 
@@ -440,15 +451,6 @@
         <div class="modal-content">
             <span class="close" data-modal="about">&times;</span>
             <h2>About Tasktory</h2>
-            
-            <h3 id="aboutViewHistoryTitle">View History</h3>
-            <div style="margin-left: 5px;">
-                <button id="openLogFolderBtn" class="folder-open-btn" title="Open log folder" style="display: none;">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
-                    </svg>
-                </button>
-            </div>
             
             <h3 id="aboutHowToUseTitle">How to Use</h3>
             <ul>
@@ -569,7 +571,7 @@
     </div>
 
     <!-- Hidden file input -->
-    <input type="file" id="fileInput" class="hidden" accept=".json,.tsv">
+    <input type="file" id="fileInput" class="hidden" accept=".json">
 
     <!-- 날짜/시간 선택기. 표시 형식이 설정에 따라 달라져서 네이티브 컨트롤을 쓸 수 없다. -->
     <div id="dateTimePicker" class="datetime-picker" style="display: none;">

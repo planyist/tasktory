@@ -1246,7 +1246,8 @@ describe('muted-notification marker placement', () => {
 })
 
 describe('history export and import', () => {
-    const HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT'
+    // main.js 가 파일에 쓰는 머리와 같아야 한다
+    const HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS'
     const row = (ts, action) => `${ts}\t${action}\tPENDING\ttask-1\t\t\t\tnote`
 
     // The backup JSON stores each log as one escaped string, which is fine for
@@ -1274,67 +1275,60 @@ describe('history export and import', () => {
         expect(manager.buildHistoryTsv(undefined)).toBe('')
     })
 
-    test('splits a combined sheet back into dated files', async () => {
-        const manager = await boot([])
-
-        const files = manager.parseHistoryTsv(
-            `${HEADER}\n${row('2026-08-04T09:00:00+09:00', 'ADD')}\n${row('2026-08-05T10:00:00+09:00', 'COMPLETE')}\n`
-        )
-
-        expect(Object.keys(files).sort()).toEqual(['2026-08-04.tsv', '2026-08-05.tsv'])
-        expect(files['2026-08-04.tsv'].split('\n')[0]).toBe(HEADER)
-    })
-
-    test('ignores rows that do not start with a date', async () => {
-        const manager = await boot([])
-
-        expect(manager.parseHistoryTsv(`${HEADER}\ngarbage line\n\n`)).toEqual({})
-    })
-
-    test('a round trip preserves every row', async () => {
-        const manager = await boot([])
-        const original = {
-            '2026-08-04.tsv': `${HEADER}\n${row('2026-08-04T09:00:00+09:00', 'ADD')}\n`,
-            '2026-08-05.tsv': `${HEADER}\n${row('2026-08-05T10:00:00+09:00', 'COMPLETE')}\n`
-        }
-
-        expect(manager.parseHistoryTsv(manager.buildHistoryTsv(original))).toEqual(original)
-    })
-
-    // In Electron the history comes from readLogFiles, not from the backup
-    // payload - the JSON deliberately does not carry it. Stubbing only
-    // exportData used to leave this test on the browser-mode fallback.
-    test('exporting writes both the backup and the history sheet', async () => {
-        const manager = await boot([task('a')])
-        electronAPI.exportData.mockResolvedValue({ tasks: [], rules: [], version: '1.2' })
-        electronAPI.readLogFiles.mockResolvedValue({
-            '2026-08-04.tsv': `${HEADER}\n${row('2026-08-04T09:00:00+09:00', 'ADD')}\n`
-        })
-
+    const captureDownloads = () => {
         const names = []
         window.URL.createObjectURL = jest.fn(() => 'blob:fake')
         window.URL.revokeObjectURL = jest.fn()
         jest.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(function () {
             names.push(this.download)
         })
+        return names
+    }
+
+    // Backup and history are separate buttons now: one JSON you restore, one
+    // sheet you read. A single button dropping two files meant reading the
+    // filenames to work out which was which.
+    test('the backup button writes only the JSON', async () => {
+        const manager = await boot([task('a')])
+        electronAPI.exportData.mockResolvedValue({ tasks: [], rules: [], version: '1.2' })
+        const names = captureDownloads()
 
         await manager.exportData()
 
-        expect(names).toHaveLength(2)
-        expect(names[0]).toMatch(/^tasktory-backup-\d{4}-\d{2}-\d{2}\.json$/)
-        expect(names[1]).toMatch(/^tasktory-history-\d{4}-\d{2}-\d{2}\.tsv$/)
+        expect(names).toEqual([expect.stringMatching(/^tasktory-backup-.*[.]json$/)])
     })
 
-    test('importing a history sheet keeps the current tasks and rules', async () => {
+    test('the history button writes only the sheet', async () => {
         const manager = await boot([task('a')])
-        electronAPI.importData = jest.fn().mockResolvedValue(true)
-        jest.spyOn(window, 'alert').mockImplementation(() => {})
+        electronAPI.readLogFiles.mockResolvedValue({
+            '2026-08-04.tsv': [HEADER, row('2026-08-04T09:00:00+09:00', 'ADD'), ''].join(String.fromCharCode(10))
+        })
+        const names = captureDownloads()
 
-        await manager.importHistoryTsv(`${HEADER}\n${row('2026-08-04T09:00:00+09:00', 'ADD')}\n`)
+        await manager.exportHistory()
 
-        const payload = electronAPI.importData.mock.calls[0][0]
-        expect(Object.keys(payload.logFiles)).toEqual(['2026-08-04.tsv'])
-        expect(payload.tasks.map((t) => t.id)).toEqual(['a'])
+        expect(names).toEqual([expect.stringMatching(/^tasktory-history-.*[.]tsv$/)])
+    })
+
+    test('says so rather than writing an empty sheet', async () => {
+        const manager = await boot([task('a')])
+        electronAPI.readLogFiles.mockResolvedValue({})
+        const names = captureDownloads()
+        window.alert = jest.fn()
+
+        await manager.exportHistory()
+
+        expect(names).toEqual([])
+        expect(window.alert).toHaveBeenCalled()
+    })
+
+    // A log is something the app writes and a person reads. No program takes
+    // one back in, and moving machines is a matter of copying the logs folder -
+    // which the History group opens for you.
+    test('import takes JSON only', async () => {
+        await boot([task('a')])
+
+        expect(document.getElementById('fileInput').accept).toBe('.json')
     })
 })
 

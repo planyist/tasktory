@@ -36,7 +36,7 @@ const CALENDAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="non
 const LIST_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
 
 // main.js가 로그 파일에 쓰는 헤더와 같아야 한다
-const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT';
+const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS';
 
 // 토큰 하나당 정규식 조각과 값 추출기. 형식 문자열 하나로 출력과 입력을 모두
 // 만들어내므로 둘이 어긋날 수 없다.
@@ -248,6 +248,10 @@ class TaskManager {
         // 핀의 툴팁은 상태에 따라 달라지므로 여기서 다시 붙인다
         this.applyAlwaysOnTopControl();
         this.setText('settingsBackupLabel', 'backup');
+        this.setText('settingsHistoryLabel', 'history');
+        this.setText('exportHistoryBtn', 'exportHistory');
+        this.setText('openLogFolderBtn', 'openLogFolder');
+        this.setText('settingsHistoryHint', 'historyHint');
         this.setText('settingsBackupHint', 'backupHint');
         this.setText('exportBtn', 'downloadExport');
         this.setText('importBtn', 'uploadImport');
@@ -322,7 +326,6 @@ class TaskManager {
         this.setText('addTagPresetBtn', 'add');
         
         // About modal elements
-        this.setText('aboutViewHistoryTitle', 'viewHistory');
         
         this.setText('aboutHowToUseTitle', 'howToUse');
         
@@ -548,6 +551,10 @@ class TaskManager {
 
         document.getElementById('importBtn').addEventListener('click', () => {
             document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('exportHistoryBtn').addEventListener('click', () => {
+            this.exportHistory();
         });
 
         document.getElementById('fileInput').addEventListener('change', (e) => {
@@ -3637,25 +3644,6 @@ ${filePath}`);
         return rows.length ? `${LOG_HEADER}\n${rows.join('\n')}\n` : '';
     }
 
-    // 합쳐진 TSV를 날짜별 로그 파일로 되돌린다. TIMESTAMP 앞 10자가 날짜다.
-    parseHistoryTsv(text) {
-        const files = {};
-
-        for (const line of String(text).split('\n')) {
-            if (!line.trim() || line.startsWith('TIMESTAMP')) continue;
-            const date = line.slice(0, 10);
-            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) continue;
-            const key = `${date}.tsv`;
-            (files[key] = files[key] || []).push(line);
-        }
-
-        const out = {};
-        for (const [name, rows] of Object.entries(files)) {
-            out[name] = `${LOG_HEADER}\n${rows.join('\n')}\n`;
-        }
-        return out;
-    }
-
     async exportData() {
         try {
             let data;
@@ -3689,42 +3677,34 @@ ${filePath}`);
                 'application/json'
             );
 
-            // 이력은 TSV로만 내보낸다. 백업 JSON에는 넣지 않으므로 파일에서
-            // 직접 읽어 온다.
-            const logFiles = this.isElectron && window.electronAPI.readLogFiles
-                ? await window.electronAPI.readLogFiles()
-                : data.logFiles;
-            const history = this.buildHistoryTsv(logFiles);
-            if (history) {
-                this.downloadFile(history, `tasktory-history-${stamp}.tsv`, 'text/tab-separated-values');
-            }
         } catch (error) {
             console.error('Export error:', error);
             alert('Failed to export data.');
         }
     }
 
-    // 이력 TSV만 되돌린다. 작업 목록과 설정은 건드리지 않는다.
-    async importHistoryTsv(text) {
-        const logFiles = this.parseHistoryTsv(text);
-        if (Object.keys(logFiles).length === 0) {
-            alert(this.getLocalizedText('invalidFile'));
-            return;
+    // 이력은 따로 내보낸다. 백업과 한 버튼에 묶여 있으면 파일 두 개가 한꺼번에
+    // 떨어져, 무엇이 무엇인지 이름을 봐야 알 수 있었다.
+    async exportHistory() {
+        try {
+            const logFiles = this.isElectron && window.electronAPI.readLogFiles
+                ? await window.electronAPI.readLogFiles()
+                : {};
+            const history = this.buildHistoryTsv(logFiles);
+            if (!history) {
+                alert(this.getLocalizedText('noHistoryYet'));
+                return;
+            }
+            const stamp = formatWithPattern(new Date(), 'YYYY-MM-DD');
+            this.downloadFile(history, `tasktory-history-${stamp}.tsv`,
+                'text/tab-separated-values');
+        } catch (error) {
+            console.error('History export error:', error);
+            alert('Failed to export data.');
         }
-
-        if (!this.isElectron) {
-            alert(this.getLocalizedText('historyImportElectronOnly'));
-            return;
-        }
-
-        // tasks를 비워 보내면 작업 목록이 지워진다. 지금 것을 그대로 다시 넘긴다.
-        const success = await window.electronAPI.importData({
-            tasks: this.tasks,
-            rules: this.rules,
-            logFiles
-        });
-        alert(this.getLocalizedText(success ? 'dataImportSuccess' : 'invalidFile'));
     }
+
+    // 이력 TSV만 되돌린다. 작업 목록과 설정은 건드리지 않는다.
 
     async importData(file) {
         if (!file) return;
@@ -3732,13 +3712,9 @@ ${filePath}`);
         const reader = new FileReader();
         reader.onload = async (e) => {
             try {
-                // 이력만 담긴 TSV도 받는다. 백업 JSON과 파일이 나뉘어 있으니
-                // 가져오기도 둘 다 받을 수 있어야 한다.
-                if (/\.tsv$/i.test(file.name)) {
-                    await this.importHistoryTsv(e.target.result);
-                    return;
-                }
-
+                // 백업 JSON 만 받는다. 로그는 앱이 남기는 기록이지 되돌려 넣는
+                // 것이 아니고, 확장자로 동작이 갈리면 버튼 이름만 보고는 무슨
+                // 일이 일어날지 알 수 없다.
                 const data = JSON.parse(e.target.result);
 
                 if (data.tasks) {
