@@ -62,7 +62,23 @@ const boot = async (tasks = []) => {
         getCompletedTasksCount: jest.fn().mockResolvedValue(0),
         showNotification: jest.fn().mockResolvedValue(true),
         setUnfocusedOpacity: jest.fn(),
-        setAlwaysOnTop: jest.fn()
+        setAlwaysOnTop: jest.fn(),
+        // 끌어다 놓은 File 의 실제 경로. 실제 앱에서는 webUtils 가 준다.
+        pathForFile: jest.fn((file) => '/dropped/' + file.name),
+        checkAttachments: jest.fn(async (paths) =>
+            Object.fromEntries(paths.map((p) => [p, true]))),
+        pickAttachments: jest.fn(async () => []),
+        openAttachment: jest.fn(async () => ({ ok: true })),
+        revealAttachment: jest.fn(async () => ({ ok: true })),
+        loadRules: jest.fn(async () => []),
+        saveRules: jest.fn(async () => true),
+        importData: jest.fn(async () => true),
+        readLogFiles: jest.fn(async () => ({})),
+        getCompletedTasks: jest.fn(async () => []),
+        getAppVersion: jest.fn(async () => '0.0.0-test'),
+        openLogFolder: jest.fn(async () => true),
+        moveWindowBy: jest.fn(),
+        resizeAndPositionWindow: jest.fn(async () => true)
     }
     window.electronAPI = electronAPI
 
@@ -1285,11 +1301,14 @@ describe('history export and import', () => {
         expect(manager.parseHistoryTsv(manager.buildHistoryTsv(original))).toEqual(original)
     })
 
+    // In Electron the history comes from readLogFiles, not from the backup
+    // payload - the JSON deliberately does not carry it. Stubbing only
+    // exportData used to leave this test on the browser-mode fallback.
     test('exporting writes both the backup and the history sheet', async () => {
         const manager = await boot([task('a')])
-        electronAPI.exportData.mockResolvedValue({
-            tasks: [], rules: [], version: '1.2',
-            logFiles: { '2026-08-04.tsv': `${HEADER}\n${row('2026-08-04T09:00:00+09:00', 'ADD')}\n` }
+        electronAPI.exportData.mockResolvedValue({ tasks: [], rules: [], version: '1.2' })
+        electronAPI.readLogFiles.mockResolvedValue({
+            '2026-08-04.tsv': `${HEADER}\n${row('2026-08-04T09:00:00+09:00', 'ADD')}\n`
         })
 
         const names = []
@@ -2801,6 +2820,81 @@ describe('attachments', () => {
 
         expect(list().map((li) => li.dataset.path))
             .toEqual(['C:\\docs\\a.txt', 'C:/docs/a.txt'])
+    })
+
+    // A file dropped anywhere Chromium has not been told to ignore makes it
+    // navigate to that file - which surfaces as "Downloads file not found" and
+    // takes the whole screen with it. The document has to refuse the default
+    // wherever the drop lands.
+    test('the document refuses stray drops so the app cannot navigate away', async () => {
+        await boot([task('a')])
+
+        for (const type of ['dragover', 'drop']) {
+            const event = new window.Event(type, { bubbles: true, cancelable: true })
+            document.body.dispatchEvent(event)
+            expect(event.defaultPrevented).toBe(true)
+        }
+    })
+
+    // The dashed box says where the file is going; it is not the only place it
+    // can land. Aiming at a thin bar is most of what made dropping miss.
+    test('a drop anywhere in the edit form attaches', async () => {
+        const manager = await boot([task('a')])
+        await openModal(manager, manager.tasks[0])
+
+        const event = new window.Event('drop', { bubbles: true, cancelable: true })
+        event.dataTransfer = { files: [{ name: 'spec.txt' }] }
+        document.getElementById('taskContent').dispatchEvent(event)
+        await settle()
+
+        expect(names()).toEqual(['spec.txt'])
+    })
+
+    // The button path never ran: every other test called addAttachments itself.
+    test('choosing files through the button attaches them', async () => {
+        const manager = await boot([task('a')])
+        await openModal(manager, manager.tasks[0])
+        electronAPI.pickAttachments.mockResolvedValue([
+            { name: 'spec.pdf', path: '/docs/spec.pdf' }
+        ])
+
+        document.getElementById('attachmentPickBtn').click()
+        await settle()
+
+        expect(names()).toEqual(['spec.pdf'])
+    })
+
+    // The one path that learns the truth from the OS rather than from a stat:
+    // opening failed, so the entry is redrawn and the user is told.
+    test('a failed open says so and re-checks the list', async () => {
+        const manager = await boot([
+            task('a', { attachments: [{ name: 'gone.txt', path: '/gone.txt' }] })
+        ])
+        await openModal(manager, manager.tasks[0])
+        electronAPI.openAttachment.mockResolvedValue({ ok: false, reason: 'missing' })
+        electronAPI.checkAttachments.mockResolvedValue({ '/gone.txt': false })
+        window.alert = jest.fn()
+
+        list()[0].querySelector('[data-open]').click()
+        await settle()
+        await settle()
+
+        expect(electronAPI.openAttachment).toHaveBeenCalledWith('/gone.txt')
+        expect(window.alert).toHaveBeenCalled()
+        expect(list()[0].classList.contains('missing')).toBe(true)
+    })
+
+    test('the folder icon reveals rather than opens', async () => {
+        const manager = await boot([
+            task('a', { attachments: [{ name: 'spec.pdf', path: '/docs/spec.pdf' }] })
+        ])
+        await openModal(manager, manager.tasks[0])
+
+        list()[0].querySelector('[data-reveal]').click()
+        await settle()
+
+        expect(electronAPI.revealAttachment).toHaveBeenCalledWith('/docs/spec.pdf')
+        expect(electronAPI.openAttachment).not.toHaveBeenCalled()
     })
 
     test('drops the same file twice into one entry', async () => {

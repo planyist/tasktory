@@ -757,14 +757,28 @@ class TaskManager {
         });
 
         const drop = document.getElementById('attachmentDrop');
-        // dragover 에서 기본 동작을 막지 않으면 브라우저가 파일을 열어버려
-        // drop 이 아예 오지 않는다.
-        drop.addEventListener('dragover', (e) => {
+        // 창 어디든 파일이 떨어지면 Chromium 은 그 파일로 이동하려 든다. 첨부
+        // 칸을 살짝 빗나간 드롭이 "Downloads file not found" 를 띄우고 화면이
+        // 통째로 날아가는 이유가 이것이다. 문서 전체에서 기본 동작을 막아둔다.
+        for (const type of ['dragover', 'drop']) {
+            document.addEventListener(type, (e) => e.preventDefault());
+        }
+
+        // 받는 자리는 편집 창 전체다. 점선 칸은 어디로 가는지 알려주는 표시일
+        // 뿐이고, 거기에만 맞춰 떨어뜨리게 하면 대부분 빗나간다.
+        const modal = document.getElementById('taskModal');
+        modal.addEventListener('dragover', (e) => {
             e.preventDefault();
             drop.classList.add('over');
         });
-        drop.addEventListener('dragleave', () => drop.classList.remove('over'));
-        drop.addEventListener('drop', (e) => {
+        modal.addEventListener('dragleave', (e) => {
+            // 자식 요소 사이를 지날 때도 dragleave 는 뜬다. 창 밖으로 나간
+            // 경우에만 표시를 끈다.
+            if (!e.relatedTarget || !modal.contains(e.relatedTarget)) {
+                drop.classList.remove('over');
+            }
+        });
+        modal.addEventListener('drop', (e) => {
             e.preventDefault();
             drop.classList.remove('over');
             if (!this.isElectron) return;

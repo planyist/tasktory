@@ -132,6 +132,11 @@ Run it after any visual change. It found the last of those on its first run.
 - `renderer.js` is a classic browser script with no exports. Tests evaluate the source with `new Function(src + '; return TaskManager;')` rather than adding an export purely for testing. For unit-level tests, build instances with `Object.create(TaskManager.prototype)` to skip the constructor's async `init()`.
 - Test files that need a DOM use the `@jest-environment jsdom` docblock; the default environment is `node`.
 - **Definition of done**: a bug fix ships with a test that fails before the change and passes after.
+- **`tests/ipc-coverage.test.js` fails when a new IPC method has no stub.** The stub list in `renderer-dom.test.js` is not paperwork: a method missing from it means *no test has ever entered the code path that calls it*, because the call would throw `is not a function` the moment one did.
+
+  This is not hypothetical. Drag-and-drop shipped broken because `pathForFile` was absent from the stub — the seven attachment tests all called `addAttachments` directly and none went through a drop, so nothing noticed that a file landing outside the dashed box made Chromium navigate to it. Filling the stub in afterwards immediately exposed a second one: the export test had been passing through the browser-mode fallback, because `readLogFiles` was undefined and the Electron branch it was meant to cover never ran.
+
+  When a feature adds an IPC call, add a test that goes through the real path — the button, the drop, the click — not one that calls the method underneath it. Reaching for the method directly is what leaves the wiring untested, and the wiring is where these bugs live.
 
 ## Core Requirements
 
@@ -206,6 +211,13 @@ backup, so a copied 400MB video would be in every backup.
   latter, so a drop handler reading `file.path` gets `undefined` and silently
   attaches nothing. It lives in `preload.js` as `pathForFile` because `webUtils`
   is not reachable from the renderer.
+- **The whole edit form is the drop target, and the document refuses every
+  other drop.** A file dropped where Chromium has not been told otherwise makes
+  it navigate to that file: the app is replaced by a download error reading
+  "Downloads file not found", which is not our string and gives no clue where it
+  came from. `document` cancels `dragover` and `drop` unconditionally, and
+  `#taskModal` handles them — the dashed box only shows where the file is going.
+  Binding the handlers to that box alone is what made a near-miss fatal.
 - `shell.openPath` opens, `shell.showItemInFolder` reveals. Both take the raw
   stored path; neither is given anything the user did not choose.
 - **No count limit.** Ten rows of attachments is less than the list already
