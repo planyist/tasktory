@@ -47,7 +47,8 @@ const seed = (count, extra = '') => `
     'ok';`
 
 app.whenReady().then(async () => {
-    const win = new BrowserWindow({ width: 900, height: 500, show: false })
+    // 창을 띄운다. 숨긴 창에서는 :hover 가 걸리지 않아 호버 검사를 할 수 없다.
+    const win = new BrowserWindow({ width: 900, height: 500, show: true })
     await win.loadFile(path.join(ROOT, 'index.html'))
     // init() 이 loadTasks 를 비동기로 마친 뒤라야 씨앗이 살아남는다
     await new Promise((r) => setTimeout(r, 2500))
@@ -94,6 +95,36 @@ app.whenReady().then(async () => {
     const [addLight, addDark] = [await addBg(false), await addBg(true)]
     check('추가 버튼이 두 테마 모두 초록', addLight === addDark && addLight.includes('40, 167, 69'),
         `light=${addLight} dark=${addDark}`)
+
+    // 호버까지 재야 한다. 다크에서 마우스를 올리면 초록이 회색으로 바뀌는 버그가
+    // 있었는데, 정지 상태만 보는 위 검사는 그것을 통과시켰다. 범인은 파일 뒤쪽의
+    // body.dark-mode .btn:hover:not(:disabled) 로, 순위가 같아 순서로 이겼다.
+    const dbg = win.webContents.debugger
+    dbg.attach('1.3')
+    const moveTo = (x, y) => dbg.sendCommand('Input.dispatchMouseEvent',
+        { type: 'mouseMoved', x, y })
+
+    const addHoverBg = async (dark) => {
+        await run(`taskManager.darkMode = ${dark}; taskManager.applyTheme(); 'ok'`)
+        const box = JSON.parse(await run(`(() => {
+            const r = document.getElementById('addTaskBtn').getBoundingClientRect();
+            return JSON.stringify({ x: Math.round(r.left + r.width / 2),
+                                    y: Math.round(r.top + r.height / 2) });
+        })()`))
+        await moveTo(box.x, box.y)
+        // 배경색에 transition 이 걸려 있어, 바로 읽으면 중간 색이 나온다
+        await new Promise((r) => setTimeout(r, 400))
+        const bg = await run(
+            `getComputedStyle(document.getElementById('addTaskBtn')).backgroundColor`)
+        await moveTo(2, 2)
+        await new Promise((r) => setTimeout(r, 300))
+        return bg
+    }
+    const [hoverLight, hoverDark] = [await addHoverBg(false), await addHoverBg(true)]
+    dbg.detach()
+    check('추가 버튼이 호버에서도 두 테마 모두 초록',
+        hoverLight === hoverDark && hoverLight.includes('47, 158, 79'),
+        `light=${hoverLight} dark=${hoverDark}`)
 
     // 표 머리는 테마마다 색이 달라야 한다 (같으면 한쪽 규칙이 지고 있다는 뜻)
     const headBg = (dark) => run(

@@ -247,8 +247,8 @@ class TaskManager {
         this.updateLeadControls();
         // 핀의 툴팁은 상태에 따라 달라지므로 여기서 다시 붙인다
         this.applyAlwaysOnTopControl();
-        this.setText('settingsBackupLabel', 'backup');
-        this.setText('settingsHistoryLabel', 'history');
+        this.setText('settingsBackupLabel', 'backup', ' (.json)');
+        this.setText('settingsHistoryLabel', 'history', ' (.tsv)');
         this.setText('exportHistoryBtn', 'exportHistory');
         this.setText('openLogFolderBtn', 'openLogFolder');
         this.setText('settingsHistoryHint', 'historyHint');

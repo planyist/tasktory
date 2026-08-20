@@ -114,6 +114,7 @@ of Jest was green:
 |---|---|
 | border presence matches across themes | icon buttons bordered in dark only |
 | add button green in both themes | `body.dark-mode .btn` eating the green |
+| add button green **on hover** too | `body.dark-mode .btn:hover:not(:disabled)` eating it, which the resting check missed |
 | header colour differs by theme | `body.dark-mode thead` declared twice, so the light band never applied in dark |
 | column widths equal across pages | `table-layout: auto` recomputing per page |
 | table height with and without the pager | pager at 34px stealing 10px from the table |
@@ -365,6 +366,9 @@ This is a complete Electron application with the following structure:
   **The icon never changes** — that breaks the "show what you get" rule collapse and the view toggle follow, and breaks it deliberately: with those two the question is *what will this do*, but with a pin the question is *is it pinned right now*, so the state has to be the visible thing. It says so by standing up and filling in: pinned is upright and solid blue, unpinned is tipped 45° and hollow. A background tint was tried first and does not work — it only reads next to a button in the other state, which is exactly what you never have on screen.
 
   The window is created with it on and the renderer pushes the stored value at start-up, the same shape as unfocused opacity — `main.js` keeps neither across launches
+- **The Backup and History labels carry their extension** — `백업 (.json)`,
+  `이력 (.tsv)`. `setText` already takes a suffix, so this needs no translation:
+  a file extension reads the same in every language.
 - **Backup lives in Settings, with words on the buttons.** As two unlabelled icons next to Add, people pressed them without knowing what they did — and import cannot be undone. It is used rarely enough that a dialog is the right home
 - **Backup and history are separate, and history does not come back in.** Backup is one JSON: export writes it, import replaces everything from it. History is the TSV: export writes the daily logs out as one sheet, and that is all it does.
 
@@ -560,6 +564,19 @@ Watch the cascade here. `.btn.icon-btn` outranks `.add-btn`, so the transparent
 background silently swallowed the green until `.btn.icon-btn.add-btn` restated
 it; in dark, `body.dark-mode .btn` had already been doing the same thing for
 some time, leaving the add button indistinguishable from the icons beside it.
+
+The same thing happened again on **hover**, and it took a bug report because
+`check:ui` only measured the resting state. `body.dark-mode .btn:hover:not(:disabled)`
+sits far below the add-button exception and ties it on specificity — `:not()`
+contributes its argument, so both are (0,4,1) — so source order decided, and in
+dark the green turned grey the moment the pointer arrived. The fix is a fourth
+class (`body.dark-mode .btn.icon-btn.add-btn:hover`), which wins on specificity
+and no longer depends on where in the file it sits.
+
+**`check:ui` needs `show: true`.** A hidden window never applies `:hover`, and
+`CSS.forcePseudoState` over CDP did not reach `getComputedStyle` either — both
+were tried, and both silently reported the resting colour, which looks exactly
+like a passing test.
 
 ### Light and dark must not diverge structurally
 

@@ -2745,7 +2745,10 @@ body.dark-mode .btn.add-btn {
     border-color: var(--color-success);
 }
 
-body.dark-mode .btn.add-btn:hover {
+/* 클래스 셋으로 눌러야 한다. 파일 뒤쪽의 body.dark-mode .btn:hover:not(:disabled)
+   가 같은 순위(0,4,1)라 순서로 이겨서, 다크에서 추가 버튼에 마우스를 올리면
+   초록이 회색으로 바뀌었다. 여기에 클래스를 하나 더 얹으면 순서와 무관해진다. */
+body.dark-mode .btn.icon-btn.add-btn:hover {
     background-color: #2f9e4f;
 }
 
