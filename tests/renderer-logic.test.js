@@ -99,20 +99,6 @@ describe('getTaskStatus', () => {
 describe('tag parsing', () => {
     const manager = () => makeManager()
 
-    test('extractTags picks up ascii and hangul tags', () => {
-        expect(manager().extractTags('fix #bug and #버그 today')).toEqual(['#bug', '#버그'])
-    })
-
-    test('extractTags returns an empty list when there are none', () => {
-        expect(manager().extractTags('no tags here')).toEqual([])
-    })
-
-    test('formatContentWithTags wraps tags in a span', () => {
-        expect(manager().formatContentWithTags('ship #v1 now')).toBe(
-            'ship <span class="tag">#v1</span> now'
-        )
-    })
-
     test('parseTagsFromInput keeps only # prefixed words with content', () => {
         expect(manager().parseTagsFromInput('#work plain #  #home')).toEqual(['#work', '#home'])
     })

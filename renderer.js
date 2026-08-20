@@ -1202,12 +1202,6 @@ class TaskManager {
         this.updateSelectionUI();
     }
 
-    // 지금 화면에 보이는 행들 (검색·페이지 적용 후)
-    visibleTaskIds() {
-        return Array.from(document.querySelectorAll('#tasksBody .task-select'))
-            .map(box => box.dataset.taskId);
-    }
-
     // 전체 선택은 페이지가 아니라 지금 걸린 검색 결과 전체에 적용된다.
     // 보이는 열 줄만 잡으면 "전체"라는 말과 어긋나고, 50건을 지우려면 페이지를
     // 넘겨가며 다섯 번 눌러야 했다. 검색은 존중한다 - 걸러 놓고 전체 선택을
@@ -2744,15 +2738,6 @@ ${filePath}`);
         if (this.isElectron && window.electronAPI && window.electronAPI.resizeAndPositionWindow) {
             window.electronAPI.resizeAndPositionWindow(width, height, position);
         }
-    }
-
-    extractTags(content) {
-        const tagRegex = /#[\w가-힣]+/g;
-        return content.match(tagRegex) || [];
-    }
-
-    formatContentWithTags(content) {
-        return content.replace(/#([\w가-힣]+)/g, '<span class="tag">#$1</span>');
     }
 
 

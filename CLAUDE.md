@@ -68,7 +68,7 @@ returns an empty buffer, so retry until the PNG has real length.
 `main`. It sets `ELECTRON_SKIP_BINARY_DOWNLOAD=1` — the Jest suite never touches
 a real Electron binary, because `__mocks__/electron.js` stands in for it, and
 downloading ~100MB per run for nothing is wasteful. Verified by moving
-`node_modules/electron/dist` aside locally: all 322 tests still pass.
+`node_modules/electron/dist` aside locally: the whole suite still passes.
 
 Tests must not depend on the machine. One assertion checked the date picker's
 label for the string `August`, which really checked the runner's ICU data —

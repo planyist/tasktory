@@ -6,12 +6,13 @@
 
 // 캐시 이름은 SHELL 목록이 바뀔 때마다 올린다. 그대로 두면 예전 캐시가 살아남아
 // 새 파일(i18n.js)만 빠진 화면이 뜬다.
-const CACHE = 'tasktory-shell-v2';
+const CACHE = 'tasktory-shell-v3';
 
 const SHELL = [
     './',
     './index.html',
     './styles.css',
+    './register-sw.js',
     './i18n.js',
     './recurrence.js',
     './renderer.js',
