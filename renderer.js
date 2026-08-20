@@ -3102,6 +3102,13 @@ ${filePath}`);
         // Render tag presets list
         this.renderTagPresetsList();
         
+        // 로그 폴더 열기는 데스크톱에서만 뜻이 있다. 감출 때만 값을 넣고, 보일
+        // 때는 빈 문자열로 되돌려 CSS 가 정하게 둔다 - 여기서 display 를 직접
+        // 박으면 스타일시트와 싸운다. 실제로 그렇게 넣어둔 inline-flex 가
+        // 남아서, 도움말을 한 번 열면 이 버튼의 글자만 9px 위로 올라갔다.
+        const openFolderBtn = document.getElementById('openLogFolderBtn');
+        if (openFolderBtn) openFolderBtn.style.display = this.isElectron ? '' : 'none';
+
         modal.style.display = 'block';
     }
 
@@ -3111,17 +3118,7 @@ ${filePath}`);
     }
 
     async showAboutModal() {
-        const modal = document.getElementById('aboutModal');
-        const openFolderBtn = document.getElementById('openLogFolderBtn');
-        
-        // Show folder button only in Electron mode
-        if (this.isElectron) {
-            openFolderBtn.style.display = 'inline-flex';
-        } else {
-            openFolderBtn.style.display = 'none';
-        }
-        
-        modal.style.display = 'block';
+        document.getElementById('aboutModal').style.display = 'block';
     }
 
     hideAboutModal() {

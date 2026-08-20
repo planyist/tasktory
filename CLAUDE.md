@@ -576,6 +576,16 @@ and no longer depends on where in the file it sits.
 
 **A coloured button loses its colour in dark unless it out-ranks `body.dark-mode .btn`.** This has now happened three times — the add button's background, the add button's hover, and the tag-preset Add button, which `.tag-preset-add button` (0,1,1) could not defend against `body.dark-mode .btn` (0,2,1). The check no longer tests one button: `COLOURED` in `check-ui.js` lists them and compares both themes. Add to that list whenever a button gets a colour of its own.
 
+**Never write a concrete `display` from JavaScript to show something.** Hiding
+is a decision the code makes, so `display: none` is fine; showing is the
+stylesheet's business, and `''` is how you hand it back. `showAboutModal` set
+`display: inline-flex` on the log-folder button, from when that button lived
+inside About. The button moved to Settings and the line stayed, so opening the
+help once turned it into a flex container and its label rode 9px higher than
+the button beside it — for the rest of the session, on a screen the help does
+not own. It looked like a dark-mode bug because that is what the person happened
+to be in at the time.
+
 **`check:ui` needs `show: true`.** A hidden window never applies `:hover`, and
 `CSS.forcePseudoState` over CDP did not reach `getComputedStyle` either — both
 were tried, and both silently reported the resting colour, which looks exactly

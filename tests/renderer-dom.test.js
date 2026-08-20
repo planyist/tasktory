@@ -2116,6 +2116,38 @@ describe('view toggle', () => {
     })
 })
 
+describe('the About dialog leaves other screens alone', () => {
+    // showAboutModal used to force `display: inline-flex` on the log-folder
+    // button, from when that button lived inside About. After the button moved
+    // to Settings the line stayed, so opening the help once turned the button
+    // into a flex container and its label rode 9px up from its neighbour's -
+    // visible only after About had been opened, which is what made it look like
+    // a dark-mode bug.
+    test('opening it does not restyle the log folder button', async () => {
+        const manager = await boot([task('a')])
+        const button = document.getElementById('openLogFolderBtn')
+
+        manager.showSettingsModal()
+        const before = button.style.display
+
+        await manager.showAboutModal()
+
+        expect(button.style.display).toBe(before)
+    })
+
+    // Hiding it is a value; showing it is the stylesheet's business. Writing a
+    // concrete display here is what caused the bug above.
+    test('Settings restores the button to whatever CSS says', async () => {
+        const manager = await boot([task('a')])
+        const button = document.getElementById('openLogFolderBtn')
+        button.style.display = 'inline-flex'
+
+        manager.showSettingsModal()
+
+        expect(button.style.display).toBe('')
+    })
+})
+
 describe('always-on-top pin', () => {
     const pin = () => document.getElementById('alwaysOnTopBtn')
 
