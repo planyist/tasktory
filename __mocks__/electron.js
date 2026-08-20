@@ -9,6 +9,7 @@ const handlers = new Map()
 
 const app = {
     disableHardwareAcceleration: () => {},
+    setAppUserModelId: () => {},
     // Never resolves, so createWindow() never runs during tests.
     whenReady: () => new Promise(() => {}),
     on: () => {},

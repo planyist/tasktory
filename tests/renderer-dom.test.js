@@ -712,24 +712,33 @@ describe('multi-select', () => {
 
     // Delaying the first click until a double-click could be ruled out would
     // freeze every ordinary selection for the OS threshold (500ms on Windows).
-    // Instead both clicks toggle - and an even number of toggles lands back
-    // where it started, so the selection is untouched.
-    test('a double-click leaves the selection exactly as it was', async () => {
+    // Instead the first click toggles at once and the second is skipped, read
+    // off MouseEvent.detail - the browser's own count of consecutive clicks.
+    // The row ends up selected, which is what editing needs anyway.
+    test('a double-click toggles once, not twice', async () => {
         const manager = await boot([task('a'), task('b')])
         jest.spyOn(manager, 'showModal').mockImplementation(() => {})
         const row = document.querySelector('#tasksBody tr')
-        const twoClicks = () => {
-            row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
-            row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+        const doubleClick = () => {
+            row.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 }))
+            row.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 2 }))
             row.dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
         }
 
-        twoClicks()
-        expect(manager.selectedTaskIds.has('a')).toBe(false)
+        doubleClick()
 
-        // and from the selected state it stays selected
-        pick('a')
-        twoClicks()
+        expect(manager.selectedTaskIds.has('a')).toBe(true)
+        expect(document.querySelector('#tasksBody tr .task-select').checked).toBe(true)
+    })
+
+    // The point of reading detail rather than timing: an ordinary single click
+    // is not held back at all.
+    test('a single click still selects immediately', async () => {
+        const manager = await boot([task('a')])
+        const row = document.querySelector('#tasksBody tr')
+
+        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 }))
+
         expect(manager.selectedTaskIds.has('a')).toBe(true)
     })
 
@@ -2035,11 +2044,9 @@ describe('quick filter presentation', () => {
 describe('view toggle', () => {
     const button = () => document.getElementById('viewModeBtn')
 
-    // It belongs with the other screen-mode switches, not beside the quick
-    // filters, where it read as one more filter chip. The row ends with the
-    // three controls that change what the window is showing or doing; the
-    // buttons that open a dialog come before them.
-    test('sits with the other screen controls at the end of the header', async () => {
+    // It belongs with the other screen-mode switch, not beside the quick
+    // filters, where it read as one more filter chip.
+    test('sits with collapse at the end of the header', async () => {
         await boot([task('a')])
 
         expect(button().closest('.header-buttons')).not.toBeNull()
@@ -2047,7 +2054,7 @@ describe('view toggle', () => {
 
         const ids = Array.from(document.querySelectorAll('.header-buttons > button'))
             .map((el) => el.id)
-        expect(ids.slice(-3)).toEqual(['viewModeBtn', 'alwaysOnTopBtn', 'collapseBtn'])
+        expect(ids.slice(-2)).toEqual(['viewModeBtn', 'collapseBtn'])
     })
 
     // The icon shows what you get, not what you have - same rule as collapse.
@@ -2081,6 +2088,15 @@ describe('always-on-top pin', () => {
 
         expect(manager.alwaysOnTop).toBe(true)
         expect(pin().classList.contains('active')).toBe(true)
+    })
+
+    // Pinning matters when the window is a strip sitting over other work, so
+    // that is where the control lives. Expanded, Ctrl+M reaches it.
+    test('lives in the collapsed strip, not the header', async () => {
+        await boot([task('a')])
+
+        expect(pin().closest('.collapsed-mini-layout')).not.toBeNull()
+        expect(pin().closest('.header-buttons')).toBeNull()
     })
 
     // Unlike collapse and the view toggle, the icon never changes. Whether the
@@ -2483,6 +2499,25 @@ describe('notification wording', () => {
     // and the gap lands just under a whole number. What matters is that it
     // tracks the clock, not the window it tripped.
     const minutesSaid = () => Number((said().match(/(\d+) minutes?/) || [])[1])
+
+    // A task registered when it is already inside the lead window has to ring
+    // now. Waiting for the 30-second sweep reads as "notifications do not work".
+    test('a task saved already inside the window notifies at once', async () => {
+        const manager = await boot([])
+        manager.showModal()
+        document.getElementById('startDateTime').value =
+            manager.formatDateTimeLocal(new Date())
+        document.getElementById('targetDateTime').value =
+            manager.formatDateTimeLocal(new Date(Date.now() + 20 * 60000))
+        document.getElementById('taskContent').value = 'due very soon'
+        document.getElementById('taskPosition').value = '1'
+
+        await manager.saveTask()
+        await settle()
+
+        expect(electronAPI.showNotification).toHaveBeenCalled()
+        expect(said()).toContain('due very soon')
+    })
 
     test('reports the time actually left, not the lead it tripped', async () => {
         const manager = await boot([task('a', { targetDateTime: inMinutes(40) })])

@@ -1155,26 +1155,25 @@ body.dark-mode .btn.icon-btn:hover {
     background-color: rgba(255, 255, 255, 0.09);
 }
 
-/* 이 줄에서 유일하게 상태를 가진 버튼. 나머지 아이콘처럼 투명하게 두면
-   고정이 켜졌는지 알 길이 없어, 켜져 있을 때만 바탕을 칠한다.
-   .btn.icon-btn 이 투명 배경을 걸어두므로 클래스 넷으로 순위를 넘긴다
-   - 추가 버튼이 초록을 되찾은 것과 같은 방식이다. */
-.btn.icon-btn.pin-btn.active {
-    background-color: rgba(52, 152, 219, 0.16);
+/* 접힘 스트립에서 상태를 가진 유일한 버튼. 아이콘은 바꾸지 않고 켜져 있을
+   때만 바탕을 칠한다 - 고정됐는지가 곧 알고 싶은 것이라, 상태가 보이는 쪽이
+   "누르면 무엇이 되는지"보다 쓸모 있다. */
+.pin-btn.active {
+    background-color: rgba(52, 152, 219, 0.18);
     color: #2a7fb8;
 }
 
-.btn.icon-btn.pin-btn.active:hover {
-    background-color: rgba(52, 152, 219, 0.26);
+.pin-btn.active:hover {
+    background-color: rgba(52, 152, 219, 0.3);
 }
 
-body.dark-mode .btn.icon-btn.pin-btn.active {
-    background-color: rgba(52, 152, 219, 0.26);
+body.dark-mode .pin-btn.active {
+    background-color: rgba(52, 152, 219, 0.28);
     color: #7fc4ef;
 }
 
-body.dark-mode .btn.icon-btn.pin-btn.active:hover {
-    background-color: rgba(52, 152, 219, 0.36);
+body.dark-mode .pin-btn.active:hover {
+    background-color: rgba(52, 152, 219, 0.4);
 }
 
 .add-btn {
@@ -2167,15 +2166,23 @@ th.sortable:hover {
 /* 정렬이 된다는 사실은 눌러보기 전에 보여야 한다. 흐린 ↕ 를 늘 띄워두고,
    정렬 중일 때만 진한 화살표로 바꾼다. 세 상태의 자리가 같아서 글자가 밀리지
    않는다. 머리글이 작아 크기는 따로 준다 - 물려받으면 눈에 띄지 않는다. */
+/* 위아래 삼각형을 쌓는다. ↕ 하나는 "양방향"이라는 뜻이라 지금 어느 쪽으로
+   정렬돼 있는지와 섞여 읽힌다.
+   켜진 쪽은 색이 아니라 **채움**으로 구분한다. 조각 둘을 겹쳐 색을 나누려면
+   ::before 를 절대 위치로 띄워야 하는데, 머리글이 가운데 정렬이라 글자를 따라
+   가지 못하고 칸 오른쪽 끝에 떨어진다. 한 조각 안에서 글자만 바꾸면 그 문제가
+   아예 없고 자리도 세 상태 모두 같다. */
 th.sortable::after {
-    content: '↕';
+    content: '▵\A▿';
+    white-space: pre;
     display: inline-block;
-    width: 13px;
+    width: 11px;
     margin-left: 5px;
-    font-size: 15px;
-    line-height: 1;
-    vertical-align: -2px;
-    opacity: 0.45;
+    font-size: 11px;
+    line-height: 0.82;
+    vertical-align: -4px;
+    text-align: center;
+    opacity: 0.55;
 }
 
 /* 누를 수 있는 칸이라는 신호는 칸 전체가 준다. 화살표 하나만 밝아지는 것보다
@@ -2195,14 +2202,15 @@ th.sortable.sorted {
     color: #2a7fb8;
 }
 
+/* 걸린 쪽만 속이 찬다. 빈 삼각형이 그대로 남아 반대 방향이 있다는 것을
+   계속 말해 준다. */
 th.sortable.sorted::after {
-    content: '↑';
+    content: '▴\A▿';
     opacity: 1;
-    font-weight: 700;
 }
 
 th.sortable.sorted.descending::after {
-    content: '↓';
+    content: '▵\A▾';
 }
 
 body.dark-mode th.sortable:hover {

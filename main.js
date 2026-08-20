@@ -133,6 +133,11 @@ module.exports = { boundsToRestore }
 // GPU 가속 비활성화 (호환성 문제 해결)
 app.disableHardwareAcceleration()
 
+// Windows 는 이 값이 없으면 토스트를 어느 앱의 것인지 알지 못해 띄우지 않는다.
+// 조용히 실패하므로 알림 코드가 아니라 알림 설정을 의심하게 된다.
+// package.json 의 build.appId 와 같아야 설치본의 시작 메뉴 바로가기와 맞는다.
+if (process.platform === 'win32') app.setAppUserModelId('com.tasktory.app')
+
 app.whenReady().then(() => {
     createWindow()
     

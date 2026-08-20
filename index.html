@@ -74,14 +74,6 @@
                             </svg>
                         </button>
                         <button type="button" id="viewModeBtn" class="btn icon-btn view-toggle"></button>
-<!-- 이 줄 끝의 셋은 화면 상태를 바꾸는 버튼이다 (순서를 테스트가 고정한다).
-                             핀만 상태를 가지므로 아이콘 대신 색으로 켜짐을 알린다. -->
-                        <button type="button" id="alwaysOnTopBtn" class="btn icon-btn pin-btn">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <line x1="12" y1="17" x2="12" y2="22"/>
-                                <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
-                            </svg>
-                        </button>
                         <button id="collapseBtn" class="btn icon-btn" title="Collapse view (Ctrl+M)">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="14,4 14,10 20,10"/>
@@ -188,6 +180,15 @@
                         <polyline points="9,21 3,21 3,15"/>
                         <line x1="21" y1="3" x2="14" y2="10"/>
                         <line x1="3" y1="21" x2="10" y2="14"/>
+                    </svg>
+                </button>
+                <!-- 고정은 여기에만 있다. 창이 다른 작업 위에 얹혀 있는 건 접힌
+                     상태이고, 펼친 창에서는 Ctrl+M 로 접었다 펴며 닿는다.
+                     상태를 가진 유일한 버튼이라 아이콘 대신 색으로 켜짐을 알린다. -->
+                <button type="button" id="alwaysOnTopBtn" class="collapsed-expand-btn pin-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="17" x2="12" y2="22"/>
+                        <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
                     </svg>
                 </button>
                 <div id="collapsedCompletionCounter" class="collapsed-completion-counter">0</div>
@@ -332,20 +333,6 @@
             
             <!-- 백업은 아이콘만으로는 무엇을 하는지 알 수 없어서, 뭔지 모르고 누르는
                  일이 있었다. 자주 쓰는 기능도 아니므로 설정 안으로 옮기고 글자를 붙인다. -->
-            <div class="settings-group">
-                <label for="defaultLeadSelect" id="settingsLeadLabel">Notify before</label>
-                <select id="defaultLeadSelect"></select>
-                <small id="settingsLeadHint" class="settings-hint"></small>
-            </div>
-
-            <div class="settings-group">
-                <label id="settingsBackupLabel">Backup</label>
-                <div class="backup-actions">
-                    <button type="button" id="exportBtn" class="backup-btn"></button>
-                    <button type="button" id="importBtn" class="backup-btn"></button>
-                </div>
-                <small id="settingsBackupHint" class="settings-hint"></small>
-            </div>
 
             <div class="settings-group">
                 <label id="settingsLanguageLabel">Language</label>
@@ -427,6 +414,21 @@
                         <!-- Dynamic tag presets will be inserted here -->
                     </div>
                 </div>
+            </div>
+
+            <div class="settings-group">
+                <label for="defaultLeadSelect" id="settingsLeadLabel">Notify before</label>
+                <select id="defaultLeadSelect"></select>
+                <small id="settingsLeadHint" class="settings-hint"></small>
+            </div>
+
+            <div class="settings-group">
+                <label id="settingsBackupLabel">Backup</label>
+                <div class="backup-actions">
+                    <button type="button" id="exportBtn" class="backup-btn"></button>
+                    <button type="button" id="importBtn" class="backup-btn"></button>
+                </div>
+                <small id="settingsBackupHint" class="settings-hint"></small>
             </div>
         </div>
     </div>

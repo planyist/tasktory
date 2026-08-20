@@ -705,6 +705,12 @@ class TaskManager {
             // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
             if (e.target.closest('.task-select')) return;
 
+            // 더블클릭의 두 번째 클릭은 토글하지 않는다. detail 은 브라우저가 센
+            // 연속 클릭 횟수라, 첫 클릭은 지연 없이 즉시 반응하면서도 두 번째만
+            // 골라낼 수 있다. 타이머로 첫 클릭을 미루면 평범한 선택까지 OS의
+            // 더블클릭 인식 시간(이 기기 500ms)만큼 굳는다.
+            if (e.detail > 1) return;
+
             const row = e.target.closest('#tasksBody tr');
             const box = row && row.querySelector('.task-select');
             if (!box) return;
@@ -751,9 +757,8 @@ class TaskManager {
             th.addEventListener('click', () => this.cycleSort(th.dataset.sort));
         });
 
-        // 두 번 누르면 편집. 첫 클릭을 미뤘다가 판단하면 평범한 선택까지 OS의
-        // 더블클릭 인식 시간(500ms)만큼 굳는다. 토글이 두 번 일어나도록 두면
-        // 짝수 번이라 선택 상태는 제자리로 돌아온다.
+        // 두 번 누르면 편집. 첫 클릭이 이미 그 행을 선택해 두었으므로 - 편집은
+        // 어차피 하나만 골라야 한다 - 여기서는 창만 연다.
         document.getElementById('tasksTable').addEventListener('dblclick', (e) => {
             if (e.target.closest('.task-select')) return;
             const row = e.target.closest('#tasksBody tr');
@@ -3443,6 +3448,10 @@ ${filePath}`);
         await this.saveTasks();
         this.renderTasks();
         this.hideModal();
+
+        // 등록한 순간 이미 알림 시점 안이면 지금 알려야 한다. 30초 주기만
+        // 믿으면 방금 넣은 작업이 한 바퀴를 기다린다.
+        this.checkUpcomingTasks();
     }
 
     editTask(taskId) {
