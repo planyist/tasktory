@@ -73,8 +73,8 @@ time order, with a mini calendar above it. Ctrl+M toggles it.
 
 ### The rest
 
-- **Always-on-top can be turned off** in settings, if you would rather it
-  behaved like an ordinary window
+- **Always-on-top is a pin** at the top right. It is filled while the window is
+  pinned; press it and the window behaves like any other
 - **Dark mode**
 - **Five languages**: English, Korean, Chinese, Japanese, Spanish
 - **Configurable date format** — the display changes, the stored data does not

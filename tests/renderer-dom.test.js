@@ -50,7 +50,8 @@ const boot = async (tasks = []) => {
         })),
         getCompletedTasksCount: jest.fn().mockResolvedValue(0),
         showNotification: jest.fn().mockResolvedValue(true),
-        setUnfocusedOpacity: jest.fn()
+        setUnfocusedOpacity: jest.fn(),
+        setAlwaysOnTop: jest.fn()
     }
     window.electronAPI = electronAPI
 
@@ -2034,14 +2035,19 @@ describe('quick filter presentation', () => {
 describe('view toggle', () => {
     const button = () => document.getElementById('viewModeBtn')
 
-    // It belongs with the other screen-mode switch, not beside the quick
-    // filters, where it read as one more filter chip.
-    test('sits with collapse in the header buttons', async () => {
+    // It belongs with the other screen-mode switches, not beside the quick
+    // filters, where it read as one more filter chip. The row ends with the
+    // three controls that change what the window is showing or doing; the
+    // buttons that open a dialog come before them.
+    test('sits with the other screen controls at the end of the header', async () => {
         await boot([task('a')])
 
         expect(button().closest('.header-buttons')).not.toBeNull()
-        expect(button().nextElementSibling.id).toBe('collapseBtn')
         expect(button().closest('#quickFilters')).toBeNull()
+
+        const ids = Array.from(document.querySelectorAll('.header-buttons > button'))
+            .map((el) => el.id)
+        expect(ids.slice(-3)).toEqual(['viewModeBtn', 'alwaysOnTopBtn', 'collapseBtn'])
     })
 
     // The icon shows what you get, not what you have - same rule as collapse.
@@ -2064,6 +2070,58 @@ describe('view toggle', () => {
 
         expect(manager.viewMode).toBe('calendar')
         expect(localStorage.getItem('viewMode')).toBe('calendar')
+    })
+})
+
+describe('always-on-top pin', () => {
+    const pin = () => document.getElementById('alwaysOnTopBtn')
+
+    test('starts pinned, because the window is created that way', async () => {
+        const manager = await boot([task('a')])
+
+        expect(manager.alwaysOnTop).toBe(true)
+        expect(pin().classList.contains('active')).toBe(true)
+    })
+
+    // Unlike collapse and the view toggle, the icon never changes. Whether the
+    // window is pinned is the thing you want to know at a glance, so the state
+    // is the fill; only the tooltip says what pressing will do.
+    test('keeps one icon and shows the state as fill', async () => {
+        const manager = await boot([task('a')])
+        const iconWhilePinned = pin().innerHTML
+
+        pin().click()
+
+        expect(manager.alwaysOnTop).toBe(false)
+        expect(pin().classList.contains('active')).toBe(false)
+        expect(pin().innerHTML).toBe(iconWhilePinned)
+    })
+
+    test('the tooltip says what the press will do, not what is', async () => {
+        await boot([task('a')])
+
+        expect(pin().title).toBe('Stop keeping this window on top')
+
+        pin().click()
+
+        expect(pin().title).toBe('Keep this window on top')
+    })
+
+    // main.js holds it in a plain variable, so the renderer has to push the
+    // stored value on every launch - the same shape as unfocused opacity.
+    test('remembers the choice and pushes it to main', async () => {
+        const manager = await boot([task('a')])
+
+        pin().click()
+
+        expect(localStorage.getItem('alwaysOnTop')).toBe('false')
+        expect(window.electronAPI.setAlwaysOnTop).toHaveBeenLastCalledWith(false)
+
+        pin().click()
+
+        expect(localStorage.getItem('alwaysOnTop')).toBe('true')
+        expect(window.electronAPI.setAlwaysOnTop).toHaveBeenLastCalledWith(true)
+        expect(manager.alwaysOnTop).toBe(true)
     })
 })
 
@@ -2616,6 +2674,46 @@ describe('attachments', () => {
 
         expect(names()).toEqual(['quote.xlsx'])
         expect(list()[0].querySelector('[data-open]').title).toBe('C:/docs/quote.xlsx')
+    })
+
+    // A path is an opaque string from the OS, handed straight back to it. The
+    // app never parses one, so there is nothing to branch on per platform -
+    // but the string does cross two boundaries where it could be mangled:
+    // JSON storage, and the HTML attribute the tooltip is built into.
+    test('carries a native path across platforms without touching it', async () => {
+        const windowsPath = 'C:\\Users\\me\\내 문서\\견적서.xlsx'
+        const posixPath = '/home/me/docs/quote.xlsx'
+        const manager = await boot([task('a')])
+        await openModal(manager, manager.tasks[0])
+
+        manager.addAttachments([
+            { name: '견적서.xlsx', path: windowsPath },
+            { name: 'quote.xlsx', path: posixPath }
+        ])
+        document.getElementById('taskContent').value = 'both shapes'
+        await manager.saveTask()
+        await settle()
+
+        expect(manager.tasks[0].attachments.map((a) => a.path))
+            .toEqual([windowsPath, posixPath])
+
+        await openModal(manager, manager.tasks[0])
+        expect(list()[0].querySelector('[data-open]').title).toBe(windowsPath)
+        expect(list()[0].dataset.path).toBe(windowsPath)
+        expect(list()[1].querySelector('[data-open]').title).toBe(posixPath)
+    })
+
+    // Deliberately not normalised: separators are the OS's business, and
+    // rewriting them would be the app claiming to understand a path it does not.
+    test('treats separators as part of the string, not something to normalise', async () => {
+        const manager = await boot([task('a')])
+        await openModal(manager, manager.tasks[0])
+
+        manager.addAttachments([{ name: 'a.txt', path: 'C:\\docs\\a.txt' }])
+        manager.addAttachments([{ name: 'a.txt', path: 'C:/docs/a.txt' }])
+
+        expect(list().map((li) => li.dataset.path))
+            .toEqual(['C:\\docs\\a.txt', 'C:/docs/a.txt'])
     })
 
     test('drops the same file twice into one entry', async () => {

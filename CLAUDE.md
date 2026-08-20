@@ -204,6 +204,20 @@ backup, so a copied 400MB video would be in every backup.
   stored path; neither is given anything the user did not choose.
 - **No count limit.** Ten rows of attachments is less than the list already
   holds in a single page.
+- **A path is an opaque string, so there is nothing to branch per platform.**
+  The OS hands it over (`getPathForFile`, `showOpenDialog`) and the OS takes it
+  back (`openPath`, `showItemInFolder`, `fs.access`); nothing in `renderer.js`
+  or `preload.js` splits, joins or normalises one. The only path call in the
+  app is `path.basename` in `main.js`, which Node already makes
+  platform-correct. Separators are deliberately **not** normalised —
+  `C:\docs\a.txt` and `C:/docs/a.txt` are two different attachments, because
+  rewriting either would be the app claiming to understand a path it does not.
+  The two boundaries where a path could be mangled are covered and both are
+  automatic: `JSON.stringify` escapes backslashes, and a backslash needs no
+  HTML escaping (`escapeHtml` handles `& < > " '`). A test carries a Windows
+  and a POSIX path through save and back out of the tooltip to hold this.
+  The real cross-platform limit is not a bug: a backup made on Windows carries
+  `C:\…` that Linux cannot resolve, and `.missing` shows that honestly.
 
 Testing the drop end-to-end needs `Input.dispatchDragEvent` over CDP, and the
 drop zone must be **scrolled into view first** — the modal scrolls, and a
@@ -306,7 +320,13 @@ This is a complete Electron application with the following structure:
 - **One notification, not two.** It used to fire at 60 and again at 15. Once the moment is the user's to choose, ringing a second time second-guesses that choice — and the badge stays red the whole time anyway, with the overdue notification as the backstop.
 - **`0` is a real lead**, meaning "no advance warning", so it must never be filtered out as falsy. Two places nearly broke on this: `leadFor()` uses `Number.isFinite`, and `loadDefaultLead()` checks for a missing key *before* converting, because `Number(null)` is `0` — a plain conversion would have left everyone who never opened Settings with no notifications at all. The suite caught the second one.
 - The notification message reports the gap **measured when it fires**, not the window it tripped: a task added with 40 minutes left is already inside a 60-minute window and would otherwise announce "1 hour"
-- **Always-on-top is a setting.** The window is created with it on and the renderer pushes the stored value at start-up, the same shape as unfocused opacity — `main.js` keeps neither across launches
+- **Always-on-top is a pin in the header, not a setting.** It is a state you flip, not a value you configure: the moment you want it off is the moment the window is in your way, and opening a dialog to get it out of the way is backwards. It sits with the other screen controls (`viewModeBtn`, `alwaysOnTopBtn`, `collapseBtn` end the row, and a test pins that order).
+
+  **The icon never changes** — that breaks the "show what you get" rule collapse and the view toggle follow, and breaks it deliberately: with those two the question is *what will this do*, but with a pin the question is *is it pinned right now*, so the state has to be the visible thing. It is the one stateful button in that row, so it is also the one that paints a background; `.btn.icon-btn.pin-btn.active` needs four classes to outrank the transparent `.btn.icon-btn`, the same trick the add button uses to keep its green. Only the tooltip says what pressing will do.
+
+  **The pin is gone when collapsed**, because `.container.collapsed-mode .table-controls` hides the whole row. Accepted: the strip holds one control by design, and un-pinning is an expanded-window act — collapsing is already the way to put the window aside. Press expand first.
+
+  The window is created with it on and the renderer pushes the stored value at start-up, the same shape as unfocused opacity — `main.js` keeps neither across launches
 - **Backup lives in Settings, with words on the buttons.** As two unlabelled icons next to Add, people pressed them without knowing what they did — and import cannot be undone. It is used rarely enough that a dialog is the right home
 - **Double-click a row to edit.** Both clicks toggle the selection, which sounds wrong but lands correctly: an even number of toggles returns to the starting state. Suppressing the first click until a double-click can be ruled out would freeze every ordinary selection for the OS threshold — 500ms on this machine — which is far worse than a flicker the modal immediately covers
 - **Chips in a row are just part of the row** — clicking one selects it like anything else. They used to jump to a search, but the quick filters do that from a fixed place and hold several at once, so the row version only meant brushing a chip while aiming for the row replaced the whole list. (The repeat cadence lost its one-click filter with it; it is still reachable by picking *Repeat* in the search column.)

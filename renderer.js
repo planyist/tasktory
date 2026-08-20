@@ -249,10 +249,8 @@ class TaskManager {
         this.setText('attachmentHint', 'attachmentHint');
         this.setText('attachmentPickBtn', 'chooseFiles');
         this.updateLeadControls();
-        this.setText('settingsAlwaysOnTopLabel', 'alwaysOnTop');
-        this.setText('settingsAlwaysOnTopHint', 'alwaysOnTopHint');
-        this.setText('alwaysOnTopOnBtn', 'on');
-        this.setText('alwaysOnTopOffBtn', 'off');
+        // 핀의 툴팁은 상태에 따라 달라지므로 여기서 다시 붙인다
+        this.applyAlwaysOnTopControl();
         this.setText('settingsBackupLabel', 'backup');
         this.setText('settingsBackupHint', 'backupHint');
         this.setText('exportBtn', 'downloadExport');
@@ -591,6 +589,11 @@ class TaskManager {
             this.showStatisticsModal();
         });
 
+        // Always-on-top pin
+        document.getElementById('alwaysOnTopBtn').addEventListener('click', () => {
+            this.changeAlwaysOnTop(!this.alwaysOnTop);
+        });
+
         // Collapse button
         document.getElementById('collapseBtn').addEventListener('click', () => {
             this.toggleCollapse();
@@ -918,12 +921,6 @@ class TaskManager {
     wireSettings() {
         document.getElementById('defaultLeadSelect').addEventListener('change', (e) => {
             this.changeDefaultLead(Number(e.target.value));
-        });
-
-        document.querySelectorAll('[data-always-on-top]').forEach(button => {
-            button.addEventListener('click', () => {
-                this.changeAlwaysOnTop(button.dataset.alwaysOnTop === 'on');
-            });
         });
 
         document.getElementById('settingsOpacitySlider').addEventListener('input', (e) => {
@@ -1759,11 +1756,15 @@ ${filePath}`);
         }
     }
 
+    // 아이콘은 바꾸지 않는다. 접기·보기 전환은 '누르면 얻는 것'을 보여주지만,
+    // 핀은 지금 고정돼 있는지가 곧 알고 싶은 것이라 색으로 상태를 말한다.
+    // 툴팁만 누르면 무엇이 되는지 알려준다.
     applyAlwaysOnTopControl() {
-        const on = document.getElementById('alwaysOnTopOnBtn');
-        const off = document.getElementById('alwaysOnTopOffBtn');
-        if (on) on.classList.toggle('active', this.alwaysOnTop);
-        if (off) off.classList.toggle('active', !this.alwaysOnTop);
+        const pin = document.getElementById('alwaysOnTopBtn');
+        if (!pin) return;
+        pin.classList.toggle('active', this.alwaysOnTop);
+        pin.title = this.getLocalizedText(
+            this.alwaysOnTop ? 'alwaysOnTopDisable' : 'alwaysOnTopEnable');
     }
 
     updateOpacityControl() {
