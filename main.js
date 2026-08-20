@@ -8,7 +8,7 @@ let originalWindowBounds = null
 // 사용자가 마지막으로 둔 자리. 화면보호기/잠금 이후 창이 밀려나면 여기로 돌린다.
 let intendedBounds = null
 const NORMAL_MIN_WIDTH = 900 // 접힘 여부 판단 기준 (BrowserWindow의 minWidth와 같다)
-const DEFAULT_HEIGHT = 750
+const DEFAULT_HEIGHT = 900
 
 // 화면보다 큰 창으로 시작하지 않는다. 노트북 해상도에서는 750이 작업 영역을
 // 넘어, 아래쪽 페이저가 화면 밖으로 나간다.

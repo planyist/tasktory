@@ -286,7 +286,7 @@ This is a complete Electron application with the following structure:
 
 ### Key Features Implemented:
 - **Always-on-top window**: BrowserWindow configured with `alwaysOnTop: true`
-- **Compact UI**: Table-based interface optimized for a small window (900x750 by default, clamped to the work area so it never opens taller than the screen)
+- **Compact UI**: Table-based interface optimized for a small window (900x900 by default, clamped to the work area so it never opens taller than the screen)
 - **Modal forms**: Popup forms for adding/editing tasks
 - **IPC communication**: Secure file operations between main and renderer
 - **Task persistence**: JSON file for active tasks, one dated TSV log per day for history
