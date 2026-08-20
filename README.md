@@ -76,8 +76,9 @@ time order, with a mini calendar above it. Ctrl+M toggles it.
 - **Dark mode**
 - **Five languages**: English, Korean, Chinese, Japanese, Spanish
 - **Configurable date format** — the display changes, the stored data does not
-- **Notifications** an hour and fifteen minutes before a deadline, and when one
-  passes. Can be silenced per task
+- **Notifications** before a deadline and when one passes. How far before is up
+  to you — set a default, then override it on any task that needs more warning.
+  It doubles as the point where the row turns Due Soon. Can be silenced per task
 - **Installable on a phone** as a PWA, and it opens offline
 
 ## Installation

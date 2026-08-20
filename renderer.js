@@ -15,11 +15,21 @@ const DATE_FORMATS = [
 
 const STORAGE_FORMAT = 'YYYY-MM-DD HH:mm';
 
-// 목표 시각 기준 알림 시점(분). 가장 큰 값이 곧 '임박' 판정 기준이다.
-// 상태 배지와 알림이 같은 목록을 읽으므로 둘이 어긋날 수 없다.
-// 예전에는 getTaskStatus의 1시간과 checkUpcomingTasks의 60·15분이 서로 모르는
-// 상수라, 한쪽만 바꾸면 표시와 알림이 따로 놀았다.
-const LEAD_MINUTES = [60, 15];
+// 목표 시각 기준 '임박' 시점(분). 이 값 하나가 상태 배지와 알림을 함께 몬다 -
+// 둘을 따로 두면 한쪽만 바꿨을 때 표시와 알림이 따로 논다.
+//
+// 이건 시계가 아니라 판단이다. "마감 1시간 전"은 목표 시각 칸을 보면 이미 아는
+// 사실이지만, "지금 손대지 않으면 늦는다"는 그 일을 아는 사람만 정할 수 있다.
+// 세 시간 걸리는 보고서와 오 분이면 끝나는 메일이 같은 시점에 급해질 이유가 없다.
+// 그래서 기본값은 설정에, 작업별 예외는 편집 창에 둔다.
+//
+// 알림은 이 시점에 한 번뿐이다. 예전에는 60분·15분 두 번이었는데, 시점을 직접
+// 정할 수 있게 된 뒤로는 앱이 한 번 더 부르는 것이 그 결정을 못 믿는 셈이 된다.
+// 놓쳐도 배지가 그동안 계속 빨갛고, 마감을 넘기면 초과 알림이 울린다.
+const DEFAULT_LEAD_MINUTES = 60;
+
+// 설정에 내놓는 값들. 0은 "미리 알리지 마라"로, 배지도 초과 전까지 뜨지 않는다.
+const LEAD_CHOICES = [0, 5, 10, 15, 30, 60, 120, 180, 360, 1440];
 
 // 보기 전환 버튼의 두 아이콘. 누르면 무엇이 되는지를 그린다.
 const CALENDAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
@@ -121,6 +131,8 @@ class TaskManager {
         // 항상 위로 둘지. main.js 는 창을 만들 때 alwaysOnTop: true 로 시작하므로
         // 저장된 값이 false 일 때만 시작하면서 내려준다.
         this.alwaysOnTop = localStorage.getItem('alwaysOnTop') !== 'false';
+        // 새 작업이 물려받을 기본 임박 시점
+        this.defaultLeadMinutes = this.loadDefaultLead();
         // 'list' | 'calendar'. 목록은 무엇이 있는지, 달력은 언제 몰리는지에 강하다.
         this.viewMode = localStorage.getItem('viewMode') === 'calendar' ? 'calendar' : 'list';
         this.calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
@@ -223,6 +235,10 @@ class TaskManager {
         this.setTitle('addTaskBtn', 'addTask');
         this.updateDateFormatControls();
         this.updateSearchColumnControl();
+        this.setText('settingsLeadLabel', 'notifyBefore');
+        this.setText('settingsLeadHint', 'notifyBeforeHint');
+        this.setText('labelTaskLead', 'notifyBefore');
+        this.updateLeadControls();
         this.setText('settingsAlwaysOnTopLabel', 'alwaysOnTop');
         this.setText('settingsAlwaysOnTopHint', 'alwaysOnTopHint');
         this.setText('alwaysOnTopOnBtn', 'on');
@@ -847,6 +863,10 @@ class TaskManager {
 
     // 설정 창: 투명도, 언어, 테마, 알림 기본값, 태그 프리셋
     wireSettings() {
+        document.getElementById('defaultLeadSelect').addEventListener('change', (e) => {
+            this.changeDefaultLead(Number(e.target.value));
+        });
+
         document.querySelectorAll('[data-always-on-top]').forEach(button => {
             button.addEventListener('click', () => {
                 this.changeAlwaysOnTop(button.dataset.alwaysOnTop === 'on');
@@ -1524,6 +1544,91 @@ class TaskManager {
         if (this.isElectron) window.electronAPI.setUnfocusedOpacity(opacity);
     }
 
+    // 이 작업이 쓰는 임박 시점(분). 작업에 값이 없으면 기본값을 따른다.
+    // 0도 유효한 값이라 존재 여부로만 판단해야 한다 - 거짓 판정으로 걸러내면
+    // "미리 알리지 마라"가 조용히 기본값으로 되돌아간다.
+    leadFor(task) {
+        const own = task && task.leadMinutes;
+        if (Number.isFinite(own)) return own;
+        // 생성자를 거치지 않고 만든 인스턴스(단위 테스트가 그렇게 한다)에서도
+        // NaN 이 새어나가지 않게 상수로 되돌아간다.
+        return Number.isFinite(this.defaultLeadMinutes)
+            ? this.defaultLeadMinutes
+            : DEFAULT_LEAD_MINUTES;
+    }
+
+    loadDefaultLead() {
+        // 값이 없을 때와 0으로 저장했을 때를 구분해야 한다. Number(null) 은 0 이고
+        // 0 은 '미리 알리지 않음'이라는 유효한 선택지라, 그냥 변환하면 한 번도
+        // 설정한 적 없는 사용자가 알림을 전혀 못 받는다.
+        const saved = localStorage.getItem('defaultLeadMinutes');
+        if (saved === null) return DEFAULT_LEAD_MINUTES;
+        const minutes = Number(saved);
+        return LEAD_CHOICES.includes(minutes) ? minutes : DEFAULT_LEAD_MINUTES;
+    }
+
+    changeDefaultLead(minutes) {
+        this.defaultLeadMinutes = minutes;
+        localStorage.setItem('defaultLeadMinutes', String(minutes));
+        this.updateLeadControls();
+        // 배지 기준이 바뀌므로 다시 그린다
+        this.renderTasks();
+    }
+
+    // 선택지는 시점을 고르는 자리라 '30분 전'처럼 읽혀야 한다. describeLead 는
+    // 알림 본문('30분 남았습니다')이라 여기에 그대로 쓰면 어색하다.
+    describeLeadChoice(minutes) {
+        if (minutes === 0) return this.getLocalizedText('leadNone');
+        if (minutes % 60 === 0) {
+            return this.getLocalizedText('leadChoiceHours').replace('{n}', minutes / 60);
+        }
+        return this.getLocalizedText('leadChoiceMinutes').replace('{n}', minutes);
+    }
+
+    // 작업 편집 창의 선택지를 만든다 (첫 항목 '기본값 따름'은 HTML에 있다)
+    buildTaskLeadOptions() {
+        const select = document.getElementById('taskLead');
+        if (!select || select.options.length > 1) return;
+        for (const minutes of LEAD_CHOICES) {
+            const option = document.createElement('option');
+            option.value = String(minutes);
+            select.appendChild(option);
+        }
+    }
+
+    updateLeadControls() {
+        this.buildTaskLeadOptions();
+        const select = document.getElementById('defaultLeadSelect');
+        if (!select) return;
+
+        if (select.options.length !== LEAD_CHOICES.length) {
+            select.innerHTML = '';
+            for (const minutes of LEAD_CHOICES) {
+                const option = document.createElement('option');
+                option.value = String(minutes);
+                select.appendChild(option);
+            }
+        }
+        LEAD_CHOICES.forEach((minutes, index) => {
+            select.options[index].textContent = this.describeLeadChoice(minutes);
+        });
+        select.value = String(this.defaultLeadMinutes);
+
+        // 작업 편집 창의 '기본값 따름' 항목도 같은 문구를 쓴다
+        const taskSelect = document.getElementById('taskLead');
+        if (taskSelect) {
+            const inherit = taskSelect.querySelector('option[value=""]');
+            if (inherit) {
+                inherit.textContent = this.getLocalizedText('leadInherit')
+                    .replace('{n}', this.describeLeadChoice(this.defaultLeadMinutes));
+            }
+            LEAD_CHOICES.forEach(minutes => {
+                const option = taskSelect.querySelector(`option[value="${minutes}"]`);
+                if (option) option.textContent = this.describeLeadChoice(minutes);
+            });
+        }
+    }
+
     changeAlwaysOnTop(onTop) {
         this.alwaysOnTop = onTop;
         localStorage.setItem('alwaysOnTop', String(onTop));
@@ -2099,8 +2204,8 @@ class TaskManager {
         }
 
         const targetDate = new Date(task.targetDateTime);
-        // 임박 기준은 알림 시점 중 가장 이른 것. 두 값을 따로 두면 어긋난다.
-        const urgentFrom = new Date(targetDate.getTime() - LEAD_MINUTES[0] * 60 * 1000);
+        // 배지와 알림이 같은 값을 읽으므로 둘이 어긋날 수 없다
+        const urgentFrom = new Date(targetDate.getTime() - this.leadFor(task) * 60 * 1000);
 
         if (now > targetDate) {
             return { status: 'overdue', text: this.getLocalizedText('overdue') };
@@ -2777,6 +2882,11 @@ class TaskManager {
             
             this.editingTaskId = task.id;
 
+            // 0도 유효한 값이라 존재 여부로 본다. 거짓 판정으로 걸러내면
+            // "미리 알리지 마라"가 '기본값 따름'으로 되돌아간다.
+            document.getElementById('taskLead').value =
+                Number.isFinite(task.leadMinutes) ? String(task.leadMinutes) : '';
+
             // 편집에서도 반복 설정을 그대로 보여주고 고칠 수 있게 한다
             document.getElementById('repeatGroup').style.display = '';
             this.populateRepeatControls(task);
@@ -2784,6 +2894,7 @@ class TaskManager {
             // Add mode
             modalTitle.textContent = this.getLocalizedText('addNewTask');
             form.reset();
+            document.getElementById('taskLead').value = '';
             document.getElementById('repeatGroup').style.display = '';
             this.resetRepeatControls();
             
@@ -3154,6 +3265,11 @@ class TaskManager {
             tags,
             completed: false,
             highlighted: false,
+            // 비워두면 필드 자체를 넣지 않는다 - 그래야 나중에 기본값을 바꿨을 때
+            // 따라온다. 0을 저장해 버리면 '알리지 않음'으로 굳는다.
+            ...(document.getElementById('taskLead').value === ''
+                ? {}
+                : { leadMinutes: Number(document.getElementById('taskLead').value) }),
             notificationEnabled: this.editingTaskId ? 
                 this.tasks.find(t => t.id === this.editingTaskId).notificationEnabled : 
                 this.defaultNotificationEnabled,
@@ -3546,20 +3662,19 @@ class TaskManager {
             
             const targetDate = new Date(task.targetDateTime);
 
-            // 상태 배지와 같은 목록을 쓴다
-            for (const minutes of LEAD_MINUTES) {
-                const key = `${task.id}-lead${minutes}`;
-                const fireFrom = new Date(targetDate.getTime() - minutes * 60 * 1000);
+            // 배지와 같은 값을 읽는다. 0이면 미리 알리지 않는다.
+            const lead = this.leadFor(task);
+            const key = `${task.id}-lead`;
+            const fireFrom = new Date(targetDate.getTime() - lead * 60 * 1000);
 
-                if (now >= fireFrom && now < targetDate && !this.notifiedTasks.has(key)) {
-                    // 예정된 리드가 아니라 **실제로 남은 시간**을 말한다. 40분 남은
-                    // 작업을 방금 추가하면 60분 창에 이미 들어와 있어 곧바로 울리는데,
-                    // 그때 "1시간 남았습니다"는 사실이 아니다. 앱을 껐다 켠 뒤에도
-                    // 마찬가지다 - 8분 남았는데 15분이라고 하게 된다.
-                    const remaining = Math.round((targetDate - now) / 60000);
-                    await this.showTaskNotification(task, this.describeLead(remaining));
-                    this.rememberNotified(key);
-                }
+            if (lead > 0 && now >= fireFrom && now < targetDate && !this.notifiedTasks.has(key)) {
+                // 예정된 시점이 아니라 **실제로 남은 시간**을 말한다. 40분 남은
+                // 작업을 방금 추가하면 60분 창에 이미 들어와 있어 곧바로 울리는데,
+                // 그때 "1시간 남았습니다"는 사실이 아니다. 앱을 껐다 켠 뒤에도
+                // 마찬가지다 - 8분 남았는데 60분이라고 하게 된다.
+                const remaining = Math.round((targetDate - now) / 60000);
+                await this.showTaskNotification(task, this.describeLead(remaining));
+                this.rememberNotified(key);
             }
 
             // 시간 초과 알림

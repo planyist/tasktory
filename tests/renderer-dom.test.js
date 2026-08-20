@@ -1359,10 +1359,10 @@ describe('reminder lead times', () => {
         return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`
     }
 
-    // The badge threshold and the notification times used to be separate
+    // The badge threshold and the notification time used to be separate
     // hardcoded constants that merely happened to agree at 60 minutes. They
-    // read one list now, so they cannot drift apart.
-    test('the urgent badge starts at the widest reminder', async () => {
+    // read one value now, so they cannot drift apart.
+    test('the urgent badge starts at the lead time', async () => {
         const manager = await boot([
             task('early', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(90) }),
             task('due', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(45) })
@@ -1372,17 +1372,64 @@ describe('reminder lead times', () => {
         expect(manager.getTaskStatus(manager.tasks[1]).status).toBe('urgent')
     })
 
-    test('fires one notification per reminder, once each', async () => {
+    // One notification, not two. Once the moment is the user's to choose,
+    // ringing again second-guesses the choice they made.
+    test('fires once, however often it is checked', async () => {
         const manager = await boot([
             task('a', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(10) })
         ])
-        manager.isElectron = true
 
         await manager.checkUpcomingTasks()
         await manager.checkUpcomingTasks()
 
-        // 60 and 15 are both inside the window; 10 minutes out, both have passed.
-        expect(electronAPI.showNotification).toHaveBeenCalledTimes(2)
+        expect(electronAPI.showNotification).toHaveBeenCalledTimes(1)
+    })
+
+    // The whole point of the setting: a task that takes three hours has to go
+    // red three hours out, not one.
+    test('a task can widen its own window', async () => {
+        const manager = await boot([
+            task('a', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(120) })
+        ])
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('inprogress')
+
+        manager.tasks[0].leadMinutes = 180
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('urgent')
+    })
+
+    // 0 is a real choice - "do not warn me" - and must survive being falsy.
+    test('a lead of zero means no badge and no notification', async () => {
+        const manager = await boot([
+            task('a', {
+                startDateTime: minutesFromNow(-300),
+                targetDateTime: minutesFromNow(5),
+                leadMinutes: 0
+            })
+        ])
+
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('inprogress')
+        await manager.checkUpcomingTasks()
+        expect(electronAPI.showNotification).not.toHaveBeenCalled()
+    })
+
+    test('a task without its own value follows the default', async () => {
+        const manager = await boot([
+            task('a', { startDateTime: minutesFromNow(-300), targetDateTime: minutesFromNow(45) })
+        ])
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('urgent')
+
+        manager.changeDefaultLead(30)
+
+        expect(manager.getTaskStatus(manager.tasks[0]).status).toBe('inprogress')
+    })
+
+    // Number(null) is 0, and 0 is a valid choice, so a plain conversion would
+    // leave anyone who never opened settings with no notifications at all.
+    test('an unset default is one hour, not zero', async () => {
+        const manager = await boot([task('a')])
+
+        expect(localStorage.getItem('defaultLeadMinutes')).toBeNull()
+        expect(manager.defaultLeadMinutes).toBe(60)
     })
 })
 
