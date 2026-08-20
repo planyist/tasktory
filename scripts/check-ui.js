@@ -126,6 +126,25 @@ app.whenReady().then(async () => {
         hoverLight === hoverDark && hoverLight.includes('47, 158, 79'),
         `light=${hoverLight} dark=${hoverDark}`)
 
+    // 색을 가진 버튼은 다크에서도 그 색이어야 한다. body.dark-mode .btn 이
+    // #2d2d2d 로 덮어쓰는 일이 추가 버튼, 태그 프리셋 추가 버튼에서 차례로
+    // 일어났다 - 셋째가 나오기 전에 목록으로 잡는다.
+    const COLOURED = ['#addTaskBtn', '#addTagPresetBtn']
+    const colours = (dark) => run(
+        `taskManager.darkMode = ${dark}; taskManager.applyTheme();
+         JSON.stringify(${JSON.stringify(COLOURED)}.map((sel) => {
+             const el = document.querySelector(sel)
+             return el ? getComputedStyle(el).backgroundColor : null
+         }))`)
+    const [colourLight, colourDark] = [
+        JSON.parse(await colours(false)), JSON.parse(await colours(true))]
+    const greyed = COLOURED.filter((sel, i) =>
+        colourLight[i] !== null && colourLight[i] !== colourDark[i])
+    check('색이 있는 버튼이 다크에서도 그 색', greyed.length === 0,
+        greyed.length
+            ? greyed.map((sel, i) => sel + ' ' + colourLight[i] + ' -> ' + colourDark[i]).join(', ')
+            : COLOURED.join(', ') + ' 확인')
+
     // 표 머리는 테마마다 색이 달라야 한다 (같으면 한쪽 규칙이 지고 있다는 뜻)
     const headBg = (dark) => run(
         `taskManager.darkMode = ${dark}; taskManager.applyTheme();

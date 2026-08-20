@@ -115,6 +115,7 @@ of Jest was green:
 | border presence matches across themes | icon buttons bordered in dark only |
 | add button green in both themes | `body.dark-mode .btn` eating the green |
 | add button green **on hover** too | `body.dark-mode .btn:hover:not(:disabled)` eating it, which the resting check missed |
+| every coloured button keeps its colour in dark | `body.dark-mode .btn` turning the tag-preset Add button grey |
 | header colour differs by theme | `body.dark-mode thead` declared twice, so the light band never applied in dark |
 | column widths equal across pages | `table-layout: auto` recomputing per page |
 | table height with and without the pager | pager at 34px stealing 10px from the table |
@@ -572,6 +573,8 @@ contributes its argument, so both are (0,4,1) — so source order decided, and i
 dark the green turned grey the moment the pointer arrived. The fix is a fourth
 class (`body.dark-mode .btn.icon-btn.add-btn:hover`), which wins on specificity
 and no longer depends on where in the file it sits.
+
+**A coloured button loses its colour in dark unless it out-ranks `body.dark-mode .btn`.** This has now happened three times — the add button's background, the add button's hover, and the tag-preset Add button, which `.tag-preset-add button` (0,1,1) could not defend against `body.dark-mode .btn` (0,2,1). The check no longer tests one button: `COLOURED` in `check-ui.js` lists them and compares both themes. Add to that list whenever a button gets a colour of its own.
 
 **`check:ui` needs `show: true`.** A hidden window never applies `:hover`, and
 `CSS.forcePseudoState` over CDP did not reach `getComputedStyle` either — both

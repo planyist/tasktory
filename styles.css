@@ -3203,6 +3203,15 @@ body.dark-mode .btn {
     border-color: #555;
 }
 
+/* 태그 프리셋의 추가 버튼은 색을 가진 버튼이라 위 규칙에 먹히면 안 된다.
+   .tag-preset-add button 은 (0,1,1) 이라 body.dark-mode .btn 에 진다.
+   클래스를 하나 더 얹어 순서와 무관하게 이기게 한다. */
+body.dark-mode .tag-preset-add button.btn {
+    background-color: var(--color-primary);
+    color: #fff;
+    border-color: var(--color-primary);
+}
+
 body.dark-mode .btn:hover:not(:disabled) {
     background-color: #3d3d3d;
     border-color: #666;
