@@ -42,7 +42,9 @@ const createWindow = () => {
     // 레벨이라 다른 앱 창이 전부 뒤로 깔린다. 기본 alwaysOnTop 은 보통 창들
     // 위에만 서고 대화상자에는 양보한다.
 
-    mainWindow.loadFile('index.html')
+    // __dirname 기준이어야 한다. 상대 경로는 앱 경로를 따라가므로, main.js 를
+    // 다른 스크립트가 불러오면 그쪽 폴더에서 index.html 을 찾아 빈 창이 뜬다.
+    mainWindow.loadFile(path.join(__dirname, 'index.html'))
 
     mainWindow.on('focus', () => {
         mainWindow.setOpacity(1.0)

@@ -73,8 +73,9 @@ time order, with a mini calendar above it. Ctrl+M toggles it.
 
 ### The rest
 
-- **Always-on-top is a pin** in the collapsed side strip — where the window is
-  actually sitting over your work. Upright means pinned, tipped over means not
+- **Always-on-top is a pin** in the collapsed side strip, and it applies only
+  there — the expanded window behaves like any other. Upright and solid means
+  pinned, tipped over and hollow means not
 - **Dark mode**
 - **Five languages**: English, Korean, Chinese, Japanese, Spanish
 - **Configurable date format** — the display changes, the stored data does not

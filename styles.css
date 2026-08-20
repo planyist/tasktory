@@ -1167,8 +1167,14 @@ body.dark-mode .btn.icon-btn:hover {
     opacity: 0.55;
 }
 
+/* 꽂혀 있으면 속까지 찬다. 기울기만으로도 읽히지만, 채움이 더해지면 옆에
+   비교할 것 없이도 "지금 켜져 있다"가 한눈에 온다. */
 .pin-btn.active {
     color: #2a7fb8;
+}
+
+.pin-btn.active svg path {
+    fill: currentColor;
 }
 
 body.dark-mode .pin-btn.active {

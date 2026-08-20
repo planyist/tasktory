@@ -2130,21 +2130,50 @@ describe('always-on-top pin', () => {
         expect(pin().title).toBe('Keep this window on top')
     })
 
-    // main.js holds it in a plain variable, so the renderer has to push the
-    // stored value on every launch - the same shape as unfocused opacity.
-    test('remembers the choice and pushes it to main', async () => {
+    // main.js holds it in a plain variable, so the renderer has to push on every
+    // launch - the same shape as unfocused opacity.
+    test('remembers the choice across presses', async () => {
         const manager = await boot([task('a')])
 
         pin().click()
-
         expect(localStorage.getItem('alwaysOnTop')).toBe('false')
-        expect(window.electronAPI.setAlwaysOnTop).toHaveBeenLastCalledWith(false)
+        expect(manager.alwaysOnTop).toBe(false)
 
         pin().click()
-
         expect(localStorage.getItem('alwaysOnTop')).toBe('true')
-        expect(window.electronAPI.setAlwaysOnTop).toHaveBeenLastCalledWith(true)
         expect(manager.alwaysOnTop).toBe(true)
+    })
+
+    // The window is created with alwaysOnTop: true and starts expanded, so this
+    // push is what takes it back off. Without it a fresh launch floats over
+    // everything with no pin in reach to explain why.
+    test('starts the expanded window off the top', async () => {
+        await boot([task('a')])
+
+        expect(window.electronAPI.setAlwaysOnTop).toHaveBeenCalledWith(false)
+    })
+
+    // Expanded there is no pin, so there is no way to see the state or change
+    // it. A 900px window sitting over everything with nothing to explain it
+    // reads as a fault, so the setting only applies to the strip.
+    test('only holds the window on top while collapsed', async () => {
+        const manager = await boot([task('a')])
+        expect(manager.alwaysOnTop).toBe(true)
+
+        manager.toggleCollapse()
+        expect(window.electronAPI.setAlwaysOnTop).toHaveBeenLastCalledWith(true)
+
+        manager.toggleCollapse()
+        expect(window.electronAPI.setAlwaysOnTop).toHaveBeenLastCalledWith(false)
+    })
+
+    test('a strip with the pin off stays off the top', async () => {
+        const manager = await boot([task('a')])
+        pin().click()
+
+        manager.toggleCollapse()
+
+        expect(window.electronAPI.setAlwaysOnTop).toHaveBeenLastCalledWith(false)
     })
 })
 
