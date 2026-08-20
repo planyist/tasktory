@@ -15,6 +15,10 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 
 > **Adding a source file? Add it to `build.files` in package.json.** That list is an allowlist, not a filter. `recurrence.js` was missing from it for two releases: the packaged app 404'd on the script tag, `Recurrence` stayed undefined, and every guard fell through silently, so repeat rules did nothing once installed. Running from source hides this entirely. After a build, check the packaged contents:
 > `npx asar list dist/win-unpacked/resources/app.asar`
+>
+> **`npx asar list` only reads. `npx asar extract-file` writes into the current directory** — run it on `package.json` from the project root and it silently replaces the real one with the packaged copy, which is whatever version that build was. The symptom is `npm error Missing script: "test"`, several commands after the damage. `git checkout -- package.json` restores it. Use `list`, or extract into a scratch directory.
+>
+> **The build fails if anything holds `dist/win-unpacked/resources/app.asar`** — `EnsureEmptyDir ... being used by another process`. Usually the installed app is running, but a scanner can hold it with no process visible in `Get-Process`. Build elsewhere rather than hunting the handle: `npx electron-builder --win -c.directories.output=dist-build`.
 
 ## Recurring Tasks
 

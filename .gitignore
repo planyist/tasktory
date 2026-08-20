@@ -1,8 +1,10 @@
 # Node.js dependencies
 node_modules/
 
-# Build outputs
+# Build outputs. dist-build/ 는 dist/ 가 잠겼을 때 쓰는 대체 출력 경로다
+# (CLAUDE.md 의 빌드 함정 참고). 여기에 없으면 산출물 전체가 커밋된다.
 dist/
+dist-build/
 build/
 
 # Data files (user data should not be committed)
