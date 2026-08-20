@@ -24,6 +24,13 @@ const settle = async () => {
 // 오지 않았다는 것을 확인하는 시간이라, 지나야 선택이 일어난다.
 const pastDoubleClick = () => new Promise((r) => setTimeout(r, 300))
 
+// 실제 브라우저는 같은 자리의 두 번째 클릭에 detail: 2 를 준다. dblclick 이벤트는
+// 두 클릭이 같은 요소일 때만 오므로 앱은 그것을 쓰지 않는다.
+const doubleClick = (el) => {
+    el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 }))
+    el.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 2 }))
+}
+
 const task = (id, overrides = {}) => ({
     id,
     content: `task ${id}`,
@@ -705,9 +712,7 @@ describe('multi-select', () => {
         const manager = await boot([task('a')])
         jest.spyOn(manager, 'showModal').mockImplementation(() => {})
 
-        document
-            .querySelector('#tasksBody tr')
-            .dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
+        doubleClick(document.querySelector('#tasksBody tr'))
 
         expect(manager.showModal).toHaveBeenCalledWith(
             expect.objectContaining({ id: 'a' })
@@ -721,11 +726,8 @@ describe('multi-select', () => {
     test('a double-click does not touch the selection', async () => {
         const manager = await boot([task('a'), task('b')])
         jest.spyOn(manager, 'showModal').mockImplementation(() => {})
-        const row = document.querySelector('#tasksBody tr')
 
-        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
-        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
-        row.dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
+        doubleClick(document.querySelector('#tasksBody tr'))
         await pastDoubleClick()
 
         expect(manager.showModal).toHaveBeenCalled()
@@ -733,8 +735,24 @@ describe('multi-select', () => {
         expect(document.querySelector('#tasksBody tr .task-select').checked).toBe(false)
     })
 
-    // The point of reading detail rather than timing: an ordinary single click
-    // is not held back at all.
+    // The second click can arrive after the first toggle has already run, if
+    // the pair is slower than DOUBLE_CLICK_MS. It is undone rather than left,
+    // so the outcome is the same either way.
+    test('a slow double-click undoes the toggle it already made', async () => {
+        const manager = await boot([task('a')])
+        jest.spyOn(manager, 'showModal').mockImplementation(() => {})
+        const row = document.querySelector('#tasksBody tr')
+
+        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 }))
+        await pastDoubleClick()
+        expect(manager.selectedTaskIds.has('a')).toBe(true)
+
+        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 2 }))
+
+        expect(manager.selectedTaskIds.size).toBe(0)
+        expect(manager.showModal).toHaveBeenCalled()
+    })
+
     test('a single click selects once the double-click window passes', async () => {
         const manager = await boot([task('a')])
         const row = document.querySelector('#tasksBody tr')
@@ -751,9 +769,7 @@ describe('multi-select', () => {
         const manager = await boot([task('a')])
         jest.spyOn(manager, 'showModal').mockImplementation(() => {})
 
-        document
-            .querySelector('#tasksBody .task-select')
-            .dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
+        doubleClick(document.querySelector('#tasksBody .task-select'))
 
         expect(manager.showModal).not.toHaveBeenCalled()
     })

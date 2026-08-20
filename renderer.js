@@ -23,11 +23,13 @@ const DEFAULT_LEAD_MINUTES = 60;
 // 설정에 내놓는 값들. 0은 "미리 알리지 마라"로, 배지도 초과 전까지 뜨지 않는다.
 const LEAD_CHOICES = [0, 5, 10, 15, 30, 60, 120, 180, 360, 1440];
 
-// 행을 한 번 눌렀는지 두 번 눌렀는지 가리는 데 기다리는 시간. OS 의 더블클릭
-// 인식 시간(Windows 기본 500ms)을 그대로 쓰면 평범한 선택이 그만큼 굳는다.
-// 짧을수록 선택이 빠르지만, 느린 더블클릭이 이 창을 넘기면 토글이 이미 일어난
-// 뒤가 된다. 그 경우는 dblclick 에서 되돌리므로 값을 낮게 잡을 수 있다.
-const DOUBLE_CLICK_MS = 130;
+// 행을 한 번 눌렀는지 두 번 눌렀는지 가리는 데 기다리는 시간. OS 의 인식 시간
+// (Windows 기본 500ms)을 그대로 쓰면 평범한 선택이 그만큼 굳는다.
+//
+// 다만 실제 더블클릭 간격보다 짧게 잡으면 안 된다. 짧으면 토글이 먼저 일어났다가
+// 두 번째 클릭에 되돌려지는데, 되돌리기가 제대로 동작해도 그 사이가 눈에는
+// 토글로 보인다. 130ms 까지 내렸다가 바로 그 신고를 받았다.
+const DOUBLE_CLICK_MS = 200;
 
 // 보기 전환 버튼의 두 아이콘. 누르면 무엇이 되는지를 그린다.
 const CALENDAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
@@ -723,10 +725,22 @@ class TaskManager {
             // 실제 더블클릭은 그보다 훨씬 빠르고, 선택이 굳는 시간은 짧을수록
             // 좋다.
             clearTimeout(this.rowClickTimer);
-            // detail 은 브라우저가 센 연속 클릭 횟수다. 1 이면 새로 시작하는
-            // 묶음이므로 되돌릴 표식을 버린다. 2 이상이면 같은 묶음의 두 번째
-            // 클릭이라, 첫 클릭이 남긴 표식을 dblclick 이 쓸 수 있게 둔다.
-            if (e.detail <= 1) this.pendingRowToggle = null;
+
+            // 두 번째 클릭은 detail 로 알아본다. dblclick 이벤트는 두 클릭이
+            // 같은 요소일 때만 뜨므로, 첫 토글이 행을 다시 그리고 나면 오지
+            // 않는다. detail 은 브라우저가 센 연속 클릭 횟수라 그 영향이 없다.
+            if (e.detail > 1) {
+                // 이미 일어난 토글이 있으면 되돌린다 (대기 시간을 넘긴 경우).
+                if (this.pendingRowToggle === box.dataset.taskId) {
+                    box.checked = !box.checked;
+                    this.toggleTaskSelection(box.dataset.taskId, box.checked);
+                }
+                this.pendingRowToggle = null;
+                this.editTask(box.dataset.taskId);
+                return;
+            }
+
+            this.pendingRowToggle = null;
             this.rowClickTimer = setTimeout(() => {
                 box.checked = !box.checked;
                 this.toggleTaskSelection(box.dataset.taskId, box.checked);
@@ -772,23 +786,6 @@ class TaskManager {
         // 시작/목표 시각 헤더를 누르면 임시로 정렬한다.
         document.querySelectorAll('#tasksTable thead [data-sort]').forEach(th => {
             th.addEventListener('click', () => this.cycleSort(th.dataset.sort));
-        });
-
-        // 두 번 누르면 편집. 기다리던 토글은 취소하고, 대기 시간을 넘겨 이미
-        // 일어난 토글은 되돌린다 - 어느 쪽이든 선택은 손대지 않은 채로 남는다.
-        document.getElementById('tasksTable').addEventListener('dblclick', (e) => {
-            if (e.target.closest('.task-select')) return;
-            const row = e.target.closest('#tasksBody tr');
-            const box = row && row.querySelector('.task-select');
-            if (!box) return;
-
-            clearTimeout(this.rowClickTimer);
-            if (this.pendingRowToggle === box.dataset.taskId) {
-                box.checked = !box.checked;
-                this.toggleTaskSelection(box.dataset.taskId, box.checked);
-            }
-            this.pendingRowToggle = null;
-            this.editTask(box.dataset.taskId);
         });
 
     }
