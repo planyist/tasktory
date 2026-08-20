@@ -17,15 +17,7 @@ const STORAGE_FORMAT = 'YYYY-MM-DD HH:mm';
 
 // 목표 시각 기준 '임박' 시점(분). 이 값 하나가 상태 배지와 알림을 함께 몬다 -
 // 둘을 따로 두면 한쪽만 바꿨을 때 표시와 알림이 따로 논다.
-//
-// 이건 시계가 아니라 판단이다. "마감 1시간 전"은 목표 시각 칸을 보면 이미 아는
-// 사실이지만, "지금 손대지 않으면 늦는다"는 그 일을 아는 사람만 정할 수 있다.
-// 세 시간 걸리는 보고서와 오 분이면 끝나는 메일이 같은 시점에 급해질 이유가 없다.
-// 그래서 기본값은 설정에, 작업별 예외는 편집 창에 둔다.
-//
-// 알림은 이 시점에 한 번뿐이다. 예전에는 60분·15분 두 번이었는데, 시점을 직접
-// 정할 수 있게 된 뒤로는 앱이 한 번 더 부르는 것이 그 결정을 못 믿는 셈이 된다.
-// 놓쳐도 배지가 그동안 계속 빨갛고, 마감을 넘기면 초과 알림이 울린다.
+// 기본값은 설정에, 작업별 예외는 편집 창에 있고, 알림은 이 시점에 한 번뿐이다.
 const DEFAULT_LEAD_MINUTES = 60;
 
 // 설정에 내놓는 값들. 0은 "미리 알리지 마라"로, 배지도 초과 전까지 뜨지 않는다.
@@ -160,7 +152,6 @@ class TaskManager {
             return savedLanguage;
         }
         
-        // Auto-detect based on system locale as fallback
         const systemLocale = this.getSystemLocale();
         if (systemLocale.startsWith('ko')) {
             return 'ko';
@@ -192,9 +183,7 @@ class TaskManager {
     }
 
     setupUI() {
-        // Adjust UI based on Electron mode vs browser mode
         if (!this.isElectron) {
-            // Browser mode: show info bar and export/import buttons
             const infoBar = document.getElementById('infoBar');
             if (infoBar) infoBar.style.display = 'block';
         }
@@ -236,7 +225,6 @@ class TaskManager {
 
 
     updateUIText() {
-        // Update all UI text with localized versions
         
         // Header buttons tooltips
         this.setTitle('addTaskBtn', 'addTask');
@@ -339,10 +327,8 @@ class TaskManager {
         
         this.setText('aboutCloseModal', 'closeModalShortcut');
         
-        // 뒤에 붙인 절들은 표로 묶어 돌린다. 위쪽처럼 한 줄씩 늘어놓으면 번역
-        // 키가 늘 때마다 세 줄씩 붙고, 새로 넣은 항목을 여기 등록하는 걸 잊기
-        // 쉽다 - 실제로 잊어서 영어로 고정돼 있었다.
-        // ':'가 붙는 쪽은 <strong> 제목이다.
+        // 정보 창에 새 항목을 넣으면 여기에도 등록해야 번역된다.
+        // aboutHeadings 쪽은 ':'가 붙는 <strong> 제목이다.
         const aboutText = {
             aboutViewsTitle: 'views',
             aboutSearchTitle: 'searchAndFilters',
@@ -482,10 +468,8 @@ class TaskManager {
     }
 
     applyLanguageTheme() {
-        // Remove active class from all language buttons
         document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
         
-        // Add active class to current language button
         const currentLangBtn = document.querySelector(`[data-lang="${this.locale}"]`);
         if (currentLangBtn) {
             currentLangBtn.classList.add('active');
@@ -504,10 +488,8 @@ class TaskManager {
         this.applyLanguageTheme();
         this.updateUIText();
         
-        // Re-render tasks to update localized content
         this.renderTasks();
         
-        // Update tags help text with new language
         this.updateTagsHelpText();
     }
 
@@ -527,8 +509,8 @@ class TaskManager {
         }
     }
 
-    // 배선은 화면 영역별로 나눠 둔다. 예전에는 329줄짜리 메서드 하나였고,
-    // 어디에 무엇이 붙는지 보려면 처음부터 끝까지 읽어야 했다.
+    // 배선은 화면 영역별로 나눠 둔다. 호출 순서는 바꾸지 말 것 - 같은 요소의
+    // 같은 이벤트에 둘이 붙는 자리가 있다.
     setupEventListeners() {
         this.wireToolbar();
         this.wireSearchBox();
@@ -545,12 +527,10 @@ class TaskManager {
 
     // 상단 아이콘 줄과 접기/펴기
     wireToolbar() {
-        // Add new task button
         document.getElementById('addTaskBtn').addEventListener('click', () => {
             this.showModal();
         });
 
-        // Export/import buttons
         document.getElementById('exportBtn').addEventListener('click', () => {
             this.exportData();
         });
@@ -563,17 +543,14 @@ class TaskManager {
             this.importData(e.target.files[0]);
         });
 
-        // Settings button
         document.getElementById('settingsBtn').addEventListener('click', () => {
             this.showSettingsModal();
         });
 
-        // About button
         document.getElementById('aboutBtn').addEventListener('click', () => {
             this.showAboutModal();
         });
 
-        // Open log folder button
         document.getElementById('openLogFolderBtn').addEventListener('click', async () => {
             if (this.isElectron && window.electronAPI.openLogFolder) {
                 try {
@@ -584,7 +561,6 @@ class TaskManager {
             }
         });
 
-        // Statistics button
         document.getElementById('statisticsBtn').addEventListener('click', () => {
             this.showStatisticsModal();
         });
@@ -594,27 +570,22 @@ class TaskManager {
             this.changeAlwaysOnTop(!this.alwaysOnTop);
         });
 
-        // Collapse button
         document.getElementById('collapseBtn').addEventListener('click', () => {
             this.toggleCollapse();
         });
 
-        // Collapsed expand button
         document.getElementById('collapsedExpandBtn').addEventListener('click', () => {
             this.toggleCollapse();
         });
 
-        // Clear search button
     }
 
     // 검색창과 지우기 버튼
     wireSearchBox() {
-        // Clear search button
         document.getElementById('clearSearchBtn').addEventListener('click', () => {
             this.clearSearch();
         });
 
-        // Search input events
         document.getElementById('searchInput').addEventListener('input', (e) => {
             const clearBtn = document.getElementById('clearSearchBtn');
             if (e.target.value.trim()) {
@@ -624,12 +595,10 @@ class TaskManager {
             }
         });
 
-        // Close modals
     }
 
     // 모달 닫기, 작업 폼, 반복 주기 변경
     wireModals() {
-        // Close modals
         document.querySelectorAll('.close').forEach(closeBtn => {
             closeBtn.addEventListener('click', (e) => {
                 const modalType = e.target.getAttribute('data-modal');
@@ -655,23 +624,19 @@ class TaskManager {
         // 잘못 누르면 입력이 통째로 날아가기 때문이다. 닫는 방법은 X 버튼,
         // 취소 버튼, ESC 세 가지로 충분하다.
 
-        // Form submission
         document.getElementById('taskForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.saveTask();
         });
 
-        // 반복 주기 변경 시 간격/요일 입력 표시 갱신
         document.getElementById('taskRepeat').addEventListener('change', () => {
             this.updateRepeatVisibility();
         });
 
-        // 다중 선택
     }
 
     // 전체 선택, 행 체크박스, 일괄 버튼
     wireSelection() {
-        // 다중 선택
         document.getElementById('selectAllTasks').addEventListener('change', (e) => {
             this.toggleSelectAll(e.target.checked);
         });
@@ -706,12 +671,10 @@ class TaskManager {
             this.changeDateFormat(e.target.value);
         });
 
-        // 날짜/시간 선택기
     }
 
     // 직접 만든 날짜/시간 선택기
     wireDateTimePicker() {
-        // 날짜/시간 선택기
         document.querySelectorAll('.datetime-pick-btn').forEach(button => {
             button.addEventListener('click', () => this.openDateTimePicker(button.dataset.target));
         });
@@ -729,18 +692,12 @@ class TaskManager {
 
         });
 
-        // 표 안에서는 어디를 눌러도 그 행이 선택된다. 태그·상태 칩도 예외가 아니다.
-        // 예전에는 칩을 누르면 검색으로 빠졌는데, 빠른 필터가 같은 일을 늘 같은
-        // 자리에서 여러 개까지 걸 수 있게 하면서 쓸모가 없어졌다. 남겨두면 행을
-        // 고르려다 칩을 스치기만 해도 목록이 통째로 바뀌어 버린다.
     }
 
     // 표 클릭 = 행 선택
     wireTaskTable() {
-        // 표 안에서는 어디를 눌러도 그 행이 선택된다. 태그·상태 칩도 예외가 아니다.
-        // 예전에는 칩을 누르면 검색으로 빠졌는데, 빠른 필터가 같은 일을 늘 같은
-        // 자리에서 여러 개까지 걸 수 있게 하면서 쓸모가 없어졌다. 남겨두면 행을
-        // 고르려다 칩을 스치기만 해도 목록이 통째로 바뀌어 버린다.
+        // 표 안에서는 어디를 눌러도 그 행이 선택된다. 태그·상태 칩도 예외가 아니다 -
+        // 칩이 검색으로 빠지면 행을 고르려다 스치기만 해도 목록이 통째로 바뀐다.
         document.getElementById('tasksTable').addEventListener('click', (e) => {
             // 행 어디를 눌러도 선택된다. 체크박스만 노리기에는 표적이 작다.
             // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
@@ -792,11 +749,9 @@ class TaskManager {
             th.addEventListener('click', () => this.cycleSort(th.dataset.sort));
         });
 
-        // 두 번 누르면 편집. 클릭을 미뤘다가 더블클릭인지 보고 판단하는 방법도 있지만,
-        // Windows 의 더블클릭 인식 시간이 500ms 라 평범한 선택 클릭이 전부 그만큼
-        // 굳는다. 대신 토글이 두 번 일어나도록 두는데, 짝수 번 토글은 제자리로
-        // 돌아오므로 선택 상태는 누르기 전과 같다. 남는 것은 잠깐의 깜빡임뿐이고
-        // 그마저 바로 열리는 모달이 덮는다.
+        // 두 번 누르면 편집. 첫 클릭을 미뤘다가 판단하면 평범한 선택까지 OS의
+        // 더블클릭 인식 시간(500ms)만큼 굳는다. 토글이 두 번 일어나도록 두면
+        // 짝수 번이라 선택 상태는 제자리로 돌아온다.
         document.getElementById('tasksTable').addEventListener('dblclick', (e) => {
             if (e.target.closest('.task-select')) return;
             const row = e.target.closest('#tasksBody tr');
@@ -805,12 +760,10 @@ class TaskManager {
             this.editTask(box.dataset.taskId);
         });
 
-        // 달력 보기
     }
 
     // 보기 전환, 달 이동, 접힘 미니 달력, 완료 목록
     wireCalendar() {
-        // 달력 보기
         document.getElementById('viewModeBtn').addEventListener('click', () => this.toggleViewMode());
         document.getElementById('calPrev').addEventListener('click', () => this.moveCalendarMonth(-1));
         document.getElementById('calNext').addEventListener('click', () => this.moveCalendarMonth(1));
@@ -836,12 +789,9 @@ class TaskManager {
 
         // 완료 목록은 열 때마다 읽는다. 미리 채워두면 다른 창에서 완료한 것이나
         // 자정을 넘긴 뒤의 목록이 낡은 채로 뜬다.
-        // 마우스를 올리면 열린다. 단, **실제로 움직여서** 들어왔을 때만이다.
-        // 예전에는 mouseenter 만 보고 열었는데, 스티커에서 펼치거나 최소화에서
-        // 돌아올 때 창이 포인터 밑으로 옮겨오면서 mouseenter 가 떴다. 손을 대지도
-        // 않았는데 목록이 표를 덮었고, 마우스가 움직인 게 아니라 내용도 낡은
-        // 것이었다. 창이 움직여 들어온 경우에는 mousemove 가 뜨지 않으므로,
-        // 그것을 조건으로 삼으면 의도한 호버만 남는다.
+        // mouseenter 가 아니라 mousemove 여야 한다. 창이 포인터 밑으로 옮겨와도
+        // mouseenter 는 뜨므로(펼치기·최소화 복귀), 손을 대지 않았는데 목록이
+        // 열린다. mousemove 는 실제로 움직여야 뜬다.
         const counter = document.getElementById('completionCounter');
         counter.addEventListener('mousemove', () => {
             const box = document.getElementById('completedList');
@@ -869,12 +819,10 @@ class TaskManager {
             if (document.hidden) this.hideCompletedList();
         });
 
-        // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
     }
 
     // 빠른 필터 칩
     wireQuickFilters() {
-        // 빠른 필터. 칩은 매번 다시 그려지므로 위임으로 붙인다.
         document.getElementById('quickFilters').addEventListener('click', (e) => {
             const chip = e.target.closest('.quick-chip');
             if (!chip) return;
@@ -899,12 +847,10 @@ class TaskManager {
             this.renderTasks();
         });
 
-        // Confirmation form submission
     }
 
     // 완료·삭제 확인 모달
     wireConfirmDialog() {
-        // Confirmation form submission
         document.getElementById('confirmForm').addEventListener('submit', (e) => {
             e.preventDefault();
             this.handleConfirmAction();
@@ -914,7 +860,6 @@ class TaskManager {
             this.hideConfirmModal();
         });
 
-        // Table button click events (event delegation)
     }
 
     // 설정 창: 투명도, 언어, 테마, 알림 기본값, 태그 프리셋
@@ -927,7 +872,6 @@ class TaskManager {
             this.changeUnfocusedOpacity(parseFloat(e.target.value));
         });
 
-        // Language toggle buttons
         document.querySelectorAll('.lang-btn').forEach(btn => {
             btn.addEventListener('click', () => {
                 const languageCode = btn.getAttribute('data-lang');
@@ -935,7 +879,6 @@ class TaskManager {
             });
         });
 
-        // Theme toggle buttons
         document.getElementById('lightModeBtn').addEventListener('click', () => {
             this.toggleTheme(false);
         });
@@ -944,7 +887,6 @@ class TaskManager {
             this.toggleTheme(true);
         });
 
-        // Notification toggle buttons (safe check)
         const notificationOnBtn = document.getElementById('notificationOnBtn');
         const notificationOffBtn = document.getElementById('notificationOffBtn');
         
@@ -960,7 +902,6 @@ class TaskManager {
             });
         }
 
-        // Tag preset add button
         const addTagPresetBtn = document.getElementById('addTagPresetBtn');
         if (addTagPresetBtn) {
             addTagPresetBtn.addEventListener('click', () => {
@@ -968,7 +909,6 @@ class TaskManager {
             });
         }
 
-        // Color example buttons in settings
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('color-example')) {
                 e.preventDefault();
@@ -977,7 +917,6 @@ class TaskManager {
             }
         });
 
-        // Tag preset input enter key
         const newTagPresetInput = document.getElementById('newTagPreset');
         if (newTagPresetInput) {
             newTagPresetInput.addEventListener('keypress', (e) => {
@@ -987,7 +926,6 @@ class TaskManager {
             });
         }
 
-        // Search functionality
         document.getElementById('searchInput').addEventListener('input', (e) => {
             this.searchQuery = e.target.value.toLowerCase();
             this.renderTasks();
@@ -997,10 +935,8 @@ class TaskManager {
     async loadTasks() {
         try {
             if (this.isElectron) {
-                // Electron mode: use IPC
                 this.tasks = await window.electronAPI.loadTasks();
             } else {
-                // Browser mode: use localStorage
                 const tasksData = localStorage.getItem('tasklogger_tasks');
                 const logsData = localStorage.getItem('tasklogger_logs');
                 
@@ -1013,10 +949,8 @@ class TaskManager {
             this.logs = [];
         }
 
-        // 완료한 작업은 tasks.json에 남기지 않는다. 이력은 TSV가 맡고, 그 쪽에는
-        // TASK_ID·시작·목표·태그·내용이 모두 들어 있어 완전한 중복이었다.
-        // 실제로 읽는 코드가 한 군데도 없었는데도 파일과 백업에 계속 쌓였다.
-        // 예전 데이터와 예전 백업에서 들어오는 것들을 여기서 걷어낸다.
+        // 완료한 작업은 tasks.json 에 남기지 않는다 - 이력은 TSV가 맡는다.
+        // 예전 데이터나 예전 백업에서 들어온 것을 여기서 걷어낸다.
         const dropped = this.tasks.filter(t => t.completed).length;
         if (dropped > 0) {
             this.tasks = this.tasks.filter(t => !t.completed);
@@ -1036,10 +970,8 @@ class TaskManager {
     async writeTasks() {
         try {
             if (this.isElectron) {
-                // Electron mode: use IPC
                 await window.electronAPI.saveTasks(this.tasks);
             } else {
-                // Browser mode: use localStorage
                 localStorage.setItem('tasklogger_tasks', JSON.stringify(this.tasks));
                 localStorage.setItem('tasklogger_logs', JSON.stringify(this.logs));
             }
@@ -1094,9 +1026,8 @@ class TaskManager {
         }
     }
 
-    // 반복 규칙에는 표에 보이는 행이 하나씩 있어야 한다. 규칙만 남고 행이
-    // 없으면(예전 방식으로 만든 데이터를 열거나, 백업을 가져온 경우) 규칙이
-    // 눈에 안 보여서 손댈 수도 멈출 수도 없다.
+    // 규칙 하나에 표의 행 하나. 행이 없으면 규칙이 눈에 안 보여 손댈 수도
+    // 멈출 수도 없다 (예전 데이터나 가져온 백업에서 그럴 수 있다).
     async ensureRuleRows() {
         if (typeof Recurrence === 'undefined') return;
 
@@ -1145,9 +1076,8 @@ class TaskManager {
         const rule = this.rules.find(r => r.id === task.ruleId);
         if (!rule || rule.enabled === false) return false;
 
-        // 현재 회차 다음 것으로 한 칸만 간다. 밀린 걸 한 번에 건너뛰지 않으므로
-        // 실제로 남은 건수만큼 완료를 눌러야 하고, 몰아서 넘기려면 사용자가
-        // 날짜를 직접 고치면 된다.
+        // 한 칸만 간다. 밀린 회차를 몰아서 건너뛰지 않는다 - 몇 건이 실제
+        // 작업이었는지는 앱이 알 수 없다.
         const currentKey = task.startDateTime.split(' ')[0];
         const nextKey = Recurrence.nextOccurrenceAfter(rule, currentKey);
         if (!nextKey) return false;
@@ -1168,11 +1098,9 @@ class TaskManager {
             console.log('Adding log entry:', action, 'for task:', task.id, 'details:', details);
 
             if (this.isElectron) {
-                // Electron mode: use IPC
                 const result = await window.electronAPI.addLog(logEntry);
                 console.log('Log write result:', result);
             } else {
-                // Browser mode: add to local array
                 this.logs.push(logEntry);
                 await this.saveTasks(); // Save to localStorage
             }
@@ -1182,7 +1110,6 @@ class TaskManager {
     }
 
     generateId() {
-        // UUID v4 형식으로 생성
         return 'task-' + 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
             const r = Math.random() * 16 | 0;
             const v = c === 'x' ? r : (r & 0x3 | 0x8);
@@ -1220,10 +1147,8 @@ class TaskManager {
         const helpMessage = document.getElementById('tagsHelpMessage');
         const inlineHelp = document.getElementById('tagsInlineHelp');
         
-        // Check if there are any tag presets
         const hasPresets = this.tagPresets && this.tagPresets.length > 0;
         
-        // Always show inline help text
         inlineHelp.textContent = this.getLocalizedText('tagsInlineHelp');
         
         if (!hasPresets) {
@@ -1820,12 +1745,9 @@ ${filePath}`);
         return formatWithPattern(date, 'YYYY-MM-DD');
     }
 
-    // 날짜별 작업 묶음. 작업은 **마감일 하루에만** 놓인다.
-    // 예전에는 시작일부터 마감일까지 걸친 날을 전부 칠했는데, 시작 시각은
-    // 대개 "적어둔 때"라서 마감을 며칠 미루면 그 사이가 통째로 칠해졌다.
-    // 편집한 날에만 있어야 할 것이 이전 날짜에 그대로 남아 누적된 것처럼
-    // 보였고, 달력 전체가 같은 작업으로 번졌다.
-    // 마감이 없는 상시 업무만 기준이 없으므로 시작한 날에 둔다.
+    // 날짜별 작업 묶음. 작업은 마감일 하루에만 놓인다 - 시작 시각은 대개
+    // "적어둔 때"라서, 시작~마감을 전부 칠하면 마감을 미룰 때마다 그 사이가
+    // 통째로 번진다. 마감이 없으면 기준이 없으므로 시작한 날에 둔다.
     tasksByDay(tasks) {
         const byDay = new Map();
 
@@ -2352,7 +2274,6 @@ ${filePath}`);
             this.renderQuickFilters();
         }
 
-        // Always update completion counter
         this.updateCompletionCounter();
         this.updateCollapsedCompletionCounter();
     }
@@ -2486,7 +2407,6 @@ ${filePath}`);
             return;
         }
 
-        // Pagination logic
         const totalPages = Math.ceil(activeTasks.length / this.tasksPerPage);
         
         // Auto-adjust current page if it's beyond available pages
@@ -2501,7 +2421,6 @@ ${filePath}`);
         const tasksToShow = activeTasks.slice(startIndex, endIndex);
 
         tasksToShow.forEach((task, pageIndex) => {
-            // Get actual position in unfiltered active tasks list
             const allActiveTasks = this.tasks.filter(t => !t.completed);
             const actualPosition = allActiveTasks.findIndex(t => t.id === task.id) + 1;
             const taskStatus = this.getTaskStatus(task);
@@ -2535,10 +2454,8 @@ ${filePath}`);
                 row.classList.add('highlighted');
             }
             
-            // Task content without tag formatting
             const plainContent = task.content;
             
-            // Tags from the tags field with color support
             const displayTags = task.tags ? task.tags.split(/\s+/).filter(tag => tag.startsWith('#')).map(tag => {
                 const parsed = this.parseTagWithColor(tag);
                 return `<span class="tag" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
@@ -2573,8 +2490,8 @@ ${filePath}`);
             return;
         }
 
-        // 창 높이는 활성 작업 전체 기준으로 계산되므로 여기서도 전부 그린다.
-        // 예전에는 20개로 잘라서 개수가 많으면 아래쪽이 빈 채로 남았다.
+        // 창 높이가 활성 작업 전체 기준으로 계산되므로 여기서도 전부 그린다.
+        // 개수를 자르면 잘린 만큼 창 아래가 빈 채로 남는다.
         const tasksToShow = activeTasks;
 
         tasksToShow.forEach((task, index) => {
@@ -2601,9 +2518,8 @@ ${filePath}`);
             // 상당 부분을 먹고, 내용이 숫자로 시작하면 "1. 1. ..."처럼 겹쳐 보인다.
             // 자르기는 CSS의 text-overflow에 맡긴다 - 실제 폭에 맞춰 잘리므로
             // 글자 수로 미리 자르는 것보다 정확하다.
-            // 순번은 별도 span으로 넣고 색을 달리한다. 예전처럼 내용 문자열
-            // 앞에 그냥 붙이면, 내용이 '1.'로 시작할 때 어느 쪽이 순번인지
-            // 구분되지 않는다.
+            // 순번은 별도 span 이어야 한다. 내용 문자열 앞에 붙이면 내용이
+            // '1.'로 시작할 때 어느 쪽이 순번인지 구분되지 않는다.
             const order = document.createElement('span');
             order.className = 'mini-index';
             order.textContent = index + 1;
@@ -2623,11 +2539,11 @@ ${filePath}`);
 
             // 상태색은 하이라이트가 없을 때만 칠한다. 하이라이트는 사용자가
             // 직접 지정한 것이라 자동 판정인 상태색보다 우선한다.
-            // (getTaskStatus는 {status, text} 객체다. 예전에는 이걸 문자열과
-            // 비교해서 이 분기가 한 번도 참이 된 적이 없었다.)
+            // getTaskStatus 는 {status, text} 객체다. 문자열로 비교하면 이
+            // 분기가 한 번도 참이 되지 않는다.
             if (!task.highlighted) {
-                // 상태 이름을 그대로 클래스로 쓴다. 예전에는 urgent/overdue만
-                // 나열해서 '진행중'과 '대기'가 색 없이 남았다.
+                // 상태 이름을 그대로 클래스로 쓴다. 목록을 손으로 나열하면
+                // 새 상태가 색 없이 남는다.
                 li.classList.add(this.getTaskStatus(task).status);
             }
 
@@ -2816,9 +2732,8 @@ ${filePath}`);
     }
 
 
-    // 스로틀은 걸지 않는다. 행마다 있던 버튼이 사라져 중복 이벤트가 날 곳이
-    // 없어졌고, 남은 것은 막대 버튼 한 번에 한 번뿐이다. 반면 켰다 바로 끄는
-    // 연타는 정상적인 조작이라 스로틀이 있으면 그쪽만 조용히 삼켜진다.
+    // 스로틀은 걸지 않는다. 켰다 바로 끄는 연타가 정상적인 조작이라, 스로틀은
+    // 중복 이벤트가 아니라 그쪽을 삼킨다.
     async toggleHighlight(taskId) {
         const task = this.tasks.find(t => t.id === taskId);
         if (task) {
@@ -3702,9 +3617,8 @@ ${filePath}`);
                 };
             }
 
-            // 태그 프리셋과 화면 설정은 localStorage에만 있어서 백업에서 빠져
-            // 있었다. 새 PC에서 복원하면 태그 색과 표시 설정을 처음부터 다시
-            // 만들어야 했다.
+            // 태그 프리셋과 화면 설정은 localStorage 에만 있다. 여기 담지
+            // 않으면 백업에서 빠져 새 PC에서 처음부터 다시 만들어야 한다.
             data.preferences = this.collectPreferences();
 
             const stamp = formatWithPattern(new Date(), 'YYYY-MM-DD');
@@ -3769,8 +3683,7 @@ ${filePath}`);
                 if (data.tasks) {
                     if (confirm(this.getLocalizedText('replaceDataConfirm'))) {
                         if (this.isElectron) {
-                            // Electron mode: use IPC
-                            const success = await window.electronAPI.importData(data);
+                                        const success = await window.electronAPI.importData(data);
                             if (success) {
                                 await this.loadTasks();
                                 await this.loadRules();
@@ -3854,10 +3767,9 @@ ${filePath}`);
             const fireFrom = new Date(targetDate.getTime() - lead * 60 * 1000);
 
             if (lead > 0 && now >= fireFrom && now < targetDate && !this.notifiedTasks.has(key)) {
-                // 예정된 시점이 아니라 **실제로 남은 시간**을 말한다. 40분 남은
-                // 작업을 방금 추가하면 60분 창에 이미 들어와 있어 곧바로 울리는데,
-                // 그때 "1시간 남았습니다"는 사실이 아니다. 앱을 껐다 켠 뒤에도
-                // 마찬가지다 - 8분 남았는데 60분이라고 하게 된다.
+                // 걸린 시점이 아니라 실제로 남은 시간을 말한다. 40분 남은 작업을
+                // 방금 추가하면 60분 창에 이미 들어와 있어 곧바로 울리는데,
+                // 그때 "1시간 남았습니다"는 사실이 아니다.
                 const remaining = Math.round((targetDate - now) / 60000);
                 await this.showTaskNotification(task, this.describeLead(remaining));
                 this.rememberNotified(key);
@@ -4201,9 +4113,8 @@ ${filePath}`);
                 };
             }
         }
-        // 색을 지정하지 않은 태그. 예전에는 전부 같은 파랑이라, 손으로 친 태그와
-        // 색 없는 프리셋이 화면에서 구분되지 않았다. 이름에서 색을 유도해
-        // 태그마다 고유한 색을 갖게 한다 - 같은 이름이면 언제 어디서 봐도 같은 색이다.
+        // 색을 지정하지 않은 태그는 이름에서 색을 유도한다. 해시가 이름에만
+        // 의존하므로 같은 태그는 어디서 봐도, 재시작해도 같은 색이다.
         return {
             content: tag, // Keep #
             color: this.derivedTagColor(tag),

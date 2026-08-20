@@ -29,11 +29,8 @@
             <div class="table-controls">
                 <div id="completionCounter" class="completion-counter">
                     <span id="completionCounterText"></span> <span id="completionCount" class="completion-count">0</span>
-                    <!-- 오늘 무엇을 끝냈는지. 숫자만으로는 기억을 되살릴 수 없다 -->
                     <div id="completedList" class="completed-list"></div>
                 </div>
-                <!-- 검색과 빠른 필터는 한 덩어리다. 필터가 화면 왼쪽 끝에서
-                     시작하면 검색과 무관한 별도 버튼처럼 보인다. -->
                 <div class="controls-stack">
                 <div class="controls-actions">
                     <select id="searchColumn" class="search-column"></select>
@@ -76,13 +73,9 @@
                                 <circle cx="12" cy="17" r="1.5" fill="currentColor"/>
                             </svg>
                         </button>
-                        <!-- 보기 전환은 다른 화면 전환(접기)과 나란히 둔다. 빠른 필터
-                             옆에 두었더니 필터 칩 하나처럼 보였다. -->
                         <button type="button" id="viewModeBtn" class="btn icon-btn view-toggle"></button>
-                        <!-- 고정은 설정해두는 값이 아니라 그때그때 뒤집는 상태라
-                             창 상태를 다루는 접기 옆에 둔다. 이 줄에서 유일하게
-                             상태를 가진 버튼이므로 아이콘은 그대로 두고 색으로
-                             켜짐을 알린다. -->
+<!-- 이 줄 끝의 셋은 화면 상태를 바꾸는 버튼이다 (순서를 테스트가 고정한다).
+                             핀만 상태를 가지므로 아이콘 대신 색으로 켜짐을 알린다. -->
                         <button type="button" id="alwaysOnTopBtn" class="btn icon-btn pin-btn">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <line x1="12" y1="17" x2="12" y2="22"/>
@@ -139,7 +132,6 @@
                         </tr>
                     </thead>
                     <tbody id="tasksBody">
-                        <!-- Dynamically generated task list -->
                     </tbody>
                 </table>
             </div>
@@ -166,9 +158,6 @@
 
             <!-- Pagination: 표 바깥에 두어야 스크롤과 무관하게 항상 표 아래에 고정된다 -->
             <div id="paginationContainer" class="pagination-container">
-                <!-- 총 개수와 쪽당 개수는 페이지 넘김 옆에 둔다. 설정 창에 넣으면
-                     "지금 몇 건인가"를 보려고 창을 열어야 하고, 쪽당 개수도 목록을
-                     보면서 바꾸는 값이라 손이 닿는 곳에 있어야 한다. -->
                 <span id="paginationTotal" class="pagination-total"></span>
                 <div class="pagination">
                     <button id="prevPageBtn" class="pagination-btn">
@@ -191,7 +180,7 @@
                 </select>
             </div>
 
-            <!-- Collapsed Mini Layout (100px width) -->
+<!-- 접힘 스트립 (150px) -->
             <div id="collapsedMiniLayout" class="collapsed-mini-layout">
                 <button id="collapsedExpandBtn" class="collapsed-expand-btn" title="Expand">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

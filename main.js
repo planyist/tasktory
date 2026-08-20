@@ -16,11 +16,9 @@ const createWindow = () => {
         minWidth: 900,
         minHeight: 400,
         alwaysOnTop: true,
-        // minimizable: false 로 Win+D 를 건너뛰게 해봤지만 대가가 너무 컸다.
-        // 항상 위에 뜨는 창에서 최소화를 빼면 치울 방법이 없어진다 - 작업표시줄에서
-        // 다른 앱을 불러도 그 위를 계속 가리고, 사용자는 창을 내릴 수가 없다.
-        // 최소화는 남긴다. Win+D 로 내려가는 것은 정상 동작으로 받아들이고,
-        // 화면에 두되 작게 하고 싶을 때는 접기(Ctrl+M)를 쓴다.
+        // minimizable 은 건드리지 않는다. 항상 위에 뜨는 창에서 최소화를 빼면
+        // 치울 방법이 없어진다 - 작업표시줄에서 다른 앱을 불러도 그 위를 계속
+        // 가린다. Win+D 로 내려가는 것은 정상 동작으로 받아들인다.
         resizable: true,
         x: 100,
         y: 50,
@@ -32,25 +30,20 @@ const createWindow = () => {
         }
     })
     
-    // 레벨은 올리지 않는다. 한때 Win+D 를 막으려고 'screen-saver'(그 위가 없는
-    // 레벨)로 올렸는데, 애초에 Win+D 는 최소화라서 이걸로 막히지도 않았고
-    // (minimizable: false 가 맡는다), 대신 다른 앱 창이 전부 뒤로 깔렸다.
-    // 기본 alwaysOnTop 은 보통 창들 위에만 서고 대화상자에는 양보한다 -
-    // 스티커에는 그 정도면 충분하다.
+    // setAlwaysOnTop 으로 레벨을 올리지 않는다. 'screen-saver' 는 위가 없는
+    // 레벨이라 다른 앱 창이 전부 뒤로 깔린다. 기본 alwaysOnTop 은 보통 창들
+    // 위에만 서고 대화상자에는 양보한다.
 
     mainWindow.loadFile('index.html')
-    
-    
-    // 포커스 상태에 따른 opacity 처리
+
     mainWindow.on('focus', () => {
         mainWindow.setOpacity(1.0)
     })
-    
+
     mainWindow.on('blur', () => {
         mainWindow.setOpacity(unfocusedOpacity)
     })
-    
-    // 개발 시에만 개발자 도구 열기
+
     if (process.env.NODE_ENV === 'development') {
         mainWindow.webContents.openDevTools()
     }
@@ -58,21 +51,16 @@ const createWindow = () => {
     keepWindowWhereItWasPut()
 }
 
-// 잠금·화면보호기에서 돌아오면 창이 제자리에 없다는 신고가 있었다.
-// 앱 안에서 창을 옮기는 곳은 접기/펴기 두 군데뿐이고 주기적으로 도는 것도 없으니,
-// 미는 쪽은 Windows다 - 세션이 풀릴 때 디스플레이 구성이 잠깐 바뀌고, 그때 창이
-// 작업 영역 기준으로 다시 놓인다.
+// 창을 미는 쪽은 Windows다. 세션이 풀릴 때 디스플레이 구성이 잠깐 바뀌면서
+// 창이 작업 영역 기준으로 다시 놓인다.
 //
-// 첫 시도는 'moved'/'resized' 를 계속 지켜보며 마지막 자리를 기억하는 방식이었는데,
-// 그 이벤트는 **Windows가 옮겼을 때도 똑같이 뜬다**. 그래서 밀려난 자리가 곧
-// "사용자가 둔 자리"로 덮여 기준 자체가 오염됐고, 되돌릴 것이 없어졌다.
-// 접힌 창이 화면 한가운데 떠 있게 된 것이 그 결과다.
-//
-// 그래서 잠기기 **전에** 찍어두고, 풀린 뒤 그것으로 되돌린다. 그 사이에 들어오는
-// 이동 이벤트는 전부 무시한다 - 그때 움직이는 것은 사용자가 아니다.
+// 'moved'/'resized' 를 계속 지켜보는 방식은 쓸 수 없다. 그 이벤트는 Windows가
+// 옮겼을 때도 똑같이 뜨므로, 밀려난 자리가 곧 "사용자가 둔 자리"로 덮여 기준이
+// 사라진다. 그래서 잠기는 순간에 스냅샷을 찍고, 복원이 끝날 때까지 이동을
+// 무시한다.
 
 // 되돌릴지, 어디로 되돌릴지 판단만 하는 순수 함수. 창도 이벤트도 모르므로
-// 그대로 테스트할 수 있다.
+// Electron 런타임 없이 테스트할 수 있다.
 const boundsToRestore = (saved, current, displays) => {
     if (!saved || !current) return null
     if (saved.x === current.x && saved.y === current.y
@@ -122,7 +110,6 @@ const keepWindowWhereItWasPut = () => {
         }, 600)
     }
 
-    // 잠기는 순간을 잡아 그때 자리를 확정해 둔다
     powerMonitor.on('lock-screen', disrupt)
     powerMonitor.on('suspend', disrupt)
 
@@ -133,17 +120,14 @@ const keepWindowWhereItWasPut = () => {
     screen.on('display-removed', restore)
 }
 
-// 테스트에서 판단 로직만 따로 확인한다 (Electron 런타임 없이)
 module.exports = { boundsToRestore }
 
 // GPU 가속 비활성화 (호환성 문제 해결)
 app.disableHardwareAcceleration()
 
-// 앱 준비 완료 시 창 생성
 app.whenReady().then(() => {
     createWindow()
     
-    // macOS에서 dock 아이콘 클릭 시 창 다시 생성
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow()
@@ -151,20 +135,18 @@ app.whenReady().then(() => {
     })
 })
 
-// 모든 창이 닫혔을 때 앱 종료 (macOS 제외)
 app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') {
         app.quit()
     }
 })
 
-// 데이터 파일 경로 (패키지된 앱에서도 작동하도록 userData 사용)
+// 패키지된 앱에서도 쓰기 가능한 곳이어야 하므로 userData 아래에 둔다
 const dataDir = path.join(app.getPath('userData'), 'data')
 const logsDir = path.join(app.getPath('userData'), 'logs')
 const tasksFile = path.join(dataDir, 'tasks.json')
 const rulesFile = path.join(dataDir, 'rules.json')
 
-// 데이터 디렉토리 생성
 const ensureDataDir = async () => {
     try {
         await fs.mkdir(dataDir, { recursive: true })
@@ -174,7 +156,7 @@ const ensureDataDir = async () => {
     }
 }
 
-// 오늘 날짜의 로그 파일 경로 생성 (로컬 타임존 사용)
+// 로그 파일 이름은 UTC가 아니라 로컬 날짜를 따른다
 const getTodayLogFile = () => {
     const today = new Date();
     const year = today.getFullYear();
@@ -186,7 +168,6 @@ const getTodayLogFile = () => {
     return logFile
 }
 
-// 태스크 로드
 ipcMain.handle('load-tasks', async () => {
     try {
         await ensureDataDir()
@@ -197,7 +178,6 @@ ipcMain.handle('load-tasks', async () => {
     }
 })
 
-// 태스크 저장
 ipcMain.handle('save-tasks', async (event, tasks) => {
     try {
         await ensureDataDir()
@@ -209,7 +189,7 @@ ipcMain.handle('save-tasks', async (event, tasks) => {
     }
 })
 
-// 반복 규칙 로드 (규칙은 태스크와 별도 파일로 관리한다)
+// 규칙은 tasks.json 과 다른 파일에 둔다
 ipcMain.handle('load-rules', async () => {
     try {
         await ensureDataDir()
@@ -220,7 +200,6 @@ ipcMain.handle('load-rules', async () => {
     }
 })
 
-// 반복 규칙 저장
 ipcMain.handle('save-rules', async (event, rules) => {
     try {
         await ensureDataDir()
@@ -232,7 +211,6 @@ ipcMain.handle('save-rules', async (event, rules) => {
     }
 })
 
-// 로그 추가 (날짜별 파일로 저장)
 const writeLogEntry = async (logEntry) => {
     try {
         console.log('IPC: Adding log entry:', logEntry.action, 'for task:', logEntry.task.id);
@@ -240,7 +218,6 @@ const writeLogEntry = async (logEntry) => {
         const todayLogFile = getTodayLogFile()
         console.log('IPC: Log file path:', todayLogFile);
         
-        // Check if file exists and add header if it's a new file
         let fileExists = false;
         try {
             await fs.access(todayLogFile);
@@ -248,16 +225,13 @@ const writeLogEntry = async (logEntry) => {
             console.log('IPC: Log file exists');
         } catch (error) {
             console.log('IPC: Log file does not exist, will create with header');
-            // File doesn't exist, we'll create it with header
         }
         
-        // Add TSV header if file is new
         if (!fileExists) {
             const header = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\n';
             await fs.writeFile(todayLogFile, header);
         }
         
-        // Format timestamp (로컬 타임존 사용)
         const now = new Date();
         const year = now.getFullYear();
         const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -276,7 +250,6 @@ const writeLogEntry = async (logEntry) => {
         const offset = `${offsetSign}${offsetHours}:${offsetMins}`;
         const timestamp = `${year}-${month}-${day}T${hours}:${minutes}:${seconds}${offset}`;
 
-        // Convert action to English
         const actionMap = {
             'ADD': 'ADD',
             'EDIT': 'EDIT', 
@@ -292,7 +265,6 @@ const writeLogEntry = async (logEntry) => {
         };
         const action = actionMap[logEntry.action] || logEntry.action;
         
-        // Convert status to English
         const statusMap = {
             'completed': 'COMPLETED',
             'pending': 'PENDING',
@@ -300,33 +272,26 @@ const writeLogEntry = async (logEntry) => {
             'urgent': 'URGENT',
             'overdue': 'OVERDUE'
         };
-        // Use actual task status from the task object, or determine from completion state
         const taskStatus = logEntry.task.status || (logEntry.task.completed ? 'completed' : 'pending');
         const status = statusMap[taskStatus] || taskStatus.toUpperCase();
         
-        // Task data
         const taskId = logEntry.task.id || logEntry.task.taskId || '';
         const startTime = logEntry.task.startDateTime || '';
         const targetTime = logEntry.task.targetDateTime || '';
         const tags = logEntry.task.tags || '';
         
-        // For content: always use logEntry.details if provided, otherwise use task content
         let content = logEntry.details || logEntry.task.content || '';
         
-        // TSV helper function to escape tab characters and newlines
         const escapeTsvValue = (value) => {
             if (typeof value !== 'string') return value;
             
-            // Replace tabs and newlines with spaces to maintain TSV structure
             return value.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, ' ');
         };
         
-        // Create TSV log line
         const logLine = `${escapeTsvValue(timestamp)}\t${escapeTsvValue(action)}\t${escapeTsvValue(status)}\t${escapeTsvValue(taskId)}\t${escapeTsvValue(startTime)}\t${escapeTsvValue(targetTime)}\t${escapeTsvValue(tags)}\t${escapeTsvValue(content)}\n`;
         
         console.log('IPC: Writing log line:', logLine.substring(0, 100) + '...');
         
-        // Append to log file
         await fs.appendFile(todayLogFile, logLine)
         console.log('IPC: Log file written successfully');
         return true
@@ -362,7 +327,7 @@ const readAllLogs = async () => {
     return logs
 }
 
-// 이력 파일 읽기 (TSV 내보내기용). 백업 JSON과 분리돼 있다.
+// 이력은 백업 JSON과 분리해 TSV로 내보낸다
 ipcMain.handle('read-log-files', async () => {
     try {
         await ensureDataDir()
@@ -373,7 +338,6 @@ ipcMain.handle('read-log-files', async () => {
     }
 })
 
-// 데이터 내보내기 (Electron 모드용)
 ipcMain.handle('export-data', async () => {
     try {
         await ensureDataDir()
@@ -400,7 +364,6 @@ ipcMain.handle('export-data', async () => {
     }
 })
 
-// 데이터 가져오기 (Electron 모드용)
 ipcMain.handle('import-data', async (event, data) => {
     try {
         await ensureDataDir()
@@ -424,12 +387,10 @@ ipcMain.handle('import-data', async (event, data) => {
     }
 })
 
-// 로그 경로 반환
 ipcMain.handle('get-log-path', async () => {
     return logsDir
 })
 
-// 로그 폴더 열기
 ipcMain.handle('open-log-folder', async () => {
     try {
         const { shell } = require('electron')
@@ -442,9 +403,8 @@ ipcMain.handle('open-log-folder', async () => {
     }
 })
 
-// 첨부는 파일을 복사하지 않고 경로만 가리킨다. 완료한 작업은 tasks.json 에서
-// 아예 사라지므로, 사본을 두면 아무도 참조하지 않는 파일이 남는다. 원본은 어차피
-// 사용자 디스크에 그대로 있다.
+// 첨부는 경로만 가리킨다. 완료한 작업은 tasks.json 에서 사라지므로, 사본을
+// 두면 아무도 참조하지 않는 파일이 userData 에 남는다.
 ipcMain.handle('pick-attachments', async () => {
     const result = await dialog.showOpenDialog(mainWindow, {
         properties: ['openFile', 'multiSelections']
@@ -494,7 +454,6 @@ ipcMain.handle('check-attachments', async (event, paths) => {
 
 ipcMain.handle('get-app-version', async () => app.getVersion())
 
-// 손잡이를 끌 때 마우스가 움직인 만큼 창을 옮긴다.
 // CSS의 -webkit-app-region: drag 는 프레임 없는 창(frame: false)용이라, 제목줄이
 // 있는 이 창에서는 Windows가 통째로 무시한다. 그래서 직접 옮긴다.
 // 절대 좌표가 아니라 이동량을 받는다 - 창 위치를 renderer가 알 필요가 없다.
@@ -505,9 +464,6 @@ ipcMain.handle('move-window-by', async (event, dx, dy) => {
     return true
 })
 
-// Opacity 설정
-// 항상 위로 둘지. 스티커처럼 쓰는 사람도 있고, 접었을 때만 눈에 두고 평소에는
-// 다른 창에 자리를 내주고 싶은 사람도 있다.
 ipcMain.handle('set-always-on-top', async (event, onTop) => {
     if (!mainWindow) return false
     mainWindow.setAlwaysOnTop(Boolean(onTop))
@@ -521,7 +477,6 @@ ipcMain.handle('set-unfocused-opacity', async (event, opacity) => {
     }
 })
 
-// 윈도우 알림 표시
 ipcMain.handle('show-notification', async (event, title, body) => {
     const { Notification } = require('electron')
     
@@ -535,7 +490,6 @@ ipcMain.handle('show-notification', async (event, title, body) => {
         
         notification.show()
         
-        // 알림 클릭 시 메인 윈도우 포커스
         notification.on('click', () => {
             if (mainWindow) {
                 mainWindow.focus()
@@ -547,10 +501,8 @@ ipcMain.handle('show-notification', async (event, title, body) => {
     return false
 })
 
-// Count COMPLETE actions in a TSV log (ACTION is the second tab-separated column)
-// 완료 항목을 뽑아낸다. 개수와 목록이 같은 함수에서 나와야 둘이 어긋날 수 없다.
-// 카운터에는 5가 뜨는데 목록에는 4개만 보이는 일이 생기면 어느 쪽이 맞는지
-// 알 수가 없다.
+// ACTION 은 TSV의 두 번째 열이다. 개수와 목록을 한 함수에서 뽑아, 카운터와
+// 목록이 서로 다른 답을 내놓는 일이 없게 한다.
 const completedFromTsv = (logData) => {
     return logData.split('\n')
         .filter(line => line.trim() && !line.startsWith('TIMESTAMP\tACTION\tSTATUS'))
@@ -583,20 +535,17 @@ const readCompleted = async (dateStr) => {
         try {
             return completedFromLegacy(await fs.readFile(path.join(logsDir, `${dateStr}.log`), 'utf8'));
         } catch (legacyError) {
-            // 해당 날짜의 로그가 아예 없음
             return [];
         }
     }
 }
 
-// Get completed tasks count for a specific date from TSV log file
 ipcMain.handle('get-completed-tasks-count', async (event, dateStr) => {
     return (await readCompleted(dateStr)).length;
 })
 
 ipcMain.handle('get-completed-tasks', async (event, dateStr) => readCompleted(dateStr))
 
-// Resize and position window with specific positioning
 ipcMain.handle('resize-and-position-window', async (event, width, height, position) => {
     if (!mainWindow) return false
 
@@ -615,7 +564,6 @@ ipcMain.handle('resize-and-position-window', async (event, width, height, positi
         height = Math.min(height, workArea.height - 150)
         // 최소 크기를 먼저 풀어야 좁은 폭/낮은 높이가 실제로 적용된다
         mainWindow.setMinimumSize(width, 100)
-        // 화면 오른쪽 끝에 붙인다
         x = workArea.x + workArea.width - width
     } else if (position === 'center') {
         mainWindow.setMinimumSize(NORMAL_MIN_WIDTH, 400)
@@ -623,7 +571,6 @@ ipcMain.handle('resize-and-position-window', async (event, width, height, positi
         x = workArea.x + Math.round((workArea.width - width) / 2)
         y = workArea.y + Math.round((workArea.height - height) / 2)
     } else {
-        // Default to current position
         return true
     }
 

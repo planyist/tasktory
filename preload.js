@@ -17,8 +17,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     getCompletedTasksCount: (dateStr) => ipcRenderer.invoke('get-completed-tasks-count', dateStr),
     getCompletedTasks: (dateStr) => ipcRenderer.invoke('get-completed-tasks', dateStr),
     resizeAndPositionWindow: (width, height, position) => ipcRenderer.invoke('resize-and-position-window', width, height, position),
-    // 정보 창의 버전은 손으로 적혀 있었고 0.6.4에서 멈춰 있었다. package.json을
-    // 그대로 읽어오면 릴리스마다 잊어버릴 자리가 하나 줄어든다.
+    // 정보 창의 버전은 package.json 에서 읽는다. 손으로 적으면 릴리스마다
+    // 갱신을 잊을 자리가 하나 늘어난다.
     getAppVersion: () => ipcRenderer.invoke('get-app-version'),
     moveWindowBy: (dx, dy) => ipcRenderer.invoke('move-window-by', dx, dy),
     pickAttachments: () => ipcRenderer.invoke('pick-attachments'),

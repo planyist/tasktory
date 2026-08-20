@@ -426,8 +426,7 @@ body.collapsed-mode-body {
 }
 
 
-/* 표의 상태 색과 같은 값을 쓴다. 예전에는 urgent/overdue만 있어서
-   '진행중'과 '대기'는 접힘 상태에서 아무 색도 안 나왔다. */
+/* 표의 상태 색과 같은 값을 쓴다. 상태가 늘면 여기도 같이 늘려야 한다. */
 .collapsed-task-list li.pending {
     background-color: var(--status-pending-bg) !important;
     border-left: 2px solid var(--status-pending-border);
@@ -746,9 +745,8 @@ body.dark-mode .page-size-select {
 /* 작업 바. 표 위에 항상 떠 있으므로 선택 여부로 표가 밀리지 않는다.
    행마다 버튼을 두는 대신 여기 한 곳에 모아, 표의 16%를 차지하던
    작업 컬럼을 없앴다. */
-/* 배경 상자를 걷어냈다. 선택이 없을 때가 대부분인데, 비어 있는 회색 판이 표
-   바로 위에서 한 줄을 통째로 차지하고 있었다. 자리는 그대로 잡아두므로 선택이
-   바뀌어도 표는 움직이지 않는다. */
+/* 배경은 칠하지 않는다 - 선택이 없을 때가 대부분이라 빈 회색 판만 남는다.
+   자리는 잡아두므로 선택이 바뀌어도 표가 움직이지 않는다. */
 .task-action-bar {
     display: flex;
     align-items: center;
@@ -815,8 +813,7 @@ body.dark-mode .page-size-select {
 .bar-btn.bar-delete { color: #e74c3c; }
 .bar-btn.bar-move { color: #42a5f5; }
 
-/* 라이트에서 패널을 걷어냈으므로 다크도 같이 없앤다. 한쪽만 남기면 같은 줄이
-   테마마다 회색 상자였다가 빈 줄이었다가 한다. */
+/* 패널은 두 테마 모두 없다. 한쪽만 남기면 같은 줄이 테마마다 달라 보인다. */
 
 body.dark-mode .selection-summary.has-selection {
     color: #6ea8fe;
@@ -1087,10 +1084,8 @@ body.dark-mode .date-format-preview {
     align-items: center;
 }
 
-/* .btn 은 오랫동안 두 번 선언돼 있었고, 뒤엣것이 조용히 이기고 있었다.
-   그 사이에 놓인 .icon-btn, .clear-search-btn 은 자기 테두리를 잃었고,
-   라이트에서는 안 보이고 다크에서만 보이는 버튼이 생겼다. 실제로 적용되던
-   값(뒤엣것)으로 한 곳에 모은다. */
+/* 한 곳에서만 선언한다. 이 파일에서 같은 선택자를 두 번 쓰면 뒤엣것이
+   조용히 이기고, 그 사이에 낀 규칙들이 이유 없이 무력해진다. */
 .btn {
     padding: 4px 8px;
     border: 1px solid transparent;
@@ -1129,15 +1124,11 @@ body.dark-mode .date-format-preview {
     transform: scale(1.05);
 }
 
-/* 아이콘 버튼은 옅은 바탕만으로 구분하고 테두리는 두지 않는다.
-   .btn 이 두 번 선언돼 있어(1089행, 2027행) 뒤엣것의 border: 1px solid
-   transparent 가 .icon-btn 의 테두리를 이겼고, 다크에서는 body.dark-mode .btn
-   의 #555 가 그 자리를 채웠다. 그래서 같은 버튼이 라이트에서는 테두리 없이,
-   다크에서는 테두리를 두르고 나왔다. 두 테마 모두 없는 쪽으로 맞춘다.
-   (.btn 중복 선언 자체는 다른 버튼들에도 걸려 있어 여기서 건드리지 않는다) */
-/* 바탕을 따로 칠하지 않는다. 페이지 배경(#f5f5f5)과 3단위밖에 차이 나지 않는
-   #f8f9fa를 깔면 색이 다르다고는 못 하면서 네모난 이음새만 드러난다.
-   눌리는 곳이라는 신호는 호버에서 주면 충분하다. */
+/* 테두리도 바탕도 두지 않는다. 페이지 배경과 몇 단위 차이 나는 바탕을 깔면
+   색이 달라 보이지는 않으면서 네모난 이음새만 드러난다. 눌리는 곳이라는
+   신호는 호버가 준다.
+   .btn 을 클래스 둘로 눌러야 한다 - 두 테마의 테두리 유무가 갈리는 자리라
+   check:ui 가 이 짝을 검사한다. */
 .btn.icon-btn,
 body.dark-mode .btn.icon-btn {
     border: 1px solid transparent;
@@ -1292,9 +1283,8 @@ main {
     /* 스크롤바 자리를 늘 비워둔다. 마지막 페이지처럼 행이 적어 스크롤바가 사라지면
        표가 그 두께(19px)만큼 넓어지고 모든 컬럼이 따라 움직였다. */
     scrollbar-gutter: stable;
-    /* 남은 세로 공간을 전부 채운다. 예전에는 max-height: calc(100vh - 200px)로
-       상단 높이를 하드코딩했는데, 상단 구성이 바뀌면 그만큼 아래에 빈 공간이
-       남는다. flex에 맡겨 두면 상단이 어떻게 바뀌든 알아서 맞는다. */
+    /* 남은 세로 공간을 flex 로 채운다. 상단 높이를 하드코딩하면 상단 구성이
+       바뀔 때마다 아래에 빈 공간이 남는다. */
     flex: 1;
     min-height: 0;
     position: relative;
@@ -1366,15 +1356,14 @@ tbody tr {
    바뀐다고 "여기는 선택이 아니라 검색"까지 읽히지는 않고 손 모양과 번갈아
    튀는 게 산만하기만 했다. */
 
-/* 호버는 홀/짝 어느 행에서든 같은 세기여야 한다. 예전에는 홀수 행이 1.05,
-   짝수 행이 1.12로 두 배 차이가 나서 짝수 행만 확 어두워졌다. */
+/* 홀·짝 어느 행에서든 같은 세기여야 한다. 줄무늬 위에 얹히므로 명도로
+   주면 짝수 행만 더 어두워진다. */
 tbody tr:hover {
     background-color: #f6f8fb;
 }
 
-/* 작업 내용이 여러 줄이면 행이 꽤 높아진다. 그때 왼쪽 번호에서 오른쪽 버튼까지
-   눈이 이동하는 동안 같은 행에 머무는지 알려주는 게 이 줄무늬다.
-   예전 #fafafa는 흰색과 2% 차이라 사실상 보이지 않았다. */
+/* 작업 내용이 여러 줄이면 행이 높아진다. 그때 가로로 눈이 움직이는 동안
+   같은 행인지 알려주는 것이 이 줄무늬라, 흰색과 2% 차이로는 부족하다. */
 tbody tr:nth-child(even) {
     background-color: #e9edf2;
 }
