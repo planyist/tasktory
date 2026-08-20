@@ -138,6 +138,11 @@ class TaskManager {
         this.calendarMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
         // 접힘 미니 달력에서 직접 고른 날. null이면 오늘 우선으로 자동 선택한다.
         this.collapsedPickedKey = null;
+        // 정렬은 화면 상태일 뿐이라 저장하지 않는다. 앱을 껐다 켜면 원래 순서로
+        // 돌아오는 것이 맞다 - 표의 번호가 곧 사용자가 정한 순서이고, 정렬은
+        // 그것을 잠깐 다르게 보는 일이기 때문이다.
+        this.sortBy = null;      // 'start' | 'target' | null(원래 순서)
+        this.sortAscending = true;
         this.tagPresets = this.loadTagPresets();
         this.actionThrottleMap = new Map(); // 스로틀링을 위한 맵
         this.init();
@@ -736,6 +741,11 @@ class TaskManager {
             this.toggleTaskSelection(box.dataset.taskId, box.checked);
         });
 
+        // 시작/목표 시각 헤더를 누르면 임시로 정렬한다.
+        document.querySelectorAll('#tasksTable thead [data-sort]').forEach(th => {
+            th.addEventListener('click', () => this.cycleSort(th.dataset.sort));
+        });
+
         // 두 번 누르면 편집. 클릭을 미뤘다가 더블클릭인지 보고 판단하는 방법도 있지만,
         // Windows 의 더블클릭 인식 시간이 500ms 라 평범한 선택 클릭이 전부 그만큼
         // 굳는다. 대신 토글이 두 번 일어나도록 두는데, 짝수 번 토글은 제자리로
@@ -1278,8 +1288,15 @@ class TaskManager {
         summary.classList.toggle('has-selection', selected > 0);
 
         const singleOnly = new Set(['edit', 'up', 'down']);
+        // 정렬해 보는 중에는 순서 이동을 잠근다. 보이는 이웃이 실제 이웃이 아니라
+        // 누르면 눈에 보이지 않는 곳으로 옮겨간다.
+        const reorderLocked = Boolean(this.sortBy);
         document.querySelectorAll('[data-bulk]').forEach(button => {
             const action = button.dataset.bulk;
+            if (reorderLocked && (action === 'up' || action === 'down')) {
+                button.disabled = true;
+                return;
+            }
             button.disabled = singleOnly.has(action) ? selected !== 1 : selected === 0;
         });
 
@@ -1290,6 +1307,7 @@ class TaskManager {
         document.querySelectorAll('[data-bulk]').forEach(button => {
             button.title = this.getLocalizedText(tips[button.dataset.bulk]);
         });
+        this.updateSortIndicators();
 
         if (selectAll) {
             // 머리 체크박스도 검색 결과 전체를 기준으로 읽는다. 현재 페이지만
@@ -2271,6 +2289,64 @@ class TaskManager {
         });
     }
 
+    // 표시 직전에만 순서를 바꾼다. this.tasks 는 건드리지 않으므로 저장되는 순서,
+    // 위/아래 이동, 번호는 그대로다.
+    sortForDisplay(tasks) {
+        if (!this.sortBy) return tasks;
+
+        const key = this.sortBy === 'start' ? 'startDateTime' : 'targetDateTime';
+        const direction = this.sortAscending ? 1 : -1;
+
+        return [...tasks].sort((a, b) => {
+            // 목표 시각이 없는 상시 업무는 견줄 값이 없다. 방향과 무관하게 늘
+            // 끝으로 보낸다 - 오름차순에서는 맨 앞, 내림차순에서는 맨 뒤로
+            // 자리를 옮겨 다니면 사라진 것처럼 보인다.
+            const left = a[key] || '';
+            const right = b[key] || '';
+            if (!left && !right) return 0;
+            if (!left) return 1;
+            if (!right) return -1;
+            // 저장 형식이 'YYYY-MM-DD HH:mm' 이라 문자열 비교가 곧 시간순이다
+            return left.localeCompare(right) * direction;
+        });
+    }
+
+    // 원래 순서 -> 오름차순 -> 내림차순 -> 원래 순서
+    cycleSort(column) {
+        if (this.sortBy !== column) {
+            this.sortBy = column;
+            this.sortAscending = true;
+        } else if (this.sortAscending) {
+            this.sortAscending = false;
+        } else {
+            this.sortBy = null;
+        }
+        this.currentPage = 1;
+        this.renderTasks();
+    }
+
+    updateSortIndicators() {
+        for (const [column, id] of [['start', 'thStartTime'], ['target', 'thTargetTime']]) {
+            const th = document.getElementById(id);
+            if (!th) continue;
+            const active = this.sortBy === column;
+            th.classList.toggle('sorted', active);
+            th.classList.toggle('descending', active && !this.sortAscending);
+        }
+
+        // 정렬 중에는 위/아래가 무엇을 뜻하는지 말할 수 없다. 보이는 이웃과
+        // 실제 이웃이 다르므로 눌러도 엉뚱한 곳으로 간다.
+        const sorted = Boolean(this.sortBy);
+        for (const action of ['up', 'down']) {
+            const button = document.querySelector(`[data-bulk="${action}"]`);
+            if (!button) continue;
+            button.classList.toggle('locked-by-sort', sorted);
+            button.title = sorted
+                ? this.getLocalizedText('reorderNeedsOriginal')
+                : this.getLocalizedText(action === 'up' ? 'moveUp' : 'moveDown');
+        }
+    }
+
     renderExpandedTasks() {
         const tbody = document.getElementById('tasksBody');
         tbody.innerHTML = '';
@@ -2287,7 +2363,7 @@ class TaskManager {
             return;
         }
 
-        const activeTasks = this.filteredActiveTasks();
+        const activeTasks = this.sortForDisplay(this.filteredActiveTasks());
 
         if (activeTasks.length === 0) {
             // 빠른 필터만 걸려도 "결과 없음"이다. 검색어만 보고 판단하면 필터로

@@ -264,6 +264,8 @@ This is a complete Electron application with the following structure:
 - **Backup lives in Settings, with words on the buttons.** As two unlabelled icons next to Add, people pressed them without knowing what they did — and import cannot be undone. It is used rarely enough that a dialog is the right home
 - **Double-click a row to edit.** Both clicks toggle the selection, which sounds wrong but lands correctly: an even number of toggles returns to the starting state. Suppressing the first click until a double-click can be ruled out would freeze every ordinary selection for the OS threshold — 500ms on this machine — which is far worse than a flicker the modal immediately covers
 - **Chips in a row are just part of the row** — clicking one selects it like anything else. They used to jump to a search, but the quick filters do that from a fixed place and hold several at once, so the row version only meant brushing a chip while aiming for the row replaced the whole list. (The repeat cadence lost its one-click filter with it; it is still reachable by picking *Repeat* in the search column.)
+- **The `#` column is the order the user arranged**, not a row count — the up/down buttons and the position field write it. Sorting is therefore a *way of looking*, never a change: `sortForDisplay()` runs on the way to the screen, `this.tasks` is untouched, nothing is saved, and a restart comes back unsorted.
+- **Sorted rows keep the number they had.** Renumbering 1,2,3 would look like the manual order had been rewritten; numbers reading 2,1,3 are what tell you this is temporary. Clicking a header cycles original → ascending → descending → original, and **reordering is disabled while sorted** — under a sort the neighbour on screen is not the neighbour in the list, so "move up" would send the row somewhere invisible. Tasks with no target time stay at the end in both directions rather than swapping ends, which would read as vanishing.
 - **Quick filters are multi-select and independent of the search box.** Several can be on at once — OR within a kind (tag A or B), AND across kinds (overdue *and* tag A). They used to write into the search box, which holds one value, so every second chip undid the first. `All` clears both them and the search. The empty-state message checks the filters too; looking only at `searchQuery` put "All tasks completed!" on a table emptied by a filter.
 - **Editing clears the selection; the toggles keep it.** Saving an edit usually changes the status or the date, so the row drops out of whatever filter is on — leaving an invisible row ticked, ready to be swept into the next bulk action. Highlight and notification are the opposite case: undoing one needs a second press, so their selection has to survive.
 - **Select-all covers the whole filtered list, not the visible page.** Page-scoped select-all contradicts the word and made deleting 50 rows a five-page chore. The header checkbox reads its state the same way, so paging no longer looks like it cleared the selection.
@@ -336,6 +338,10 @@ code" has been wrong here more than once:
 HTML id 참조       renderer 가 찾는 id 가 실제로 있는가
 패키지 내용물      npx asar list — build.files 는 allowlist다
 ```
+
+CSS escapes do not survive the heredoc: `content: '\2191'` arrived as a single
+backslash and Python read `` as an octal escape, printing a control character
+in the header. Write the character itself (`↑`).
 
 Beware false positives when writing these: classes built by template string
 (`quick-${kind}`), keys looked up through a variable (`optionKeys[freq]`), and

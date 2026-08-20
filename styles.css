@@ -2025,6 +2025,42 @@ body:not(.calendar-mode) .collapsed-cal {
     display: none;
 }
 
+/* ---- 정렬 가능한 헤더 -------------------------------------------------
+   정렬은 임시 보기다. 화살표로 지금 어떤 순서인지 보여주되, 표의 번호는
+   원래 값을 그대로 달고 다닌다 - 3, 1, 7 처럼 어긋난 번호가 곧 "지금은 다르게
+   보고 있다"는 표시다. */
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    position: relative;
+}
+
+th.sortable:hover {
+    color: #2c3e50;
+}
+
+/* 자리를 늘 잡아둔다. 정렬할 때만 화살표가 나타나면 그 칸의 글자가 밀린다. */
+th.sortable::after {
+    content: '';
+    display: inline-block;
+    width: 10px;
+    margin-left: 4px;
+    opacity: 0;
+}
+
+th.sortable.sorted::after {
+    content: '↑';
+    opacity: 1;
+}
+
+th.sortable.sorted.descending::after {
+    content: '↓';
+}
+
+body.dark-mode th.sortable:hover {
+    color: #e0e0e0;
+}
+
 /* ---- 설정: 글자가 든 선택 토글과 백업 버튼 ----------------------------
    .theme-btn 은 40x40 아이콘 전용이라 '켜기'/'끄기' 같은 글자가 들어가지 않는다. */
 .choice-toggle {

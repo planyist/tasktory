@@ -2457,3 +2457,124 @@ describe('notification wording', () => {
         expect(minutesSaid()).toBeLessThanOrEqual(8)
     })
 })
+
+// The # column is the order the user arranged by hand - the up/down buttons and
+// the position field write it. Sorting is a way of looking at that order for a
+// moment, never a change to it.
+describe('sorting the table', () => {
+    const at = (day, time) => `2026-08-${String(day).padStart(2, '0')} ${time}`
+    const setup = () => [
+        task('a', { startDateTime: at(12, '09:00'), targetDateTime: at(20, '18:00') }),
+        task('b', { startDateTime: at(10, '09:00'), targetDateTime: at(14, '18:00') }),
+        task('c', { startDateTime: at(15, '09:00'), targetDateTime: at(16, '18:00') })
+    ]
+    const header = (which) => document.querySelector(`th[data-sort="${which}"]`)
+    const column = (n) =>
+        rows().map((row) => row.cells[n].textContent.trim())
+    const contents = () => column(5)
+    const numbers = () => column(1)
+
+    test('leaves the stored order alone', async () => {
+        const manager = await boot(setup())
+
+        header('start').click()
+
+        expect(contents()).toEqual(['task b', 'task a', 'task c'])
+        // 화면만 바뀌었을 뿐, 저장된 순서는 그대로다
+        expect(manager.tasks.map((t) => t.id)).toEqual(['a', 'b', 'c'])
+        expect(electronAPI.saveTasks).not.toHaveBeenCalled()
+    })
+
+    // The numbers travelling with their rows is what says "this is temporary".
+    // Renumbering 1,2,3 would look like the manual order had been rewritten.
+    test('rows keep the number they had', async () => {
+        await boot(setup())
+        expect(numbers()).toEqual(['1', '2', '3'])
+
+        header('start').click()
+
+        expect(numbers()).toEqual(['2', '1', '3'])
+    })
+
+    test('cycles ascending, descending, then back to the original', async () => {
+        const manager = await boot(setup())
+
+        header('target').click()
+        expect(contents()).toEqual(['task b', 'task c', 'task a'])
+
+        header('target').click()
+        expect(contents()).toEqual(['task a', 'task c', 'task b'])
+
+        header('target').click()
+        expect(contents()).toEqual(['task a', 'task b', 'task c'])
+        expect(manager.sortBy).toBeNull()
+    })
+
+    test('switching columns starts ascending again', async () => {
+        const manager = await boot(setup())
+        header('start').click()
+        header('start').click()
+        expect(manager.sortAscending).toBe(false)
+
+        header('target').click()
+
+        expect(manager.sortBy).toBe('target')
+        expect(manager.sortAscending).toBe(true)
+    })
+
+    // Up and down mean "swap with the neighbour". Under a sort the neighbour on
+    // screen is not the neighbour in the list, so the row would jump somewhere
+    // the user cannot see.
+    test('locks reordering while sorted', async () => {
+        await boot(setup())
+        const box = document.querySelector('.task-select')
+        box.checked = true
+        box.dispatchEvent(new window.Event('change', { bubbles: true }))
+        expect(document.querySelector('[data-bulk="up"]').disabled).toBe(false)
+
+        header('start').click()
+
+        expect(document.querySelector('[data-bulk="up"]').disabled).toBe(true)
+        expect(document.querySelector('[data-bulk="down"]').disabled).toBe(true)
+    })
+
+    test('reordering comes back once the sort is cleared', async () => {
+        await boot(setup())
+        const box = document.querySelector('.task-select')
+        box.checked = true
+        box.dispatchEvent(new window.Event('change', { bubbles: true }))
+
+        header('start').click()
+        header('start').click()
+        header('start').click()
+
+        expect(document.querySelector('[data-bulk="up"]').disabled).toBe(false)
+    })
+
+    // A task with no target has nothing to compare. Letting it swap ends would
+    // look like it had vanished from where you left it.
+    test('keeps undated tasks at the end whichever way it sorts', async () => {
+        await boot([
+            task('dated', { targetDateTime: at(14, '18:00') }),
+            task('undated', { targetDateTime: '' }),
+            task('later', { targetDateTime: at(20, '18:00') })
+        ])
+
+        header('target').click()
+        expect(contents()).toEqual(['task dated', 'task later', 'task undated'])
+
+        header('target').click()
+        expect(contents()).toEqual(['task later', 'task dated', 'task undated'])
+    })
+
+    // It is a way of looking, not a preference.
+    test('is forgotten on restart', async () => {
+        const manager = await boot(setup())
+        header('start').click()
+
+        const restarted = await boot(setup())
+
+        expect(restarted.sortBy).toBeNull()
+        expect(manager.sortBy).toBe('start')
+    })
+})
