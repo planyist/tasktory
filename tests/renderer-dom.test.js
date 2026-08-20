@@ -20,6 +20,10 @@ const settle = async () => {
     for (let i = 0; i < 30; i++) await Promise.resolve()
 }
 
+// 행 클릭은 DOUBLE_CLICK_MS(220ms) 동안 기다렸다가 토글한다. 두 번째 클릭이
+// 오지 않았다는 것을 확인하는 시간이라, 지나야 선택이 일어난다.
+const pastDoubleClick = () => new Promise((r) => setTimeout(r, 300))
+
 const task = (id, overrides = {}) => ({
     id,
     content: `task ${id}`,
@@ -710,34 +714,35 @@ describe('multi-select', () => {
         )
     })
 
-    // Delaying the first click until a double-click could be ruled out would
-    // freeze every ordinary selection for the OS threshold (500ms on Windows).
-    // Instead the first click toggles at once and the second is skipped, read
-    // off MouseEvent.detail - the browser's own count of consecutive clicks.
-    // The row ends up selected, which is what editing needs anyway.
-    test('a double-click toggles once, not twice', async () => {
+    // A double-click opens the editor and does nothing else. The toggle is held
+    // back until a second click can be ruled out, so it never happens here -
+    // toggling and undoing would show as a flicker, and toggling once would
+    // leave the selection changed by an action that was not about selecting.
+    test('a double-click does not touch the selection', async () => {
         const manager = await boot([task('a'), task('b')])
         jest.spyOn(manager, 'showModal').mockImplementation(() => {})
         const row = document.querySelector('#tasksBody tr')
-        const doubleClick = () => {
-            row.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 }))
-            row.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 2 }))
-            row.dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
-        }
 
-        doubleClick()
+        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+        row.dispatchEvent(new window.MouseEvent('dblclick', { bubbles: true }))
+        await pastDoubleClick()
 
-        expect(manager.selectedTaskIds.has('a')).toBe(true)
-        expect(document.querySelector('#tasksBody tr .task-select').checked).toBe(true)
+        expect(manager.showModal).toHaveBeenCalled()
+        expect(manager.selectedTaskIds.size).toBe(0)
+        expect(document.querySelector('#tasksBody tr .task-select').checked).toBe(false)
     })
 
     // The point of reading detail rather than timing: an ordinary single click
     // is not held back at all.
-    test('a single click still selects immediately', async () => {
+    test('a single click selects once the double-click window passes', async () => {
         const manager = await boot([task('a')])
         const row = document.querySelector('#tasksBody tr')
 
-        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true, detail: 1 }))
+        row.dispatchEvent(new window.MouseEvent('click', { bubbles: true }))
+        expect(manager.selectedTaskIds.has('a')).toBe(false)
+
+        await pastDoubleClick()
 
         expect(manager.selectedTaskIds.has('a')).toBe(true)
     })
@@ -1520,6 +1525,7 @@ describe('selecting by clicking the row', () => {
         const manager = await boot(setup())
 
         rowOf('a').querySelector('.task-content').click()
+        await pastDoubleClick()
 
         expect(manager.selectedTaskIds.has('a')).toBe(true)
         expect(boxOf('a').checked).toBe(true)
@@ -1541,6 +1547,7 @@ describe('selecting by clicking the row', () => {
         const manager = await boot(setup())
 
         document.querySelector('#tasksBody .tag').click()
+        await pastDoubleClick()
 
         expect(manager.selectedTaskIds.has('a')).toBe(true)
         expect(boxOf('a').checked).toBe(true)

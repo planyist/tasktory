@@ -23,6 +23,10 @@ const DEFAULT_LEAD_MINUTES = 60;
 // 설정에 내놓는 값들. 0은 "미리 알리지 마라"로, 배지도 초과 전까지 뜨지 않는다.
 const LEAD_CHOICES = [0, 5, 10, 15, 30, 60, 120, 180, 360, 1440];
 
+// 행을 한 번 눌렀는지 두 번 눌렀는지 가리는 데 기다리는 시간. OS 의 더블클릭
+// 인식 시간(Windows 기본 500ms)을 그대로 쓰면 평범한 선택이 그만큼 굳는다.
+const DOUBLE_CLICK_MS = 220;
+
 // 보기 전환 버튼의 두 아이콘. 누르면 무엇이 되는지를 그린다.
 const CALENDAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
 const LIST_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
@@ -256,8 +260,9 @@ class TaskManager {
         
         // Table headers
         this.setText('thNumber', 'number');
-        this.setText('thStartTime', 'startTime');
-        this.setText('thTargetTime', 'targetTime');
+        // 라벨만 바꾼다. th 전체에 넣으면 정렬 세모가 지워진다.
+        this.setText('thStartTimeLabel', 'startTime');
+        this.setText('thTargetTimeLabel', 'targetTime');
         this.setTitle('thStartTime', 'sortHint');
         this.setTitle('thTargetTime', 'sortHint');
         this.setText('thTags', 'tags');
@@ -705,18 +710,21 @@ class TaskManager {
             // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
             if (e.target.closest('.task-select')) return;
 
-            // 더블클릭의 두 번째 클릭은 토글하지 않는다. detail 은 브라우저가 센
-            // 연속 클릭 횟수라, 첫 클릭은 지연 없이 즉시 반응하면서도 두 번째만
-            // 골라낼 수 있다. 타이머로 첫 클릭을 미루면 평범한 선택까지 OS의
-            // 더블클릭 인식 시간(이 기기 500ms)만큼 굳는다.
-            if (e.detail > 1) return;
-
             const row = e.target.closest('#tasksBody tr');
             const box = row && row.querySelector('.task-select');
             if (!box) return;
 
-            box.checked = !box.checked;
-            this.toggleTaskSelection(box.dataset.taskId, box.checked);
+            // 한 번인지 두 번인지 정해질 때까지 기다렸다가 하나만 한다. 토글해
+            // 놓고 되돌리면 그 사이가 깜빡임으로 보이고, 두 번째만 건너뛰면
+            // 첫 번째 토글은 이미 일어난 뒤다.
+            // OS 의 인식 시간(이 기기 500ms)을 따르지 않고 우리 값을 쓴다 -
+            // 실제 더블클릭은 그보다 훨씬 빠르고, 선택이 굳는 시간은 짧을수록
+            // 좋다.
+            clearTimeout(this.rowClickTimer);
+            this.rowClickTimer = setTimeout(() => {
+                box.checked = !box.checked;
+                this.toggleTaskSelection(box.dataset.taskId, box.checked);
+            }, DOUBLE_CLICK_MS);
         });
 
         // 첨부: 고르기 / 끌어다 놓기 / 열기·폴더보기·빼기
@@ -757,13 +765,13 @@ class TaskManager {
             th.addEventListener('click', () => this.cycleSort(th.dataset.sort));
         });
 
-        // 두 번 누르면 편집. 첫 클릭이 이미 그 행을 선택해 두었으므로 - 편집은
-        // 어차피 하나만 골라야 한다 - 여기서는 창만 연다.
+        // 두 번 누르면 편집. 기다리고 있던 토글을 취소하므로 선택은 그대로다.
         document.getElementById('tasksTable').addEventListener('dblclick', (e) => {
             if (e.target.closest('.task-select')) return;
             const row = e.target.closest('#tasksBody tr');
             const box = row && row.querySelector('.task-select');
             if (!box) return;
+            clearTimeout(this.rowClickTimer);
             this.editTask(box.dataset.taskId);
         });
 

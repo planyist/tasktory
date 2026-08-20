@@ -116,8 +116,8 @@
                         <tr>
                             <th class="select-col"><input type="checkbox" id="selectAllTasks"></th>
                             <th id="thNumber">#</th>
-                            <th id="thStartTime" class="sortable" data-sort="start">Start Time</th>
-                            <th id="thTargetTime" class="sortable" data-sort="target">Target Time</th>
+                            <th id="thStartTime" class="sortable" data-sort="start"><span id="thStartTimeLabel">Start Time</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
+                            <th id="thTargetTime" class="sortable" data-sort="target"><span id="thTargetTimeLabel">Target Time</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
                             <th id="thTags">Tags</th>
                             <th id="thTaskContent">Task Content</th>
                             <th id="thStatus">Status</th>
@@ -174,23 +174,25 @@
 
 <!-- 접힘 스트립 (150px) -->
             <div id="collapsedMiniLayout" class="collapsed-mini-layout">
-                <button id="collapsedExpandBtn" class="collapsed-expand-btn" title="Expand">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <polyline points="15,3 21,3 21,9"/>
-                        <polyline points="9,21 3,21 3,15"/>
-                        <line x1="21" y1="3" x2="14" y2="10"/>
-                        <line x1="3" y1="21" x2="10" y2="14"/>
-                    </svg>
-                </button>
-                <!-- 고정은 여기에만 있다. 창이 다른 작업 위에 얹혀 있는 건 접힌
-                     상태이고, 펼친 창에서는 Ctrl+M 로 접었다 펴며 닿는다.
-                     상태를 가진 유일한 버튼이라 아이콘 대신 색으로 켜짐을 알린다. -->
-                <button type="button" id="alwaysOnTopBtn" class="collapsed-expand-btn pin-btn">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="17" x2="12" y2="22"/>
-                        <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
-                    </svg>
-                </button>
+                <div class="collapsed-top-row">
+                    <button id="collapsedExpandBtn" class="collapsed-expand-btn" title="Expand">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15,3 21,3 21,9"/>
+                            <polyline points="9,21 3,21 3,15"/>
+                            <line x1="21" y1="3" x2="14" y2="10"/>
+                            <line x1="3" y1="21" x2="10" y2="14"/>
+                        </svg>
+                    </button>
+                    <!-- 고정 상태는 핀의 기울기가 말한다. 꽂혀 있으면 곧게 서고,
+                         풀려 있으면 45도로 눕는다 - 바탕색 농도로는 켜졌는지
+                         꺼졌는지 옆에 비교할 것 없이는 읽히지 않는다. -->
+                    <button type="button" id="alwaysOnTopBtn" class="collapsed-expand-btn pin-btn">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="17" x2="12" y2="22"/>
+                            <path d="M5 17h14v-1.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V6h1a2 2 0 0 0 0-4H8a2 2 0 0 0 0 4h1v4.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24Z"/>
+                        </svg>
+                    </button>
+                </div>
                 <div id="collapsedCompletionCounter" class="collapsed-completion-counter">0</div>
                 <!-- 150px에 7열을 넣으면 칸당 19px. 숫자와 점만 들어가지만 격자가
                      있어야 달력으로 읽힌다. 그 아래에 그날의 목록을 세운다. -->

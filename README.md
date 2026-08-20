@@ -74,7 +74,7 @@ time order, with a mini calendar above it. Ctrl+M toggles it.
 ### The rest
 
 - **Always-on-top is a pin** in the collapsed side strip — where the window is
-  actually sitting over your work. It is filled while pinned
+  actually sitting over your work. Upright means pinned, tipped over means not
 - **Dark mode**
 - **Five languages**: English, Korean, Chinese, Japanese, Spanish
 - **Configurable date format** — the display changes, the stored data does not
@@ -129,8 +129,8 @@ Rows carry no buttons. Tick the rows you want and use the bar above the table:
 **Double-click a row** to open it for editing.
 
 **Click a time header** to sort by it — the two time columns carry a pair of
-small triangles to show they can be sorted, turn blue while one is driving the
-order, and fill the triangle pointing whichever way it sorted.
+small triangles to show they can be sorted, and while one is driving the order
+the header turns blue and keeps only the triangle pointing that way.
 Pressing cycles original order, ascending, descending,
 then back. Sorting is only a way of looking: the numbers stay with their rows, so
 out-of-sequence numbers tell you the list is not in its stored order, and a
