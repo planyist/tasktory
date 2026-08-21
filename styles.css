@@ -840,9 +840,9 @@ body.dark-mode .selection-summary.has-selection {
 
 .datetime-field input[type="text"] {
     flex: 1 1 auto;
-    /* 글자는 아래 층이 그린다. 커서만 남긴다 - 색을 투명하게 두면 커서까지
-       사라지므로 caret-color 를 따로 준다. */
-    color: transparent;
+    /* 투명은 여기서 걸지 않는다. 겹침 층이 실제로 글자를 그렸을 때만 JS 가
+       건다 - CSS 로 늘 투명하게 두면, 층을 그리지 못한 칸은 글자가 통째로
+       사라진다. 그 실패는 화면에서 "값이 없다"로 보여 원인을 짐작할 수 없다. */
     caret-color: #333;
     background: transparent;
     position: relative;

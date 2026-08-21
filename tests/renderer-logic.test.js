@@ -13,10 +13,10 @@ const TaskManager = new Function(`${I18N}\n${SOURCE}\nreturn TaskManager;`)()
 
 // 마스크는 클래스 밖의 순수 함수다. 형식 문자열 하나에서 출력·파싱·틀 셋이
 // 나오므로, 그 셋이 같은 형식을 같게 읽는지는 여기서 확인한다.
-const { maskRender, maskRead, maskWrite, maskErase } = new Function(
+const { maskRender, maskRead, maskWrite, maskErase, describeDateProblem } = new Function(
     `${I18N}
 ${SOURCE}
-return { maskRender, maskRead, maskWrite, maskErase };`
+return { maskRender, maskRead, maskWrite, maskErase, describeDateProblem };`
 )()
 
 // Build an instance without running the constructor, which kicks off async
@@ -219,6 +219,38 @@ describe('the date field wears its format as a mask', () => {
     test('it follows whatever format is chosen', () => {
         expect(maskRender('DD/MM/YYYY HH:mm', '2108', null).text).toBe('21/08/YYYY HH:mm')
         expect(maskRender('YYYYMMDD HHmm', '20260821', null).text).toBe('20260821 HHmm')
+    })
+})
+
+// "이 형식으로 입력하세요"는 형식을 되풀이할 뿐이다. 형식은 이미 칸 안에 흐리게
+// 떠 있으므로, 남은 물음은 "내가 넣은 값 중 무엇이 잘못됐나"다.
+describe('a rejected date says which part is wrong', () => {
+    const F = 'YYYY-MM-DD HH:mm'
+    const why = (text) => describeDateProblem(text, F)
+
+    test('an unfinished date is unfinished, not malformed', () => {
+        expect(why('2026-08-DD HH:mm').key).toBe('dateIncomplete')
+    })
+
+    test('it names the field and its range', () => {
+        expect(why('2026-13-21 09:30')).toEqual({ key: 'rangeMonth', min: '01', max: '12' })
+        expect(why('2026-08-32 09:30')).toEqual({ key: 'rangeDay', min: '01', max: '31' })
+        expect(why('2026-08-21 25:30')).toEqual({ key: 'rangeHour', min: '00', max: '23' })
+        expect(why('2026-08-21 09:75')).toEqual({ key: 'rangeMinute', min: '00', max: '59' })
+    })
+
+    test('the first thing wrong is the thing reported', () => {
+        expect(why('2026-13-32 25:75').key).toBe('rangeMonth')
+    })
+
+    // Every field is in range and it still is not a date.
+    test('a day the month does not have is said plainly', () => {
+        expect(why('2026-02-30 09:30').key).toBe('dateNotOnCalendar')
+    })
+
+    test('a twelve-hour format counts hours from one', () => {
+        expect(describeDateProblem('08/21/2026 00:30 AM', 'MM/DD/YYYY hh:mm A'))
+            .toEqual({ key: 'rangeHour12', min: '01', max: '12' })
     })
 })
 

@@ -179,6 +179,49 @@ const maskErase = (text, pattern, caret) => {
     return { text: chars.join(''), caret: slot.index };
 };
 
+// 각 토큰이 받는 범위. 무엇이 틀렸는지 말하려면 형식만으로는 부족하다.
+const TOKEN_RANGE = {
+    MM: { min: 1, max: 12, key: 'rangeMonth' },
+    DD: { min: 1, max: 31, key: 'rangeDay' },
+    HH: { min: 0, max: 23, key: 'rangeHour' },
+    hh: { min: 1, max: 12, key: 'rangeHour12' },
+    mm: { min: 0, max: 59, key: 'rangeMinute' }
+};
+
+// 무엇이 잘못됐는지 고른다. 아직 안 채운 자리가 있으면 그것부터, 그다음 범위를
+// 벗어난 칸, 마지막으로 달력에 없는 날짜.
+const describeDateProblem = (text, pattern) => {
+    const slots = maskSlots(pattern);
+    const filled = slots.every(slot => slot.kind === 'ampm'
+        ? !(text[slot.index] === '-' && text[slot.index + 1] === '-')
+        : /[0-9]/.test(text[slot.index] || ''));
+    if (!filled) return { key: 'dateIncomplete' };
+
+    let pos = 0;
+    for (const part of maskParts(pattern)) {
+        if (part.kind === 'literal') {
+            pos += part.text.length;
+            continue;
+        }
+        if (part.kind === 'ampm') {
+            pos += 2;
+            continue;
+        }
+        const range = TOKEN_RANGE[part.letters];
+        const value = Number(text.slice(pos, pos + part.letters.length));
+        pos += part.letters.length;
+        if (range && (value < range.min || value > range.max)) {
+            return {
+                key: range.key,
+                min: String(range.min).padStart(part.letters.length, '0'),
+                max: String(range.max).padStart(part.letters.length, '0')
+            };
+        }
+    }
+    // 범위는 다 맞는데도 못 읽었다면 그 달에 없는 날이다 (2월 30일 같은)
+    return { key: 'dateNotOnCalendar' };
+};
+
 // 형식 문자열대로 파싱한다. 형식에 맞지 않으면 null.
 // 숫자만 쳐도 받는다. 형식에 맞춰 구분자를 넣어 가며 치는 것은 번거롭고,
 // 20250821 이나 202508210900 처럼 붙여 쓰는 편이 빠르다. 구분자가 무엇이든
@@ -926,6 +969,13 @@ class TaskManager {
         }
     }
 
+    // 날짜 칸 전부를 다시 그린다. 값을 넣은 주체가 누구든 상관없다.
+    refreshDateGhosts() {
+        for (const input of document.querySelectorAll('.datetime-field input')) {
+            this.paintGhost(input);
+        }
+    }
+
     setMask(input, { text, caret }) {
         input.value = text;
         if (document.activeElement === input) input.setSelectionRange(caret, caret);
@@ -953,6 +1003,7 @@ class TaskManager {
         const text = input.value;
         if (!text) {
             ghost.textContent = '';
+            input.style.color = '';
             return;
         }
 
@@ -986,6 +1037,8 @@ class TaskManager {
         }
         flush();
         ghost.innerHTML = html;
+        // 이제야 가린다. 이 줄에 닿지 못한 칸은 제 글자를 그대로 보여준다.
+        input.style.color = 'transparent';
     }
 
     paintMask(input, digits, meridiem) {
@@ -1478,6 +1531,16 @@ class TaskManager {
     // 모달 입력창에 채울 문자열. 설정한 표시 형식을 그대로 쓴다.
     formatDateTimeLocal(date) {
         return formatWithPattern(date, this.dateFormat);
+    }
+
+    // 어느 칸이 왜 안 되는지까지 말한다. 형식은 칸 안에 이미 흐리게 떠 있으므로
+    // 그것만 되풀이하면 아무것도 알려주지 않는 셈이다.
+    explainDateProblem(text) {
+        const problem = describeDateProblem(text, this.dateFormat);
+        const message = this.getLocalizedText(problem.key)
+            .replace('{min}', problem.min || '')
+            .replace('{max}', problem.max || '');
+        return `${message}\n${this.dateFormat}`;
     }
 
     // 저장 형식(항상 'YYYY-MM-DD HH:mm')으로 변환. 형식이 안 맞으면 null.
@@ -3392,6 +3455,8 @@ ${filePath}`);
         // Show/hide tags help text based on preset availability
         this.updateTagsHelpText();
         
+        // 값을 코드가 넣었으므로 이벤트가 나지 않는다. 흐림은 여기서 입힌다.
+        this.refreshDateGhosts();
         modal.style.display = 'block';
         
         // 첫 번째 입력 필드에 포커스
@@ -3685,6 +3750,8 @@ ${filePath}`);
         }
 
         detailsTextarea.value = '';
+        // 값을 코드가 넣었으므로 이벤트가 나지 않는다. 흐림은 여기서 입힌다.
+        this.refreshDateGhosts();
         modal.style.display = 'block';
 
         // Focus on textarea
@@ -3708,7 +3775,7 @@ ${filePath}`);
             const typed = document.getElementById('confirmCompletedAt').value.trim();
             const completedAt = typed ? this.parseInputDateTime(typed) : null;
             if (typed && !completedAt) {
-                alert(`${this.getLocalizedText('invalidDateFormat')}\n${this.dateFormat}`);
+                alert(this.explainDateProblem(typed));
                 return;
             }
             for (const id of ids) await this.doCompleteTask(id, details, completedAt);
@@ -3740,7 +3807,7 @@ ${filePath}`);
         const storedTarget = targetDateTime ? this.parseInputDateTime(targetDateTime) : '';
 
         if (!storedStart || (targetDateTime && !storedTarget)) {
-            alert(`${this.getLocalizedText('invalidDateFormat')}\n${this.dateFormat}`);
+            alert(this.explainDateProblem(storedStart ? targetDateTime : startDateTime));
             return;
         }
 
