@@ -58,6 +58,8 @@ throwaway Electron scripts (`shoot.js`, `audit.js`, `themes.js`…) that load
 
 **`main.js` can be required, and its own window works.** `loadFile` resolves against the app path, not `__dirname`, so while it read `loadFile('index.html')` any script that required `main.js` got a window pointed at *its own* folder — a blank page, no `taskManager`, and `localStorage` throwing `SecurityError` because the origin was a file that did not exist. That looked like "main.js's window blocks localStorage" and sent one investigation down the wrong path entirely. It is `path.join(__dirname, 'index.html')` now.
 
+**Measuring a caret:** `capturePage` does record one, so an all-white strip is real evidence rather than a blind spot — verified against a plain input. But a window without OS focus draws no caret at all, so the probe must call `win.focus()`; and sampling "the darkest pixel near the caret" measures the glyph beside it. Sample a narrow strip at the caret's computed x and look for the blink.
+
 **Every one of them must call `app.setPath('userData', …)` before `ready`.**
 They run the real renderer, so anything that reaches `saveTasks` writes the
 user's actual `tasks.json`. One of these scripts called `saveTask()` against the
@@ -379,6 +381,7 @@ This is a complete Electron application with the following structure:
 
   - **It must not be a flex container.** The gap between two dimmed runs is a text node of one space, and a run of whitespace between flex items is not rendered — `DD HH` prints as `DDHH`. It is `display: block` with `line-height` set to the control height.
   - **The transparency is applied by the paint, not by the stylesheet.** `color: transparent` in CSS meant any field the overlay had not been painted onto showed nothing at all — and every field whose value is set by code rather than typed was in exactly that state, because assigning `.value` fires no event. Setting it on the last line of `paintGhost` makes the failure mode "not dimmed" instead of "not there".
+  - **The slot under the caret is filled, because the caret itself is not enough.** It is drawn — measured at its computed x, the pixels alternate with the blink — but it is one pixel between a dark digit and a grey placeholder. CSS cannot widen a caret, so `.dtf-active` marks the slot the next digit lands in, the way a native date input marks its segment. It repaints on `click`, `keyup` and `select` as well as typing, since all of those move the caret.
   - **Its font is copied from the input at paint time**, property by property, not through the `font` shorthand — the shorthand carries `line-height` and would undo that centring. Declaring the font twice in CSS drifts the moment one side changes, and `font: inherit` was already wrong: it follows the parent, which is 15px against the input's 13px.
 
 - **A rejected date says which part is wrong.** Repeating the format tells nobody anything — it is already in the field, in grey. `describeDateProblem` reports the first real fault: a slot still blank, a value outside its range (with the range), or a day the month does not have. The ranges come from `TOKEN_RANGE`, beside the token table that builds everything else, so a new token cannot get a message that disagrees with its parser.

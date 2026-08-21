@@ -2179,6 +2179,41 @@ describe('the unfilled part of a date reads as a placeholder', () => {
         expect(ghost().textContent).toContain('DD HH')
     })
 
+    // A caret is one pixel wide and sits between a dark digit and a grey
+    // placeholder, which is a bad place to look for it. The slot the next digit
+    // will land in is marked instead - the same thing a native date input does.
+    test('the slot the caret sits in is marked', async () => {
+        const manager = await openWith('2026-08-DD HH:mm')
+        const input = document.getElementById('startDateTime')
+        input.focus()
+        input.setSelectionRange(8, 8)
+        manager.paintGhost(input)
+
+        const active = ghost().querySelector('.dtf-active')
+        expect(active).not.toBeNull()
+        expect(active.textContent).toBe('D')
+    })
+
+    test('it follows the caret to the next slot', async () => {
+        const manager = await openWith('2026-08-21 HH:mm')
+        const input = document.getElementById('startDateTime')
+        input.focus()
+        input.setSelectionRange(11, 11)
+        manager.paintGhost(input)
+
+        expect(ghost().querySelector('.dtf-active').textContent).toBe('H')
+    })
+
+    // Nothing is being typed into a field nobody is in.
+    test('an unfocused field marks nothing', async () => {
+        const manager = await openWith('2026-08-DD HH:mm')
+        const input = document.getElementById('startDateTime')
+        input.blur()
+        manager.paintGhost(input)
+
+        expect(ghost().querySelector('.dtf-active')).toBeNull()
+    })
+
     test('an empty field draws nothing at all', async () => {
         await openWith('')
 

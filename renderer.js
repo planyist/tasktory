@@ -949,6 +949,12 @@ class TaskManager {
                 if (written) this.setMask(input, written);
             });
 
+            // 커서를 옮기는 길은 타이핑 말고도 있다 - 클릭, 화살표, 탭. 칠한 칸이
+            // 따라가지 않으면 엉뚱한 자리를 가리킨다.
+            for (const type of ['click', 'keyup', 'select']) {
+                input.addEventListener(type, () => this.paintGhost(input));
+            }
+
             // 붙여넣기처럼 통째로 들어오는 경우. 숫자만 남겨 앞에서부터 채운다.
             input.addEventListener('input', () => {
                 const { digits, meridiem } = maskRead(input.value, this.dateFormat);
@@ -1007,6 +1013,20 @@ class TaskManager {
             return;
         }
 
+        // 커서가 놓인 칸. 커서 자리에 있거나, 그 뒤로 처음 오는 칸이다.
+        const active = new Set();
+        if (document.activeElement === input
+            && input.selectionStart === input.selectionEnd) {
+            const caret = input.selectionStart;
+            const slots = maskSlots(this.dateFormat);
+            const here = slots.find(slot => slot.index >= caret)
+                || slots[slots.length - 1];
+            if (here) {
+                active.add(here.index);
+                if (here.kind === 'ampm') active.add(here.index + 1);
+            }
+        }
+
         const dim = new Set();
         for (const slot of maskSlots(this.dateFormat)) {
             if (slot.kind === 'digit') {
@@ -1019,19 +1039,22 @@ class TaskManager {
 
         let html = '';
         let run = '';
-        let runDim = null;
+        let runKind = null;
         const flush = () => {
             if (!run) return;
-            html += runDim
-                ? `<span class="dtf-placeholder">${this.escapeHtml(run)}</span>`
+            const classes = [];
+            if (runKind && runKind.dim) classes.push('dtf-placeholder');
+            if (runKind && runKind.active) classes.push('dtf-active');
+            html += classes.length
+                ? `<span class="${classes.join(' ')}">${this.escapeHtml(run)}</span>`
                 : this.escapeHtml(run);
             run = '';
         };
         for (let i = 0; i < text.length; i++) {
-            const isDim = dim.has(i);
-            if (isDim !== runDim) {
+            const kind = { dim: dim.has(i), active: active.has(i) };
+            if (!runKind || kind.dim !== runKind.dim || kind.active !== runKind.active) {
                 flush();
-                runDim = isDim;
+                runKind = kind;
             }
             run += text[i];
         }

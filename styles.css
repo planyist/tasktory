@@ -874,6 +874,13 @@ body.dark-mode .selection-summary.has-selection {
     color: #b6bcc6;
 }
 
+/* 지금 값이 들어갈 칸. 커서는 1px 선이라 두 색이 섞인 글자 사이에서 잃어버리기
+   쉽다 - 칸을 칠하면 커서를 찾지 않아도 어디를 치고 있는지 보인다. */
+.dtf-ghost .dtf-active {
+    background: rgba(52, 152, 219, 0.18);
+    border-radius: 2px;
+}
+
 body.dark-mode .datetime-field input[type="text"] {
     caret-color: #e0e0e0;
 }
@@ -884,6 +891,10 @@ body.dark-mode .dtf-ghost {
 
 body.dark-mode .dtf-ghost .dtf-placeholder {
     color: #6b7280;
+}
+
+body.dark-mode .dtf-ghost .dtf-active {
+    background: rgba(52, 152, 219, 0.32);
 }
 
 .datetime-pick-btn {
