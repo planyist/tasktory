@@ -975,6 +975,15 @@ class TaskManager {
         }
     }
 
+    // 날짜 칸에 값을 넣는 유일한 길. 대입은 이벤트를 내지 않아 겹침 층이 알 수
+    // 없고, 입력칸 글자는 투명이라 낡은 층이 남으면 값이 안 들어간 것처럼 보인다.
+    setDateValue(id, value) {
+        const input = typeof id === 'string' ? document.getElementById(id) : id;
+        if (!input) return;
+        input.value = value;
+        this.paintGhost(input);
+    }
+
     // 날짜 칸 전부를 다시 그린다. 값을 넣은 주체가 누구든 상관없다.
     refreshDateGhosts() {
         for (const input of document.querySelectorAll('.datetime-field input')) {
@@ -1911,8 +1920,7 @@ class TaskManager {
         const chosen = new Date(this.pickerDate);
         chosen.setHours(this.pickerHour, this.pickerMinute, 0, 0);
 
-        document.getElementById(this.pickerTarget).value =
-            formatWithPattern(chosen, this.dateFormat);
+        this.setDateValue(this.pickerTarget, formatWithPattern(chosen, this.dateFormat));
         this.closeDateTimePicker();
     }
 
@@ -3324,9 +3332,9 @@ ${filePath}`);
         document.getElementById('taskRepeat').value = rule.freq;
         document.getElementById('taskRepeatInterval').value = String(rule.interval || 1);
         // 종료일은 날짜만 쓰지만 화면에는 설정한 표기 형식으로 보여준다
-        document.getElementById('taskRepeatUntil').value = rule.untilDate
+        this.setDateValue('taskRepeatUntil', rule.untilDate
             ? formatWithPattern(new Date(`${rule.untilDate}T00:00:00`), this.dateFormat)
-            : '';
+            : '');
         (rule.byWeekday || []).forEach(day => {
             const button = document.querySelector(`#repeatWeekdays .weekday-btn[data-weekday="${day}"]`);
             if (button) button.classList.add('selected');
@@ -3371,7 +3379,7 @@ ${filePath}`);
     resetRepeatControls() {
         document.getElementById('taskRepeat').value = 'none';
         document.getElementById('taskRepeatInterval').value = '1';
-        document.getElementById('taskRepeatUntil').value = '';
+        this.setDateValue('taskRepeatUntil', '');
         document.querySelectorAll('#repeatWeekdays .weekday-btn').forEach(btn => btn.classList.remove('selected'));
         this.updateRepeatVisibility();
     }
@@ -3425,8 +3433,8 @@ ${filePath}`);
             const startDate = new Date(task.startDateTime);
             const targetDate = new Date(task.targetDateTime);
             
-            document.getElementById('startDateTime').value = this.formatDateTimeLocal(startDate);
-            document.getElementById('targetDateTime').value = this.formatDateTimeLocal(targetDate);
+            this.setDateValue('startDateTime', this.formatDateTimeLocal(startDate));
+            this.setDateValue('targetDateTime', this.formatDateTimeLocal(targetDate));
             document.getElementById('taskContent').value = task.content;
             document.getElementById('taskTags').value = task.tags || '';
             
@@ -3457,12 +3465,12 @@ ${filePath}`);
             
             // Set current time as default
             const now = new Date();
-            document.getElementById('startDateTime').value = this.formatDateTimeLocal(now);
+            this.setDateValue('startDateTime', this.formatDateTimeLocal(now));
             
             // Set target time to 1 hour later with minutes set to 00
             const targetTime = new Date(now.getTime() + 60 * 60 * 1000);
             targetTime.setMinutes(0, 0, 0); // 분, 초, 밀리초를 0으로 설정
-            document.getElementById('targetDateTime').value = this.formatDateTimeLocal(targetTime);
+            this.setDateValue('targetDateTime', this.formatDateTimeLocal(targetTime));
             
             // Set position to end of list by default
             const activeTasksCount = this.tasks.filter(t => !t.completed).length;

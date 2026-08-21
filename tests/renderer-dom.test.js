@@ -2214,6 +2214,43 @@ describe('the unfilled part of a date reads as a placeholder', () => {
         expect(ghost().querySelector('.dtf-active')).toBeNull()
     })
 
+    // Assigning .value fires no event, so the overlay cannot hear it - and with
+    // the input's own text transparent, a stale overlay reads as "the value did
+    // not go in". Every write goes through setDateValue for that reason; this
+    // has leaked twice from patching call sites one at a time.
+    test('a date chosen in the picker shows up in the field', async () => {
+        const manager = await openWith('')
+        const input = document.getElementById('startDateTime')
+
+        manager.pickerTarget = 'startDateTime'
+        manager.pickerDate = new Date(2026, 7, 1)
+        manager.pickerHour = 9
+        manager.pickerMinute = 30
+        manager.applyDateTimePicker()
+
+        expect(input.value).toBe('2026-08-01 09:30')
+        expect(ghost().textContent).toBe(input.value)
+    })
+
+    test('setting a value always repaints the overlay', async () => {
+        const manager = await openWith('2026-08-21 09:30')
+
+        manager.setDateValue('startDateTime', '2027-01-02 03:04')
+
+        expect(ghost().textContent).toBe('2027-01-02 03:04')
+    })
+
+    // The transparency is what makes a stale overlay dangerous, so clearing has
+    // to lift it rather than leave a transparent field with old text under it.
+    test('clearing a field leaves nothing behind', async () => {
+        const manager = await openWith('2026-08-21 09:30')
+
+        manager.setDateValue('startDateTime', '')
+
+        expect(ghost().textContent).toBe('')
+        expect(document.getElementById('startDateTime').style.color).toBe('')
+    })
+
     test('an empty field draws nothing at all', async () => {
         await openWith('')
 
