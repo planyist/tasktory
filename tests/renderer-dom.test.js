@@ -2118,6 +2118,61 @@ describe('view toggle', () => {
     })
 })
 
+describe('an empty list is where you start', () => {
+    // The empty row points at the add button, so the row itself should open it.
+    // It could not: the click handler looks for a checkbox and an empty row has
+    // none, so it returned before doing anything.
+    test('clicking the empty row opens the add form', async () => {
+        const manager = await boot([])
+        jest.spyOn(manager, 'showModal').mockImplementation(() => {})
+
+        document.querySelector('#tasksBody .empty-message').click()
+
+        expect(manager.showModal).toHaveBeenCalledWith()
+    })
+
+    test('and it does not fire on a row that has a task', async () => {
+        const manager = await boot([task('a')])
+        jest.spyOn(manager, 'showModal').mockImplementation(() => {})
+
+        document.querySelector('#tasksBody tr').click()
+        await pastDoubleClick()
+
+        expect(manager.showModal).not.toHaveBeenCalled()
+    })
+})
+
+describe('overdue notification', () => {
+    const minutesAgo = (n) => {
+        const t = new Date(Date.now() - n * 60000)
+        const pad = (v) => String(v).padStart(2, '0')
+        return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())} ` +
+            `${pad(t.getHours())}:${pad(t.getMinutes())}`
+    }
+
+    test('fires once when the target time has passed', async () => {
+        const manager = await boot([task('a', { targetDateTime: minutesAgo(5) })])
+
+        await manager.checkUpcomingTasks()
+        const first = electronAPI.showNotification.mock.calls.length
+        await manager.checkUpcomingTasks()
+
+        expect(first).toBeGreaterThan(0)
+        expect(electronAPI.showNotification.mock.calls.length).toBe(first)
+    })
+
+    // Every other notification is translated; this one was hardcoded English.
+    test('says it in the chosen language', async () => {
+        const manager = await boot([task('a', { targetDateTime: minutesAgo(5) })])
+
+        await manager.checkUpcomingTasks()
+
+        const said = electronAPI.showNotification.mock.calls.map((c) => c[0]).join(' ')
+        expect(said).toContain(manager.getLocalizedText('overdueNotification'))
+        expect(said).not.toContain('Task is now overdue')
+    })
+})
+
 describe('the About dialog leaves other screens alone', () => {
     // showAboutModal used to force `display: inline-flex` on the log-folder
     // button, from when that button lived inside About. After the button moved

@@ -2676,11 +2676,14 @@ textarea {
 }
 
 /* 빈 테이블 메시지 */
+/* 목록이 비었을 때 이 자리를 누르면 작업을 만든다 - 안내 문구가 추가 버튼을
+   가리키고 있으니, 그 문구 자체도 눌리는 것이 맞다. */
 .empty-message {
     text-align: center;
     padding: 40px;
     color: #7f8c8d;
     font-style: italic;
+    cursor: pointer;
 }
 
 /* Dark Mode */

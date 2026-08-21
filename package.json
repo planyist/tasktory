@@ -1,6 +1,6 @@
 {
   "name": "tasktory",
-  "version": "0.13.0",
+  "version": "0.13.1",
   "description": "A compact desktop application for managing tasks with always-on-top functionality. Track your tasks efficiently without losing focus.",
   "main": "main.js",
   "jest": {
@@ -25,7 +25,8 @@
     "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
     "dist": "npm run build",
-    "check:ui": "electron scripts/check-ui.js"
+    "check:ui": "electron scripts/check-ui.js",
+    "check:window": "electron scripts/check-window.js"
   },
   "repository": {
     "type": "git",

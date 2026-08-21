@@ -205,6 +205,7 @@ const TRANSLATIONS = {
         // About - Notifications section
         'autoAlerts': 'Auto Alerts',
         'autoAlertsDesc': 'Once, at the lead time you set - an hour before the target by default, and a different one on any task that needs more warning',
+        'overdueNotification': 'Past its target time',
         'noNotificationsTitle': 'If notifications do not arrive',
         'aboutNotiCheckTaskTitle': 'The task itself',
         'aboutNotiCheckTaskDesc': 'A task with no target time never notifies, and the bell in the bar can silence one.',
@@ -432,6 +433,7 @@ const TRANSLATIONS = {
         // About - Notifications section
         'autoAlerts': '자동 알림',
         'autoAlertsDesc': '설정한 시점에 한 번. 기본은 목표 시각 1시간 전이고, 미리 알아야 할 작업은 따로 정할 수 있다',
+        'overdueNotification': '목표 시간이 지났습니다',
         'noNotificationsTitle': '알림이 안 올 때',
         'aboutNotiCheckTaskTitle': '작업 자체',
         'aboutNotiCheckTaskDesc': '목표 시각이 없는 작업은 애초에 알리지 않고, 막대의 벨로 꺼둔 작업도 울리지 않습니다.',
@@ -659,6 +661,7 @@ const TRANSLATIONS = {
         // About - Notifications section
         'autoAlerts': '自动提醒',
         'autoAlertsDesc': '在你设定的时点提醒一次。默认为目标时间前1小时，需要更早知道的任务可单独设定',
+        'overdueNotification': '已超过目标时间',
         'noNotificationsTitle': '收不到通知时',
         'aboutNotiCheckTaskTitle': '任务本身',
         'aboutNotiCheckTaskDesc': '没有目标时间的任务本就不提醒；操作栏的铃铛也可以将某个任务静音。',
@@ -886,6 +889,7 @@ const TRANSLATIONS = {
         // About - Notifications section
         'autoAlerts': '自動アラート',
         'autoAlertsDesc': '設定した時点に一度だけ。既定は目標時刻の1時間前で、早めに知りたいタスクは個別に変えられる',
+        'overdueNotification': '目標時刻を過ぎました',
         'noNotificationsTitle': '通知が来ないとき',
         'aboutNotiCheckTaskTitle': 'タスク自体',
         'aboutNotiCheckTaskDesc': '目標時刻のないタスクはそもそも通知しない。バーのベルで切ってあるタスクも鳴らない。',
@@ -1113,6 +1117,7 @@ const TRANSLATIONS = {
         // About - Notifications section
         'autoAlerts': 'Alertas Automáticas',
         'autoAlertsDesc': 'Una sola vez, en el margen que elija: una hora antes del objetivo de forma predeterminada, y otro distinto en las tareas que necesiten más aviso',
+        'overdueNotification': 'Ha pasado su hora objetivo',
         'noNotificationsTitle': 'Si no llegan las notificaciones',
         'aboutNotiCheckTaskTitle': 'La tarea misma',
         'aboutNotiCheckTaskDesc': 'Una tarea sin hora objetivo nunca avisa, y la campana de la barra puede silenciar una.',

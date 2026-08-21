@@ -1,5 +1,8 @@
 // 접힌 상태의 창 폭. styles.css의 .container.collapsed-mode 와 같은 값이어야 한다.
 const COLLAPSED_WIDTH = 150;
+// main.js 의 DEFAULT_HEIGHT 와 같아야 한다. 접기 전 크기를 기억하지 못한 경우에만
+// 쓰인다 - 보통은 main 이 원래 크기로 되돌린다.
+const DEFAULT_EXPANDED_HEIGHT = 900;
 
 // 화면에 보여줄 날짜 형식들. 저장 형식은 항상 'YYYY-MM-DD HH:mm'으로 고정이고
 // 여기 있는 건 표시/입력용일 뿐이다. 그래야 설정을 바꿔도 기존 데이터가 안 깨진다.
@@ -740,6 +743,13 @@ class TaskManager {
             // 행 어디를 눌러도 선택된다. 체크박스만 노리기에는 표적이 작다.
             // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
             if (e.target.closest('.task-select')) return;
+
+            // 목록이 비었을 때는 그 자리가 곧 "여기서 시작하라"는 자리다.
+            // 안내 문구가 추가 버튼을 가리키고 있으므로 눌러도 열려야 한다.
+            if (e.target.closest('.empty-message')) {
+                this.showModal();
+                return;
+            }
 
             const row = e.target.closest('#tasksBody tr');
             const box = row && row.querySelector('.task-select');
@@ -2770,9 +2780,10 @@ ${filePath}`);
             tableElement.style.display = 'table';
             miniLayout.style.display = 'none';
             
-            // Resize window back to normal if in Electron mode
+            // 크기는 main 이 접기 전 상태에서 되돌린다. 여기 값은 그 기억이
+            // 없을 때(다른 경로로 펼쳐진 경우)만 쓰이는 대비값이다.
             if (this.isElectron && window.electronAPI) {
-                this.resizeAndPositionWindow(900, 500, 'center');
+                this.resizeAndPositionWindow(900, DEFAULT_EXPANDED_HEIGHT, 'center');
             }
         }
 
@@ -3864,7 +3875,7 @@ ${filePath}`);
 
             // 시간 초과 알림
             if (now >= targetDate && !this.notifiedTasks.has(task.id + '-overdue')) {
-                await this.showTaskNotification(task, 'Task is now overdue!');
+                await this.showTaskNotification(task, this.getLocalizedText('overdueNotification'));
                 this.rememberNotified(task.id + '-overdue');
             }
         }

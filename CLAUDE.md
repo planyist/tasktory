@@ -82,6 +82,19 @@ label for the string `August`, which really checked the runner's ICU data —
 `pickerMonth.getMonth()` now. Anything reading a formatted month, weekday or
 number belongs in the same category.
 
+`npm run check:window` is the second real-window script. `check-ui.js` builds its
+own window with no preload, so `isElectron` is false there and nothing reaches
+the resize IPC — collapsing in that script changes the page and leaves the window
+alone. Anything about the window's own size has to run against the window
+`main.js` creates, which is what `check-window.js` does: collapse and expand at
+the default size, at a size the user chose, and while maximized.
+
+Both of those last two shipped broken. Expanding restored a hardcoded `900x500`,
+so widening the window and collapsing once threw the size away; and a maximized
+window cannot be resized with `setBounds` at all, so Ctrl+M drew the strip and
+left the window covering the screen. `main.js` remembers the bounds *and* whether
+it was maximized, and puts back whichever it was.
+
 `npm run check:ui` is **not** in CI. It needs a real window, which on a Linux
 runner means xvfb and a whole class of flakiness that would make the badge
 untrustworthy. Run it locally after visual work.

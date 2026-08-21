@@ -5,6 +5,9 @@ const path = require('path')
 let mainWindow
 let unfocusedOpacity = 1.0
 let originalWindowBounds = null
+// 접기 전에 최대화돼 있었는가. 최대화된 창은 setBounds 로 줄지 않으므로 접을 때
+// 풀어야 하고, 펼 때는 크기가 아니라 최대화 상태로 되돌려야 한다.
+let wasMaximizedBeforeCollapse = false
 // 사용자가 마지막으로 둔 자리. 화면보호기/잠금 이후 창이 밀려나면 여기로 돌린다.
 let intendedBounds = null
 const NORMAL_MIN_WIDTH = 900 // 접힘 여부 판단 기준 (BrowserWindow의 minWidth와 같다)
@@ -593,8 +596,12 @@ ipcMain.handle('resize-and-position-window', async (event, width, height, positi
     let x, y
     if (position === 'top-right-150') {
         if (!originalWindowBounds) {
+            wasMaximizedBeforeCollapse = mainWindow.isMaximized()
             originalWindowBounds = mainWindow.getBounds()
         }
+        // 최대화된 채로는 setBounds 가 통하지 않는다. 풀지 않으면 접기를 눌러도
+        // 스트립만 그려지고 창은 화면을 꽉 채운 채 남는다.
+        if (mainWindow.isMaximized()) mainWindow.unmaximize()
         y = workArea.y + 150
         // 작업이 많으면 계산된 높이가 화면을 넘어가고, 그러면 창 안에 스크롤이 생긴다
         height = Math.min(height, workArea.height - 150)
@@ -603,7 +610,22 @@ ipcMain.handle('resize-and-position-window', async (event, width, height, positi
         x = workArea.x + workArea.width - width
     } else if (position === 'center') {
         mainWindow.setMinimumSize(NORMAL_MIN_WIDTH, 400)
-        originalWindowBounds = null
+
+        // 접기 전 상태로 돌아간다. 넘겨받은 크기는 그 기억이 없을 때만 쓴다 -
+        // 예전에는 여기서 늘 900x500 으로 되돌려, 창을 키워 놓고 한 번 접으면
+        // 그 크기가 사라졌다.
+        if (wasMaximizedBeforeCollapse) {
+            wasMaximizedBeforeCollapse = false
+            originalWindowBounds = null
+            mainWindow.maximize()
+            return true
+        }
+        if (originalWindowBounds) {
+            const restore = originalWindowBounds
+            originalWindowBounds = null
+            mainWindow.setBounds(restore)
+            return true
+        }
         x = workArea.x + Math.round((workArea.width - width) / 2)
         y = workArea.y + Math.round((workArea.height - height) / 2)
     } else {
