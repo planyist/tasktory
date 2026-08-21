@@ -247,6 +247,10 @@ class TaskManager {
         this.updateLeadControls();
         // 핀의 툴팁은 상태에 따라 달라지므로 여기서 다시 붙인다
         this.applyAlwaysOnTopControl();
+        this.setText('settingsStartupLabel', 'startWithSystem');
+        this.setText('startupOnBtn', 'on');
+        this.setText('startupOffBtn', 'off');
+        this.setText('settingsStartupHint', 'startWithSystemHint');
         this.setText('settingsBackupLabel', 'backup', ' (.json)');
         this.setText('settingsHistoryLabel', 'history', ' (.tsv)');
         this.setText('exportHistoryBtn', 'exportHistory');
@@ -330,6 +334,7 @@ class TaskManager {
         this.setText('aboutHowToUseTitle', 'howToUse');
         
         this.setText('aboutNotificationsTitle', 'notifications');
+        this.setText('aboutNoNotificationsTitle', 'noNotificationsTitle');
         
         this.setText('aboutTaskStatusTitle', 'taskStatus');
         
@@ -355,6 +360,10 @@ class TaskManager {
             aboutChipFilterDesc: 'aboutChipFilterDesc',
             aboutQuickFilterDesc: 'aboutQuickFilterDesc',
             aboutSortDesc: 'aboutSortDesc',
+            aboutNotiCheckTaskDesc: 'aboutNotiCheckTaskDesc',
+            aboutNotiCheckCentreDesc: 'aboutNotiCheckCentreDesc',
+            aboutNotiCheckBannerDesc: 'aboutNotiCheckBannerDesc',
+            aboutNotiCheckFocusDesc: 'aboutNotiCheckFocusDesc',
             aboutAttachmentsDesc: 'aboutAttachmentsDesc',
             aboutAlwaysOnTopDesc: 'aboutAlwaysOnTopDesc',
             aboutRepeatRowDesc: 'aboutRepeatRowDesc',
@@ -373,6 +382,10 @@ class TaskManager {
             aboutChipFilterTitle: 'aboutChipFilterTitle',
             aboutQuickFilterTitle: 'aboutQuickFilterTitle',
             aboutSortTitle: 'aboutSortTitle',
+            aboutNotiCheckTaskTitle: 'aboutNotiCheckTaskTitle',
+            aboutNotiCheckCentreTitle: 'aboutNotiCheckCentreTitle',
+            aboutNotiCheckBannerTitle: 'aboutNotiCheckBannerTitle',
+            aboutNotiCheckFocusTitle: 'aboutNotiCheckFocusTitle',
             aboutAttachmentsTitle: 'aboutAttachmentsTitle',
             aboutAlwaysOnTopTitle: 'aboutAlwaysOnTopTitle',
             aboutRepeatRowTitle: 'aboutRepeatRowTitle',
@@ -551,6 +564,13 @@ class TaskManager {
 
         document.getElementById('importBtn').addEventListener('click', () => {
             document.getElementById('fileInput').click();
+        });
+
+        document.getElementById('startupOnBtn').addEventListener('click', () => {
+            this.changeOpenAtLogin(true);
+        });
+        document.getElementById('startupOffBtn').addEventListener('click', () => {
+            this.changeOpenAtLogin(false);
         });
 
         document.getElementById('exportHistoryBtn').addEventListener('click', () => {
@@ -3102,6 +3122,10 @@ ${filePath}`);
         // Render tag presets list
         this.renderTagPresetsList();
         
+        // 자동 실행 여부는 OS 가 답한다. 열 때마다 다시 물어야, 사용자가 작업
+        // 관리자에서 끈 경우에도 화면이 사실을 말한다.
+        this.refreshStartupToggle();
+
         // 로그 폴더 열기는 데스크톱에서만 뜻이 있다. 감출 때만 값을 넣고, 보일
         // 때는 빈 문자열로 되돌려 CSS 가 정하게 둔다 - 여기서 display 를 직접
         // 박으면 스타일시트와 싸운다. 실제로 그렇게 넣어둔 inline-flex 가
@@ -3110,6 +3134,35 @@ ${filePath}`);
         if (openFolderBtn) openFolderBtn.style.display = this.isElectron ? '' : 'none';
 
         modal.style.display = 'block';
+    }
+
+    async refreshStartupToggle() {
+        const group = document.getElementById('settingsStartupLabel');
+        if (!group) return;
+        const wrapper = group.parentNode;
+
+        if (!this.isElectron || !window.electronAPI.getOpenAtLogin) {
+            wrapper.style.display = 'none';
+            return;
+        }
+        const { supported, openAtLogin } = await window.electronAPI.getOpenAtLogin();
+        // Linux 는 Electron 이 이 설정을 구현하지 않는다. 눌러도 아무 일도 없는
+        // 스위치를 보여주느니 통째로 감춘다.
+        wrapper.style.display = supported ? '' : 'none';
+        this.applyStartupToggle(openAtLogin);
+    }
+
+    applyStartupToggle(openAtLogin) {
+        const on = document.getElementById('startupOnBtn');
+        const off = document.getElementById('startupOffBtn');
+        if (on) on.classList.toggle('active', openAtLogin);
+        if (off) off.classList.toggle('active', !openAtLogin);
+    }
+
+    async changeOpenAtLogin(openAtLogin) {
+        if (!this.isElectron || !window.electronAPI.setOpenAtLogin) return;
+        // 돌려받은 값으로 그린다. 요청한 값이 아니라 OS 가 실제로 받아들인 값이다.
+        this.applyStartupToggle(await window.electronAPI.setOpenAtLogin(openAtLogin));
     }
 
     hideSettingsModal() {

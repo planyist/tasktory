@@ -85,6 +85,7 @@ time order, with a mini calendar above it. Ctrl+M toggles it.
 - **Notifications** before a deadline and when one passes. How far before is up
   to you — set a default, then override it on any task that needs more warning.
   It doubles as the point where the row turns Due Soon. Can be silenced per task
+- **Start with the computer**, if you want it up before you are
 - **Installable on a phone** as a PWA, and it opens offline
 
 ## Installation

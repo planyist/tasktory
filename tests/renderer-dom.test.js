@@ -78,7 +78,9 @@ const boot = async (tasks = []) => {
         getAppVersion: jest.fn(async () => '0.0.0-test'),
         openLogFolder: jest.fn(async () => true),
         moveWindowBy: jest.fn(),
-        resizeAndPositionWindow: jest.fn(async () => true)
+        resizeAndPositionWindow: jest.fn(async () => true),
+        getOpenAtLogin: jest.fn(async () => ({ supported: true, openAtLogin: false })),
+        setOpenAtLogin: jest.fn(async (v) => v)
     }
     window.electronAPI = electronAPI
 

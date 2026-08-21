@@ -425,6 +425,15 @@
             </div>
 
             <div class="settings-group">
+                <label id="settingsStartupLabel">Start with Windows</label>
+                <div class="choice-toggle">
+                    <button type="button" id="startupOnBtn" class="backup-btn"></button>
+                    <button type="button" id="startupOffBtn" class="backup-btn"></button>
+                </div>
+                <small id="settingsStartupHint" class="settings-hint"></small>
+            </div>
+
+            <div class="settings-group">
                 <label id="settingsBackupLabel">Backup</label>
                 <div class="backup-actions">
                     <button type="button" id="exportBtn" class="backup-btn"></button>
@@ -477,6 +486,14 @@
                 <li><strong id="aboutDefaultSettingTitle">Default Setting:</strong> <span id="aboutDefaultSettingDesc">Configure in Settings</span> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="display: inline; vertical-align: text-bottom; margin: 0 2px;"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg> <span id="aboutDefaultSettingEnd">icon</span></li>
             </ul>
             
+            <h3 id="aboutNoNotificationsTitle">If notifications do not arrive</h3>
+            <ul>
+                <li><strong id="aboutNotiCheckTaskTitle">The task itself:</strong> <span id="aboutNotiCheckTaskDesc">a task with no target time never notifies, and the bell in the bar can silence one</span></li>
+                <li><strong id="aboutNotiCheckCentreTitle">The notification centre:</strong> <span id="aboutNotiCheckCentreDesc">open it with Win+N. If they are sitting there, they were delivered and only the banner is off</span></li>
+                <li><strong id="aboutNotiCheckBannerTitle">Windows settings:</strong> <span id="aboutNotiCheckBannerDesc">System, then Notifications. Find Tasktory and check that banners are on. Versions before 0.11.3 registered under a different name, so the list may hold two</span></li>
+                <li><strong id="aboutNotiCheckFocusTitle">Focus assist:</strong> <span id="aboutNotiCheckFocusDesc">while it is on, Windows holds every banner back silently</span></li>
+            </ul>
+
             <h3 id="aboutTaskStatusTitle">Task Status</h3>
             <ul>
                 <li><strong><span style="color: #664d03; background: #fff3cd; padding: 2px 6px; border-radius: 8px;" id="aboutPendingStatus">Pending</span>:</strong> <span id="aboutPendingStatusDesc">Task is waiting to be started</span></li>

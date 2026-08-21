@@ -11,6 +11,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     importData: (data) => ipcRenderer.invoke('import-data', data),
     getLogPath: () => ipcRenderer.invoke('get-log-path'),
     openLogFolder: () => ipcRenderer.invoke('open-log-folder'),
+    getOpenAtLogin: () => ipcRenderer.invoke('get-open-at-login'),
+    setOpenAtLogin: (openAtLogin) => ipcRenderer.invoke('set-open-at-login', openAtLogin),
     setAlwaysOnTop: (onTop) => ipcRenderer.invoke('set-always-on-top', onTop),
     setUnfocusedOpacity: (opacity) => ipcRenderer.invoke('set-unfocused-opacity', opacity),
     showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body),

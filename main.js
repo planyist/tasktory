@@ -493,6 +493,19 @@ ipcMain.handle('set-always-on-top', async (event, onTop) => {
     return true
 })
 
+// 로그인 자동 실행. 값은 OS 가 소유한다 - 사용자가 작업 관리자의 시작 프로그램에서
+// 끌 수 있으므로 앱이 따로 저장해 두면 화면과 실제가 어긋난다. 늘 여기서 읽는다.
+// Linux 에서는 Electron 이 이 API 를 구현하지 않아 언제나 false 를 돌려준다.
+ipcMain.handle('get-open-at-login', async () => ({
+    supported: process.platform === 'win32' || process.platform === 'darwin',
+    openAtLogin: app.getLoginItemSettings().openAtLogin
+}))
+
+ipcMain.handle('set-open-at-login', async (event, openAtLogin) => {
+    app.setLoginItemSettings({ openAtLogin: Boolean(openAtLogin) })
+    return app.getLoginItemSettings().openAtLogin
+})
+
 ipcMain.handle('set-unfocused-opacity', async (event, opacity) => {
     unfocusedOpacity = opacity
     if (!mainWindow.isFocused()) {
