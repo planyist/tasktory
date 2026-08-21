@@ -2136,6 +2136,56 @@ describe('view toggle', () => {
     })
 })
 
+// <input> 은 값의 일부만 색을 달리할 수 없으므로, 같은 글자를 같은 자리에 겹쳐
+// 그린 층이 자리표시자만 흐리게 칠한다.
+describe('the unfilled part of a date reads as a placeholder', () => {
+    const ghost = () => document.querySelector('[data-ghost="startDateTime"]')
+    const dimmed = () => [...ghost().querySelectorAll('.dtf-placeholder')].map(e => e.textContent)
+
+    const openWith = async (value) => {
+        const manager = await boot([])
+        manager.showModal()
+        await settle()
+        const input = document.getElementById('startDateTime')
+        input.value = value
+        manager.paintGhost(input)
+        return manager
+    }
+
+    test('the overlay carries exactly what the field holds', async () => {
+        await openWith('2026-08-DD HH:mm')
+
+        expect(ghost().textContent).toBe('2026-08-DD HH:mm')
+    })
+
+    test('only the slots nobody filled are dimmed', async () => {
+        await openWith('2026-08-DD HH:mm')
+
+        expect(dimmed()).toEqual(['DD', 'HH', 'mm'])
+    })
+
+    test('a full date dims nothing', async () => {
+        await openWith('2026-08-21 09:30')
+
+        expect(dimmed()).toEqual([])
+    })
+
+    // The separator between two dimmed runs is its own text node. It has to
+    // survive: 'DD HH' printed as 'DDHH' is what a flex container does to a
+    // run of whitespace between two items.
+    test('the space between two dimmed runs survives', async () => {
+        await openWith('2026-08-DD HH:mm')
+
+        expect(ghost().textContent).toContain('DD HH')
+    })
+
+    test('an empty field draws nothing at all', async () => {
+        await openWith('')
+
+        expect(ghost().textContent).toBe('')
+    })
+})
+
 describe('an empty list is where you start', () => {
     // The empty row points at the add button, so the row itself should open it.
     // It could not: the click handler looks for a checkbox and an empty row has

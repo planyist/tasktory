@@ -834,10 +834,56 @@ body.dark-mode .selection-summary.has-selection {
     display: flex;
     gap: 6px;
     align-items: center;
+    /* 겹쳐 그릴 층의 기준점 */
+    position: relative;
 }
 
 .datetime-field input[type="text"] {
     flex: 1 1 auto;
+    /* 글자는 아래 층이 그린다. 커서만 남긴다 - 색을 투명하게 두면 커서까지
+       사라지므로 caret-color 를 따로 준다. */
+    color: transparent;
+    caret-color: #333;
+    background: transparent;
+    position: relative;
+    z-index: 1;
+}
+
+/* 입력칸과 완전히 같은 자리에 같은 글자를 그린다. 글꼴·여백이 한 픽셀이라도
+   다르면 글자가 어긋나 두 겹으로 보인다. */
+.dtf-ghost {
+    position: absolute;
+    left: 0;
+    top: 0;
+    height: var(--control-height);
+    padding: 0 8px;
+    /* flex 로 두면 안 된다. 흐린 조각 사이의 공백 하나가 익명 flex 항목이 되고,
+       공백뿐인 익명 항목은 그려지지 않아 'DD HH' 가 'DDHH' 로 붙어 버린다.
+       줄높이를 칸 높이에 맞춰 세로 가운데를 잡는다. */
+    display: block;
+    line-height: var(--control-height);
+    white-space: pre;
+    pointer-events: none;
+    color: #333;
+    border: 1px solid transparent;
+    box-sizing: border-box;
+}
+
+/* 아직 채우지 않은 자리. 값이 아니라 틀이라는 것이 색으로 보여야 한다. */
+.dtf-ghost .dtf-placeholder {
+    color: #b6bcc6;
+}
+
+body.dark-mode .datetime-field input[type="text"] {
+    caret-color: #e0e0e0;
+}
+
+body.dark-mode .dtf-ghost {
+    color: #e0e0e0;
+}
+
+body.dark-mode .dtf-ghost .dtf-placeholder {
+    color: #6b7280;
 }
 
 .datetime-pick-btn {

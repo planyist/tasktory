@@ -375,6 +375,11 @@ This is a complete Electron application with the following structure:
 
   Blur clears a field nobody typed into, because a target time is allowed to be empty and a bare template cannot be told apart from a value.
 
+  **The unfilled slots are dimmed, which takes a second layer.** An `<input>` cannot colour part of its own value, so `.dtf-ghost` draws the same string at the same place and the input's text goes transparent with `caret-color` keeping the caret. Two things this layer will get wrong if you touch it:
+
+  - **It must not be a flex container.** The gap between two dimmed runs is a text node of one space, and a run of whitespace between flex items is not rendered — `DD HH` prints as `DDHH`. It is `display: block` with `line-height` set to the control height.
+  - **Its font is copied from the input at paint time**, property by property, not through the `font` shorthand — the shorthand carries `line-height` and would undo that centring. Declaring the font twice in CSS drifts the moment one side changes, and `font: inherit` was already wrong: it follows the parent, which is 15px against the input's 13px.
+
 - **Typing a date can skip the separators.** `parseWithPattern` falls through to `fromDigits`, which strips every non-digit and accepts 8 or 12 of them: `20250821`, `202508210930`, and anything pasted from another format. The chosen pattern is how dates are *shown*, not a contract the typist has to honour — the stored form is `YYYY-MM-DD HH:mm` either way. Nonsense and impossible dates are still refused, and a test that used to demand strict separators now demands the opposite, on purpose
 - **The lead time is a judgement, and it belongs to the task.** One number drives both the notification and the "due soon" badge, so they cannot drift apart — but that number now comes from the task, falling back to a default in Settings (`leadFor()`). "One hour before the deadline" is a fact the target column already states; **"start now or you will be late" is something only the person doing the work knows**, and a three-hour report has no business turning red at the same moment as a two-minute email.
 - **A task saved already inside its lead window notifies immediately.** `saveTask` calls `checkUpcomingTasks()` after the write; the 30-second sweep alone makes a just-registered task look like notifications are broken.

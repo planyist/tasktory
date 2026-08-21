@@ -917,13 +917,75 @@ class TaskManager {
             input.addEventListener('blur', () => {
                 const { digits, meridiem } = maskRead(input.value, this.dateFormat);
                 if (!digits && !meridiem) input.value = '';
+                this.paintGhost(input);
             });
+
+            // 선택기나 편집 창이 값을 직접 넣는 경우까지 따라가려면, 값이 바뀔
+            // 만한 자리마다 부르는 대신 한 박자 뒤에 다시 그린다.
+            input.addEventListener('change', () => this.paintGhost(input));
         }
     }
 
     setMask(input, { text, caret }) {
         input.value = text;
         if (document.activeElement === input) input.setSelectionRange(caret, caret);
+        this.paintGhost(input);
+    }
+
+    // 겹쳐 그리는 층. 아직 채우지 않은 자리만 흐리게 칠한다 - 어느 글자가
+    // 자리표시자인지는 슬롯 위치로 알 수 있으므로 값을 뜯어볼 필요가 없다.
+    paintGhost(input) {
+        const ghost = input.parentNode
+            && input.parentNode.querySelector(`[data-ghost="${input.id}"]`);
+        if (!ghost) return;
+
+        // 글꼴을 입력칸에서 그대로 가져온다. CSS 로 두 번 적어 두면 한쪽만 바뀌는
+        // 날 글자가 옆으로 어긋나 두 겹으로 보인다 - font: inherit 은 부모를
+        // 따라가서 이미 그렇게 어긋나 있었다.
+        const style = getComputedStyle(input);
+        // font 단축 속성은 line-height 까지 덮어써서 세로 가운데가 깨진다.
+        // 글자 모양에 관계된 것만 가져온다.
+        ghost.style.fontFamily = style.fontFamily;
+        ghost.style.fontSize = style.fontSize;
+        ghost.style.fontWeight = style.fontWeight;
+        ghost.style.letterSpacing = style.letterSpacing;
+
+        const text = input.value;
+        if (!text) {
+            ghost.textContent = '';
+            return;
+        }
+
+        const dim = new Set();
+        for (const slot of maskSlots(this.dateFormat)) {
+            if (slot.kind === 'digit') {
+                if (text[slot.index] === slot.placeholder) dim.add(slot.index);
+            } else if (text[slot.index] === '-' && text[slot.index + 1] === '-') {
+                dim.add(slot.index);
+                dim.add(slot.index + 1);
+            }
+        }
+
+        let html = '';
+        let run = '';
+        let runDim = null;
+        const flush = () => {
+            if (!run) return;
+            html += runDim
+                ? `<span class="dtf-placeholder">${this.escapeHtml(run)}</span>`
+                : this.escapeHtml(run);
+            run = '';
+        };
+        for (let i = 0; i < text.length; i++) {
+            const isDim = dim.has(i);
+            if (isDim !== runDim) {
+                flush();
+                runDim = isDim;
+            }
+            run += text[i];
+        }
+        flush();
+        ghost.innerHTML = html;
     }
 
     paintMask(input, digits, meridiem) {
