@@ -411,12 +411,30 @@ describe('date format setting', () => {
         expect(stored[0].targetDateTime).toBe('2026-09-10 15:30')
     })
 
-    test('rejects input that does not match the chosen pattern', async () => {
-        jest.spyOn(window, 'alert').mockImplementation(() => {})
+    // Separators are forgiven, deliberately. The chosen pattern is how dates are
+    // shown, not a contract the typist has to honour - the stored form never
+    // changes either way. Typing the digits and letting them land is faster than
+    // hunting for the right slash.
+    test('accepts the same date written with other separators', async () => {
         const manager = await boot([])
         manager.changeDateFormat('YYYY-MM-DD HH:mm')
 
         at('startDateTime').value = '2026/09/10 09:00'
+        at('targetDateTime').value = '2026-09-10 18:00'
+        at('taskContent').value = 'ship it'
+        at('taskPosition').value = '1'
+        await manager.saveTask()
+        await settle()
+
+        expect(stored[0].startDateTime).toBe('2026-09-10 09:00')
+    })
+
+    test('rejects input that is not a date at all', async () => {
+        jest.spyOn(window, 'alert').mockImplementation(() => {})
+        const manager = await boot([])
+        manager.changeDateFormat('YYYY-MM-DD HH:mm')
+
+        at('startDateTime').value = 'next tuesday'
         at('targetDateTime').value = '2026-09-10 18:00'
         at('taskContent').value = 'ship it'
         at('taskPosition').value = '1'

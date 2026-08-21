@@ -59,7 +59,36 @@ const formatWithPattern = (date, pattern) =>
     pattern.replace(TOKEN_PATTERN, (token) => DATE_TOKENS[token].get(date));
 
 // 형식 문자열대로 파싱한다. 형식에 맞지 않으면 null.
+// 숫자만 쳐도 받는다. 형식에 맞춰 구분자를 넣어 가며 치는 것은 번거롭고,
+// 20250821 이나 202508210900 처럼 붙여 쓰는 편이 빠르다. 구분자가 무엇이든
+// 상관없이 숫자만 남겨 다시 조립하므로, 다른 형식으로 복사해 온 값도 들어온다.
+// 8자리는 날짜만(시각 00:00), 12자리는 날짜와 시각.
+const fromDigits = (text) => {
+    const digits = String(text || '').replace(/[^0-9]/g, '');
+    if (digits.length !== 8 && digits.length !== 12) return null;
+
+    const year = Number(digits.slice(0, 4));
+    const month = Number(digits.slice(4, 6));
+    const day = Number(digits.slice(6, 8));
+    const hour = digits.length === 12 ? Number(digits.slice(8, 10)) : 0;
+    const minute = digits.length === 12 ? Number(digits.slice(10, 12)) : 0;
+    if (month < 1 || month > 12 || day < 1 || day > 31) return null;
+    if (hour > 23 || minute > 59) return null;
+
+    const date = new Date(year, month - 1, day, hour, minute);
+    // 2월 30일 같은 날짜는 다른 달로 굴러가므로 되돌려 확인한다
+    if (date.getMonth() !== month - 1 || date.getDate() !== day) return null;
+    return date;
+};
+
 const parseWithPattern = (text, pattern) => {
+    // 형식대로 친 것을 먼저 보고, 안 맞으면 숫자만 남겨 다시 본다. 세 호출처가
+    // 모두 사람이 친 문자열이라 여기 한 곳에서 받아 주면 전부 통한다.
+    const asPattern = parseByPattern(text, pattern);
+    return asPattern || fromDigits(text);
+};
+
+const parseByPattern = (text, pattern) => {
     const order = [];
     let source = '';
     let lastIndex = 0;
@@ -244,6 +273,7 @@ class TaskManager {
         this.setText('settingsLeadLabel', 'notifyBefore');
         this.setText('settingsLeadHint', 'notifyBeforeHint');
         this.setText('labelTaskLead', 'notifyBefore');
+        this.setText('taskLeadHint', 'taskLeadHint');
         this.setText('labelAttachments', 'attachments');
         this.setText('attachmentHint', 'attachmentHint');
         this.setText('attachmentPickBtn', 'chooseFiles');

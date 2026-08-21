@@ -285,6 +285,7 @@
                     <select id="taskLead">
                         <option value=""></option>
                     </select>
+                    <small id="taskLeadHint" class="settings-hint"></small>
                 </div>
                 <div class="form-group" id="repeatGroup">
                     <label for="taskRepeat" id="labelRepeat">Repeat</label>
@@ -592,6 +593,10 @@
 
     <!-- 날짜/시간 선택기. 표시 형식이 설정에 따라 달라져서 네이티브 컨트롤을 쓸 수 없다. -->
     <div id="dateTimePicker" class="datetime-picker" style="display: none;">
+        <!-- 달력과 시간을 나란히 둔다. 시간을 아래에 두면 팝오버가 길어지지
+             않도록 높이를 104px 로 묶어야 해서, 목록이 늘 좁아 보였다. -->
+        <div class="dtp-body">
+        <div class="dtp-calendar">
         <div class="dtp-header">
             <button type="button" id="dtpPrevMonth" title="Previous month">‹</button>
             <span id="dtpMonthLabel"></span>
@@ -599,10 +604,12 @@
         </div>
         <div class="dtp-weekdays" id="dtpWeekdays"></div>
         <div class="dtp-days" id="dtpDays"></div>
+        </div>
         <div class="dtp-time">
             <div class="dtp-time-col" id="dtpHours"></div>
             <span class="dtp-colon">:</span>
             <div class="dtp-time-col" id="dtpMinutes"></div>
+        </div>
         </div>
         <div class="dtp-actions">
             <button type="button" id="dtpCancel" class="dtp-btn"></button>

@@ -862,7 +862,7 @@ body.dark-mode .selection-summary.has-selection {
 .datetime-picker {
     position: fixed;
     z-index: 3000;
-    width: 240px;
+    width: auto;
     padding: 10px;
     background: #fff;
     border: 1px solid #ddd;
@@ -935,14 +935,25 @@ body.dark-mode .selection-summary.has-selection {
     font-weight: 700;
 }
 
+/* 달력과 시간을 나란히 */
+.dtp-body {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 8px;
+}
+
+.dtp-calendar {
+    width: 240px;
+    flex: 0 0 auto;
+}
+
 .dtp-time {
     display: flex;
     align-items: stretch;
     justify-content: center;
     gap: 6px;
-    margin: 10px 0 8px;
-    padding-top: 8px;
-    border-top: 1px solid #eee;
+    padding-left: 10px;
+    border-left: 1px solid #eee;
 }
 
 .dtp-colon {
@@ -954,7 +965,9 @@ body.dark-mode .selection-summary.has-selection {
 /* 시/분 목록. 높이를 고정해 스크롤되게 두면 팝오버가 길어지지 않는다. */
 .dtp-time-col {
     width: 56px;
-    max-height: 104px;
+    /* 달력과 나란히 서므로 그 높이만큼 쓸 수 있다. 아래에 있던 시절의 104px 은
+       한 번에 네 줄밖에 못 보여줬다. */
+    max-height: 208px;
     overflow-y: auto;
     display: flex;
     flex-direction: column;
@@ -3502,7 +3515,23 @@ body.dark-mode .collapsed-task-list li.overdue:hover {
         max-height: 90vh;
     }
 
-    .datetime-picker {
-        width: 260px;
+    /* 좁은 화면에서는 나란히 둘 자리가 없다. 다시 위아래로 쌓는다. */
+    .dtp-body {
+        flex-direction: column;
+    }
+
+    .dtp-calendar {
+        width: 100%;
+    }
+
+    .dtp-time {
+        padding-left: 0;
+        border-left: none;
+        padding-top: 8px;
+        border-top: 1px solid #eee;
+    }
+
+    .dtp-time-col {
+        max-height: 104px;
     }
 }

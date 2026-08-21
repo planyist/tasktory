@@ -96,6 +96,43 @@ describe('getTaskStatus', () => {
     })
 })
 
+// 형식대로 구분자를 넣어 가며 치는 것은 번거롭다. 숫자만 붙여 쳐도, 다른
+// 형식에서 복사해 와도 들어와야 한다.
+describe('typing a date without the separators', () => {
+    const m = () => makeManager()
+    const read = (text) => {
+        const manager = m()
+        manager.dateFormat = 'YYYY-MM-DD HH:mm'
+        return manager.parseInputDateTime(text)
+    }
+
+    test('eight digits are a date at midnight', () => {
+        expect(read('20250821')).toBe('2025-08-21 00:00')
+    })
+
+    test('twelve digits carry the time', () => {
+        expect(read('202508210930')).toBe('2025-08-21 09:30')
+    })
+
+    // The separators are thrown away, so a value pasted from another format
+    // lands correctly too.
+    test('any separators at all are accepted', () => {
+        expect(read('2025/08/21 09:30')).toBe('2025-08-21 09:30')
+        expect(read('2025.08.21')).toBe('2025-08-21 00:00')
+    })
+
+    test('a date that does not exist is still refused', () => {
+        expect(read('20250230')).toBeNull()
+        expect(read('20251301')).toBeNull()
+        expect(read('202508212560')).toBeNull()
+    })
+
+    test('and so is anything that is not a whole date', () => {
+        expect(read('2025082')).toBeNull()
+        expect(read('abc')).toBeNull()
+    })
+})
+
 describe('tag parsing', () => {
     const manager = () => makeManager()
 
