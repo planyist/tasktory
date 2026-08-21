@@ -11,6 +11,14 @@ const SOURCE = fs.readFileSync(path.join(__dirname, '..', 'renderer.js'), 'utf8'
 const I18N = fs.readFileSync(path.join(__dirname, '..', 'i18n.js'), 'utf8')
 const TaskManager = new Function(`${I18N}\n${SOURCE}\nreturn TaskManager;`)()
 
+// 마스크는 클래스 밖의 순수 함수다. 형식 문자열 하나에서 출력·파싱·틀 셋이
+// 나오므로, 그 셋이 같은 형식을 같게 읽는지는 여기서 확인한다.
+const { maskRender, maskRead } = new Function(
+    `${I18N}
+${SOURCE}
+return { maskRender, maskRead };`
+)()
+
 // Build an instance without running the constructor, which kicks off async
 // init() against a DOM that does not exist in this suite.
 const makeManager = (overrides = {}) =>
@@ -98,6 +106,75 @@ describe('getTaskStatus', () => {
 
 // 형식대로 구분자를 넣어 가며 치는 것은 번거롭다. 숫자만 붙여 쳐도, 다른
 // 형식에서 복사해 와도 들어와야 한다.
+// 형식대로 치려면 구분자를 손으로 넣어야 하고, 다 치기 전에는 무엇을 치는지
+// 화면에 단서가 없다. 틀을 남기고 숫자가 덮어쓰게 하면 둘 다 사라진다.
+describe('the date field wears its format as a mask', () => {
+    const F = 'YYYY-MM-DD HH:mm'
+    const render = (digits, meridiem = null) =>
+        maskRender(F, digits, meridiem)
+
+    test('an empty field shows the format itself', () => {
+        expect(render('').text).toBe('YYYY-MM-DD HH:mm')
+    })
+
+    test('digits overwrite the placeholder from the left', () => {
+        expect(render('2').text).toBe('2YYY-MM-DD HH:mm')
+        expect(render('20').text).toBe('20YY-MM-DD HH:mm')
+        expect(render('2026').text).toBe('2026-MM-DD HH:mm')
+    })
+
+    // The separator is never typed - four digits and the next one lands in MM.
+    test('separators are stepped over', () => {
+        expect(render('202608').text).toBe('2026-08-DD HH:mm')
+        expect(render('20260821').text).toBe('2026-08-21 HH:mm')
+        expect(render('202608210930').text).toBe('2026-08-21 09:30')
+    })
+
+    // The caret has to sit where the next digit will land, or the person is
+    // watching a different place than the one they are typing into.
+    test('the caret follows the last digit', () => {
+        expect(render('').caret).toBe(0)
+        expect(render('2026').caret).toBe(4)
+        expect(render('20260821').caret).toBe(10)
+        expect(render('202608210930').caret).toBe(16)
+    })
+
+    test('it stops at the format is full', () => {
+        expect(render('20260821093012345').text).toBe('2026-08-21 09:30')
+    })
+
+    // Reading back has to ignore the placeholder, which is the only reason the
+    // field can be re-rendered from its own contents on every keystroke.
+    test('reading back keeps only what was typed', () => {
+        expect(maskRead('2026-08-2D HH:mm', F)).toEqual({ digits: '2026082', meridiem: null })
+        expect(maskRead('YYYY-MM-DD HH:mm', F)).toEqual({ digits: '', meridiem: null })
+    })
+
+    describe('a twelve-hour format', () => {
+        const A = 'MM/DD/YYYY hh:mm A'
+
+        test('leaves the meridiem waiting', () => {
+            expect(maskRender(A, '082120260930', null).text).toBe('08/21/2026 09:30 --')
+        })
+
+        test('and fills it once it is chosen', () => {
+            expect(maskRender(A, '082120260930', 'PM').text).toBe('08/21/2026 09:30 PM')
+        })
+
+        test('reading back picks the meridiem out', () => {
+            expect(maskRead('08/21/2026 09:30 PM', A).meridiem).toBe('PM')
+            expect(maskRead('08/21/2026 09:30 --', A).meridiem).toBeNull()
+        })
+    })
+
+    // The mask comes from the same pattern string as the output and the parsing
+    // regex, so a new format cannot be supported by two of the three.
+    test('it follows whatever format is chosen', () => {
+        expect(maskRender('DD/MM/YYYY HH:mm', '2108', null).text).toBe('21/08/YYYY HH:mm')
+        expect(maskRender('YYYYMMDD HHmm', '20260821', null).text).toBe('20260821 HHmm')
+    })
+})
+
 describe('typing a date without the separators', () => {
     const m = () => makeManager()
     const read = (text) => {

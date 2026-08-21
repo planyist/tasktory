@@ -58,6 +58,71 @@ const TOKEN_PATTERN = /YYYY|MM|DD|HH|hh|mm|A/g;
 const formatWithPattern = (date, pattern) =>
     pattern.replace(TOKEN_PATTERN, (token) => DATE_TOKENS[token].get(date));
 
+// ---- 입력 마스크 -------------------------------------------------------
+// 형식대로 치려면 구분자를 손으로 넣어야 하고, 다 치기 전까지는 무엇을 치고
+// 있는지 화면에 아무 단서가 없다. 틀을 남겨 두고 숫자가 그 자리를 덮어쓰게
+// 하면 둘 다 사라진다 - 구분자는 저절로 넘어가고, 남은 자리는 눈에 보인다.
+
+// 형식을 조각으로 나눈다. 글자 수가 긴 토큰부터 맞춰야 'mm' 이 'm' 둘로
+// 쪼개지지 않는다.
+const maskParts = (pattern) => {
+    const names = Object.keys(DATE_TOKENS).sort((a, b) => b.length - a.length);
+    const parts = [];
+    let i = 0;
+    while (i < pattern.length) {
+        const token = names.find(name => pattern.startsWith(name, i));
+        if (token === 'A') {
+            parts.push({ kind: 'ampm' });
+            i += 1;
+        } else if (token) {
+            parts.push({ kind: 'digits', letters: token });
+            i += token.length;
+        } else {
+            parts.push({ kind: 'literal', text: pattern[i] });
+            i += 1;
+        }
+    }
+    return parts;
+};
+
+const maskCapacity = (pattern) => maskParts(pattern)
+    .filter(part => part.kind === 'digits')
+    .reduce((sum, part) => sum + part.letters.length, 0);
+
+// 화면에 있는 글자에서 사용자가 실제로 넣은 것만 되읽는다. 자리표시자는 Y M D
+// H h m 과 '--' 뿐이라 숫자와 A/P 는 전부 사용자가 넣은 것이다.
+const maskRead = (text, pattern) => ({
+    digits: (String(text).match(/\d/g) || []).join('').slice(0, maskCapacity(pattern)),
+    meridiem: /[Pp]/.test(text) ? 'PM' : (/[Aa]/.test(text) ? 'AM' : null)
+});
+
+// 넣은 값으로 틀을 채운다. 커서는 마지막으로 채운 칸 바로 뒤에 둔다 - 그래야
+// 다음 숫자가 갈 자리를 사용자가 보고 있는 곳과 같아진다.
+const maskRender = (pattern, digits, meridiem) => {
+    let text = '';
+    let used = 0;
+    let caret = 0;
+    for (const part of maskParts(pattern)) {
+        if (part.kind === 'literal') {
+            text += part.text;
+        } else if (part.kind === 'digits') {
+            for (const letter of part.letters) {
+                if (used < digits.length) {
+                    text += digits[used];
+                    used += 1;
+                    caret = text.length;
+                } else {
+                    text += letter;
+                }
+            }
+        } else {
+            text += meridiem || '--';
+            if (meridiem) caret = text.length;
+        }
+    }
+    return { text, caret };
+};
+
 // 형식 문자열대로 파싱한다. 형식에 맞지 않으면 null.
 // 숫자만 쳐도 받는다. 형식에 맞춰 구분자를 넣어 가며 치는 것은 번거롭고,
 // 20250821 이나 202508210900 처럼 붙여 쓰는 편이 빠르다. 구분자가 무엇이든
@@ -744,8 +809,61 @@ class TaskManager {
 
     }
 
+    // 날짜 칸에 틀을 씌운다. 값을 프로그램이 넣을 때(선택기, 편집 열기)는 이미
+    // 완성된 문자열이라 되읽어도 그대로다.
+    wireDateTimeMask() {
+        for (const input of document.querySelectorAll('.datetime-field input')) {
+            input.addEventListener('focus', () => {
+                if (!input.value.trim()) {
+                    this.paintMask(input, '', null);
+                    return;
+                }
+                // 이미 다 찬 칸이면 첫 글자가 갈 자리가 없어, 치는데 아무 일도
+                // 일어나지 않는다. 통째로 골라 두면 첫 숫자가 처음부터 다시
+                // 채우기 시작한다.
+                input.select();
+            });
+
+            input.addEventListener('input', () => {
+                const { digits, meridiem } = maskRead(input.value, this.dateFormat);
+                this.paintMask(input, digits, meridiem);
+            });
+
+            // 지우기는 직접 처리한다. 브라우저에 맡기면 구분자나 자리표시자만
+            // 지워져, 다시 그리는 순간 되살아나 아무 일도 안 한 것처럼 보인다.
+            input.addEventListener('keydown', (e) => {
+                if (e.key !== 'Backspace') return;
+                const { digits, meridiem } = maskRead(input.value, this.dateFormat);
+                if (!digits && !meridiem) return;
+                e.preventDefault();
+                // 골라 둔 상태에서는 고른 만큼 지운다는 뜻이다
+                if (input.selectionStart !== input.selectionEnd) {
+                    this.paintMask(input, '', null);
+                } else if (meridiem) {
+                    this.paintMask(input, digits, null);
+                } else {
+                    this.paintMask(input, digits.slice(0, -1), null);
+                }
+            });
+
+            // 아무것도 넣지 않았으면 비워 둔다. 목표 시각은 비어 있을 수 있고,
+            // 틀만 남아 있으면 그것이 값인지 자리표시자인지 알 수 없다.
+            input.addEventListener('blur', () => {
+                const { digits, meridiem } = maskRead(input.value, this.dateFormat);
+                if (!digits && !meridiem) input.value = '';
+            });
+        }
+    }
+
+    paintMask(input, digits, meridiem) {
+        const { text, caret } = maskRender(this.dateFormat, digits, meridiem);
+        input.value = text;
+        if (document.activeElement === input) input.setSelectionRange(caret, caret);
+    }
+
     // 직접 만든 날짜/시간 선택기
     wireDateTimePicker() {
+        this.wireDateTimeMask();
         document.querySelectorAll('.datetime-pick-btn').forEach(button => {
             button.addEventListener('click', () => this.openDateTimePicker(button.dataset.target));
         });
