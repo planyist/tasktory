@@ -123,6 +123,62 @@ const maskRender = (pattern, digits, meridiem) => {
     return { text, caret };
 };
 
+// 값이 들어갈 수 있는 자리와 그 위치. 커서가 어느 칸에 있는지 알아야
+// 덮어쓸 수 있다.
+const maskSlots = (pattern) => {
+    const slots = [];
+    let pos = 0;
+    for (const part of maskParts(pattern)) {
+        if (part.kind === 'literal') {
+            pos += part.text.length;
+        } else if (part.kind === 'digits') {
+            for (const letter of part.letters) {
+                slots.push({ index: pos, kind: 'digit', placeholder: letter });
+                pos += 1;
+            }
+        } else {
+            slots.push({ index: pos, kind: 'ampm', placeholder: '--' });
+            pos += 2;
+        }
+    }
+    return slots;
+};
+
+// 커서 자리(또는 그 다음 빈 자리)에 한 글자를 덮어쓴다. 받을 수 없는 글자면 null.
+const maskWrite = (text, pattern, caret, ch) => {
+    const slots = maskSlots(pattern);
+    const slot = slots.find(s => s.index >= caret);
+    if (!slot) return null;
+
+    const chars = String(text).split('');
+    if (slot.kind === 'digit') {
+        if (!/[0-9]/.test(ch)) return null;
+        chars[slot.index] = ch;
+    } else {
+        if (!/[apAP]/.test(ch)) return null;
+        const meridiem = ch.toUpperCase() === 'P' ? 'PM' : 'AM';
+        chars[slot.index] = meridiem[0];
+        chars[slot.index + 1] = meridiem[1];
+    }
+
+    const after = slots.find(s => s.index > slot.index);
+    return {
+        text: chars.join(''),
+        caret: after ? after.index : slot.index + (slot.kind === 'ampm' ? 2 : 1)
+    };
+};
+
+// 커서 앞자리를 비운다. 자리표시자로 되돌리고 커서를 그 자리에 둔다.
+const maskErase = (text, pattern, caret) => {
+    const slots = maskSlots(pattern);
+    const slot = [...slots].reverse().find(s => s.index < caret);
+    if (!slot) return null;
+    const chars = String(text).split('');
+    chars[slot.index] = slot.placeholder[0];
+    if (slot.kind === 'ampm') chars[slot.index + 1] = slot.placeholder[1];
+    return { text: chars.join(''), caret: slot.index };
+};
+
 // 형식 문자열대로 파싱한다. 형식에 맞지 않으면 null.
 // 숫자만 쳐도 받는다. 형식에 맞춰 구분자를 넣어 가며 치는 것은 번거롭고,
 // 20250821 이나 202508210900 처럼 붙여 쓰는 편이 빠르다. 구분자가 무엇이든
@@ -814,36 +870,46 @@ class TaskManager {
     wireDateTimeMask() {
         for (const input of document.querySelectorAll('.datetime-field input')) {
             input.addEventListener('focus', () => {
-                if (!input.value.trim()) {
-                    this.paintMask(input, '', null);
-                    return;
-                }
-                // 이미 다 찬 칸이면 첫 글자가 갈 자리가 없어, 치는데 아무 일도
-                // 일어나지 않는다. 통째로 골라 두면 첫 숫자가 처음부터 다시
-                // 채우기 시작한다.
-                input.select();
+                if (!input.value.trim()) this.paintMask(input, '', null);
             });
 
+            // 치는 것은 전부 여기서 받는다. 브라우저에 맡기면 글자가 끼어들어
+            // 자리가 밀리고, 칸이 꽉 차 있으면 넣을 데가 없어 아무 일도 일어나지
+            // 않는다. 커서가 있는 자리에 덮어쓰면 둘 다 생기지 않는다.
+            input.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+                const format = this.dateFormat;
+                const caret = input.selectionStart;
+                const selecting = input.selectionStart !== input.selectionEnd;
+
+                if (e.key === 'Backspace' || e.key === 'Delete') {
+                    e.preventDefault();
+                    if (selecting) {
+                        this.paintMask(input, '', null);
+                        return;
+                    }
+                    const erased = e.key === 'Backspace'
+                        ? maskErase(input.value, format, caret)
+                        : maskErase(input.value, format, caret + 1);
+                    if (erased) this.setMask(input, erased);
+                    return;
+                }
+
+                if (e.key.length !== 1) return;
+                e.preventDefault();
+                // 골라 둔 채로 치면 처음부터 다시 채운다는 뜻이다
+                const base = selecting
+                    ? maskRender(format, '', null).text
+                    : input.value;
+                const written = maskWrite(base, format, selecting ? 0 : caret, e.key);
+                if (written) this.setMask(input, written);
+            });
+
+            // 붙여넣기처럼 통째로 들어오는 경우. 숫자만 남겨 앞에서부터 채운다.
             input.addEventListener('input', () => {
                 const { digits, meridiem } = maskRead(input.value, this.dateFormat);
                 this.paintMask(input, digits, meridiem);
-            });
-
-            // 지우기는 직접 처리한다. 브라우저에 맡기면 구분자나 자리표시자만
-            // 지워져, 다시 그리는 순간 되살아나 아무 일도 안 한 것처럼 보인다.
-            input.addEventListener('keydown', (e) => {
-                if (e.key !== 'Backspace') return;
-                const { digits, meridiem } = maskRead(input.value, this.dateFormat);
-                if (!digits && !meridiem) return;
-                e.preventDefault();
-                // 골라 둔 상태에서는 고른 만큼 지운다는 뜻이다
-                if (input.selectionStart !== input.selectionEnd) {
-                    this.paintMask(input, '', null);
-                } else if (meridiem) {
-                    this.paintMask(input, digits, null);
-                } else {
-                    this.paintMask(input, digits.slice(0, -1), null);
-                }
             });
 
             // 아무것도 넣지 않았으면 비워 둔다. 목표 시각은 비어 있을 수 있고,
@@ -855,10 +921,13 @@ class TaskManager {
         }
     }
 
-    paintMask(input, digits, meridiem) {
-        const { text, caret } = maskRender(this.dateFormat, digits, meridiem);
+    setMask(input, { text, caret }) {
         input.value = text;
         if (document.activeElement === input) input.setSelectionRange(caret, caret);
+    }
+
+    paintMask(input, digits, meridiem) {
+        this.setMask(input, maskRender(this.dateFormat, digits, meridiem));
     }
 
     // 직접 만든 날짜/시간 선택기

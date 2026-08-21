@@ -13,10 +13,10 @@ const TaskManager = new Function(`${I18N}\n${SOURCE}\nreturn TaskManager;`)()
 
 // 마스크는 클래스 밖의 순수 함수다. 형식 문자열 하나에서 출력·파싱·틀 셋이
 // 나오므로, 그 셋이 같은 형식을 같게 읽는지는 여기서 확인한다.
-const { maskRender, maskRead } = new Function(
+const { maskRender, maskRead, maskWrite, maskErase } = new Function(
     `${I18N}
 ${SOURCE}
-return { maskRender, maskRead };`
+return { maskRender, maskRead, maskWrite, maskErase };`
 )()
 
 // Build an instance without running the constructor, which kicks off async
@@ -148,6 +148,53 @@ describe('the date field wears its format as a mask', () => {
     test('reading back keeps only what was typed', () => {
         expect(maskRead('2026-08-2D HH:mm', F)).toEqual({ digits: '2026082', meridiem: null })
         expect(maskRead('YYYY-MM-DD HH:mm', F)).toEqual({ digits: '', meridiem: null })
+    })
+
+    // Typing writes into the slot the caret is in, rather than appending. With
+    // appending, a field already holding a full date has nowhere to put the next
+    // digit and the key does nothing - and clicking into a field with the mouse
+    // lands there constantly, because the browser moves the caret after focus
+    // and undoes any select().
+    describe('typing overwrites the slot under the caret', () => {
+        const write = (text, caret, ch) => maskWrite(text, F, caret, ch)
+
+        test('fills the first empty slot from the caret', () => {
+            expect(write('YYYY-MM-DD HH:mm', 0, '2').text).toBe('2YYY-MM-DD HH:mm')
+            expect(write('2YYY-MM-DD HH:mm', 1, '0').text).toBe('20YY-MM-DD HH:mm')
+        })
+
+        test('overwrites a full field in place', () => {
+            expect(write('2026-08-21 09:30', 5, '9').text).toBe('2026-98-21 09:30')
+        })
+
+        test('the caret moves on to the next slot, over any separator', () => {
+            expect(write('2026-MM-DD HH:mm', 4, '0').caret).toBe(6)
+            expect(write('2026-08-21 HH:mm', 10, '0').caret).toBe(12)
+        })
+
+        test('a letter is refused where a digit belongs', () => {
+            expect(write('YYYY-MM-DD HH:mm', 0, 'x')).toBeNull()
+        })
+
+        test('and there is nothing past the end', () => {
+            expect(write('2026-08-21 09:30', 16, '1')).toBeNull()
+        })
+    })
+
+    describe('erasing puts a slot back to its placeholder', () => {
+        test('backspace clears the slot before the caret', () => {
+            expect(maskErase('2026-08-21 09:30', F, 16).text).toBe('2026-08-21 09:3m')
+            expect(maskErase('2026-08-21 09:30', F, 16).caret).toBe(15)
+        })
+
+        test('it steps back over a separator', () => {
+            expect(maskErase('2026-08-21 09:30', F, 11).text).toBe('2026-08-2D 09:30')
+            expect(maskErase('2026-08-21 09:30', F, 11).caret).toBe(9)
+        })
+
+        test('there is nothing before the first slot', () => {
+            expect(maskErase('YYYY-MM-DD HH:mm', F, 0)).toBeNull()
+        })
     })
 
     describe('a twelve-hour format', () => {
