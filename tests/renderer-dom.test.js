@@ -12,6 +12,7 @@ const BODY = HTML.slice(HTML.indexOf('<body>') + '<body>'.length, HTML.indexOf('
 // index.html loads i18n.js before renderer.js; the same order has to hold here,
 // because the class reads TRANSLATIONS as a global.
 const I18N = fs.readFileSync(path.join(root, 'i18n.js'), 'utf8')
+const CSS = fs.readFileSync(path.join(root, 'styles.css'), 'utf8')
 const TaskManager = new Function(`${I18N}\n${SOURCE}\nreturn TaskManager;`)()
 
 // init() is fired from the constructor and not awaited anywhere, so give its
@@ -2852,6 +2853,98 @@ describe('notification wording', () => {
 // 내용 끝에 클립을 붙이면 내용 길이가 행마다 달라 매 행 다른 자리에 놓인다.
 // 한 줄로 내려훑으려면 제 컬럼이어야 한다. 다만 대부분의 목록에는 첨부가 없으니
 // 있을 때만 낸다.
+// 값은 OS 가 가지고 있고 앱은 읽기만 한다. 그래서 화면이 고른 상태를 그리지
+// 못하면, 설정이 제대로 써지고 있어도 버튼이 죽은 것으로 보인다 - 실제로
+// .backup-btn.active 규칙이 없어 그렇게 신고됐다.
+describe('start at login', () => {
+    const openSettings = async (manager) => {
+        document.getElementById('settingsBtn').click()
+        await settle()
+        return manager
+    }
+
+    test('pressing on asks the OS and marks the button', async () => {
+        const manager = await boot([])
+        await openSettings(manager)
+
+        document.getElementById('startupOnBtn').click()
+        await settle()
+
+        expect(electronAPI.setOpenAtLogin).toHaveBeenCalledWith(true)
+        expect(document.getElementById('startupOnBtn').classList.contains('active')).toBe(true)
+        expect(document.getElementById('startupOffBtn').classList.contains('active')).toBe(false)
+    })
+
+    test('pressing off asks the OS and marks the other one', async () => {
+        const manager = await boot([])
+        await openSettings(manager)
+
+        document.getElementById('startupOnBtn').click()
+        await settle()
+        document.getElementById('startupOffBtn').click()
+        await settle()
+
+        expect(electronAPI.setOpenAtLogin).toHaveBeenLastCalledWith(false)
+        expect(document.getElementById('startupOffBtn').classList.contains('active')).toBe(true)
+    })
+
+    // 요청한 값이 아니라 OS 가 실제로 받아들인 값을 그린다. Windows 가 거절하면
+    // 화면은 꺼진 채로 있어야 한다.
+    test('an OS that refuses leaves the switch off', async () => {
+        const manager = await boot([])
+        electronAPI.setOpenAtLogin.mockResolvedValueOnce(false)
+        await openSettings(manager)
+
+        document.getElementById('startupOnBtn').click()
+        await settle()
+
+        expect(document.getElementById('startupOnBtn').classList.contains('active')).toBe(false)
+        expect(document.getElementById('startupOffBtn').classList.contains('active')).toBe(true)
+    })
+
+    // 이 결함은 동작이 아니라 스타일시트에 있었다. classList 는 제대로 붙는데
+    // .backup-btn.active 규칙이 없어 두 버튼이 똑같이 보였고, 값은 OS 에 잘
+    // 써지는데도 "안 눌린다"로 신고됐다. 위의 테스트들은 전부 통과했다.
+    //
+    // 그래서 고른 상태를 그리는 규칙이 있는지를 따로 묻는다. 설정 창의 세 토글을
+    // 한꺼번에 보므로, 넷째가 생겨도 같은 자리에서 걸린다.
+    test('a chosen button has a rule that draws it as chosen', async () => {
+        await boot([])
+
+        const groups = ['.choice-toggle', '.theme-toggle', '.language-toggle']
+        const undrawn = []
+        for (const group of groups) {
+            const container = document.querySelector(group)
+            expect(container).not.toBeNull()
+            for (const button of container.querySelectorAll('button')) {
+                // 선택자를 통째로 견준다. body.dark-mode 가 앞에 붙은 규칙은
+                // 다른 선택자이므로 자연히 빠진다 - 다크에만 있으면 라이트에서는
+                // 여전히 두 버튼이 같아 보이고, 그 어긋남은 이 파일에서 몇 번이나
+                // 반복됐다.
+                const declares = (selector) => CSS.split('}').some((block) =>
+                    block.split('{')[0].split(',').some((s) => s.trim() === selector))
+                const drawn = [...button.classList]
+                    .filter((c) => c !== 'active')
+                    .some((c) => declares(`.${c}.active`))
+                if (!drawn) undrawn.push(`${group} > #${button.id}`)
+            }
+        }
+
+        expect(undrawn).toEqual([])
+    })
+
+    // Linux 에서 Electron 은 이 API 를 구현하지 않는다. 눌러도 아무 일도 없는
+    // 스위치를 보이느니 줄 전체를 감춘다.
+    test('a platform that cannot do it hides the whole row', async () => {
+        const manager = await boot([])
+        electronAPI.getOpenAtLogin.mockResolvedValue({ supported: false, openAtLogin: false })
+        await openSettings(manager)
+
+        expect(document.getElementById('settingsStartupLabel').parentNode.style.display)
+            .toBe('none')
+    })
+})
+
 describe('the attachment column earns its place', () => {
     const withFile = (id) => task(id, {
         attachments: [{ name: 'spec.pdf', path: '/docs/spec.pdf' }]

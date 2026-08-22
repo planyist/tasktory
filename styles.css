@@ -2377,6 +2377,20 @@ body.dark-mode th.sortable.sorted:hover {
     gap: 8px;
 }
 
+/* 둘 중 하나를 고르는 줄. 고른 쪽이 눈에 보이지 않으면 값이 OS 에 제대로
+   써지고 있어도 버튼이 죽은 것으로 읽힌다 - 실제로 그렇게 신고됐다.
+   언어·테마 토글과 같은 파란 테두리를 쓴다. */
+.choice-toggle {
+    display: flex;
+    gap: 8px;
+}
+
+.backup-btn.active {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+    color: #0b5cad;
+}
+
 .backup-btn {
     height: var(--control-height);
     padding: 0 14px;
@@ -2409,6 +2423,12 @@ body.dark-mode .backup-btn {
 
 body.dark-mode .backup-btn:hover {
     background-color: #474d55;
+}
+
+body.dark-mode .backup-btn.active {
+    border-color: #007bff;
+    background-color: #1a3a5a;
+    color: #e8eef5;
 }
 
 body.dark-mode .settings-hint {
