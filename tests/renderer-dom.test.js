@@ -3150,6 +3150,42 @@ describe('the attachment column earns its place', () => {
         expect(links[1].title).toContain('/docs/file1.pdf')
     })
 
+    // 상태가 바뀌지 않으면 표는 몇 시간이고 다시 그려지지 않는다. 그동안 지운
+    // 파일이 멀쩡해 보이면 표시를 믿을 수 없고, 못 믿을 표시는 없느니만 못하다.
+    // 파일을 옮기려면 다른 프로그램으로 나갔다 와야 하므로 돌아오는 순간에 묻는다.
+    test('coming back to the window asks again', async () => {
+        await boot([many(2)])
+        await settle()
+        expect(document.querySelectorAll('#tasksBody .attach-link.missing')).toHaveLength(0)
+
+        electronAPI.checkAttachments.mockResolvedValue({
+            '/docs/file0.pdf': false, '/docs/file1.pdf': true
+        })
+        window.dispatchEvent(new Event('focus'))
+        await settle()
+
+        expect([...document.querySelectorAll('#tasksBody .attach-link')]
+            .map((a) => a.classList.contains('missing'))).toEqual([true, false])
+    })
+
+    // 붙이기만 하고 떼지 않으면, 옮겼던 파일을 되돌려 놔도 계속 그어져 있다.
+    test('a file put back loses the line again', async () => {
+        await boot([many(1)])
+        electronAPI.checkAttachments.mockResolvedValue({ '/docs/file0.pdf': false })
+        window.dispatchEvent(new Event('focus'))
+        await settle()
+        expect(document.querySelector('#tasksBody .attach-link').classList
+            .contains('missing')).toBe(true)
+
+        electronAPI.checkAttachments.mockResolvedValue({ '/docs/file0.pdf': true })
+        window.dispatchEvent(new Event('focus'))
+        await settle()
+
+        const link = document.querySelector('#tasksBody .attach-link')
+        expect(link.classList.contains('missing')).toBe(false)
+        expect(link.title).toBe('/docs/file0.pdf')
+    })
+
     // 화면에 첨부가 하나도 없으면 아예 묻지 않는다 - 대부분의 목록이 그렇고,
     // 그 경우 렌더 경로에 IPC 왕복이 붙으면 순전히 낭비다.
     test('a list with no attachments asks the OS nothing', async () => {

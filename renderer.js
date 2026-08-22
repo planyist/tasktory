@@ -1202,6 +1202,11 @@ class TaskManager {
             }, DOUBLE_CLICK_MS);
         });
 
+        // 창으로 돌아올 때 첨부가 아직 그 자리에 있는지 다시 묻는다. 파일을
+        // 옮기려면 다른 프로그램으로 나갔다 와야 하므로, 여기가 알아낼 수 있는
+        // 유일하면서 충분한 시점이다.
+        window.addEventListener('focus', () => this.markMissingAttachments());
+
         // 첨부: 고르기 / 끌어다 놓기 / 열기·폴더보기·빼기
         document.getElementById('attachmentPickBtn').addEventListener('click', async () => {
             if (!this.isElectron) return;
@@ -2594,6 +2599,12 @@ ${filePath}`);
     //
     // 그릴 때마다 묻지만, 화면에 첨부가 하나도 없으면 아예 묻지 않는다 -
     // 대부분의 목록이 그렇고, 그 경우 렌더 경로에 IPC 왕복이 붙지 않는다.
+    //
+    // 그리는 순간만으로는 모자란다. 상태가 바뀌지 않으면 표는 몇 시간이고 다시
+    // 그려지지 않아, 그동안 지운 파일이 멀쩡해 보인다. 그래서 창이 포커스를 되찾을
+    // 때도 다시 묻는다 - 파일을 옮기려면 다른 프로그램으로 나갔다 와야 하므로,
+    // 돌아오는 그 순간이 알아낼 수 있는 유일하면서 충분한 시점이다. 파일 감시자는
+    // 임의 경로와 네트워크 드라이브에 개수만큼 붙어야 해서 값이 맞지 않는다.
     async markMissingAttachments() {
         const links = [...document.querySelectorAll('#tasksBody .attach-link')];
         if (!this.isElectron || links.length === 0) return;
@@ -2605,11 +2616,14 @@ ${filePath}`);
         if (token !== this.attachCheckToken) return;
 
         for (const link of document.querySelectorAll('#tasksBody .attach-link')) {
-            if (alive[link.dataset.path] === false) {
-                link.classList.add('missing');
-                link.title = `${this.getLocalizedText('fileMissing')}
-${link.dataset.path}`;
-            }
+            // 붙이기만 하고 떼지 않으면, 옮겼던 파일을 되돌려 놔도 계속 그어져
+            // 있다. 표시는 양쪽으로 움직여야 믿을 수 있다.
+            const dead = alive[link.dataset.path] === false;
+            link.classList.toggle('missing', dead);
+            link.title = dead
+                ? `${this.getLocalizedText('fileMissing')}
+${link.dataset.path}`
+                : link.dataset.path;
         }
     }
 

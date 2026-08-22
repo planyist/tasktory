@@ -271,6 +271,23 @@ backup, so a copied 400MB video would be in every backup.
   returns immediately when no attachment is on screen — the usual case — so the
   render path only pays an IPC round trip on lists that have one. A token guards
   against a slow answer painting a table that has since been redrawn.
+
+  **Rendering alone is not enough, and a mark you cannot trust is worse than
+  none.** Nothing re-renders on a timer: the 60-second sweep calls `renderTasks`
+  only when a *status* changed, so a table can sit untouched for hours while a
+  file it names is deleted. The check therefore runs again on `window` **focus**
+  — moving a file means leaving the app and coming back, so that return is both
+  the only moment we can learn and a sufficient one. No `fs.watch`: it would mean
+  one watcher per attached path, on arbitrary user paths and network drives.
+
+  **The mark comes off as well as on.** The first version only added `.missing`,
+  so a file put back stayed struck for the rest of the session. `classList.toggle`
+  with the boolean, and the title goes back to the plain path.
+
+  Probing this needs a second window to steal focus. `win.blur()` followed by
+  `win.focus()` on the only window does not change OS focus state, so the
+  renderer's `focus` event fires once and never again — which reads exactly like
+  the mark being stuck.
 - **`webUtils.getPathForFile(file)`, not `file.path`.** Electron 32 removed the
   latter, so a drop handler reading `file.path` gets `undefined` and silently
   attaches nothing. It lives in `preload.js` as `pathForFile` because `webUtils`

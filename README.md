@@ -161,7 +161,9 @@ files**. There is no limit on how many.
 A **Files** column appears in the task list, just after the task content, on any
 task carrying a file. It lists every file name, and clicking one opens it. Files
 that have moved or been deleted are struck through, so you can see that at a
-glance rather than by clicking. The column only appears once something in the
+glance rather than by clicking. Tasktory re-checks whenever you come back to the
+window, which is when a file can have moved without it noticing — and the mark
+comes off again if you put the file back. The column only appears once something in the
 list has an attachment, so a list without any looks exactly as it did before.
 
 **A file is linked, never copied.** Tasktory stores the path and the file name
