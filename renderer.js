@@ -32,6 +32,9 @@ const LEAD_CHOICES = [0, 5, 10, 15, 30, 60, 120, 180, 360, 1440];
 // 다만 실제 더블클릭 간격보다 짧게 잡으면 안 된다. 짧으면 토글이 먼저 일어났다가
 // 두 번째 클릭에 되돌려지는데, 되돌리기가 제대로 동작해도 그 사이가 눈에는
 // 토글로 보인다. 130ms 까지 내렸다가 바로 그 신고를 받았다.
+// 칸에 세우는 첨부 줄 수. 넘치면 '+N' 이 나머지를 받는다.
+const ATTACH_ROWS = 3;
+
 const DOUBLE_CLICK_MS = 200;
 
 // 보기 전환 버튼의 두 아이콘. 누르면 무엇이 되는지를 그린다.
@@ -507,7 +510,7 @@ class TaskManager {
         // 라벨만 바꾼다. th 전체에 넣으면 정렬 세모가 지워진다.
         this.setText('thStartTimeLabel', 'startTime');
         this.setText('thTargetTimeLabel', 'targetTime');
-        this.setTitle('thAttachments', 'attachmentsColumn');
+        this.setText('thAttachments', 'attachmentsColumn');
         this.setTitle('thStartTime', 'sortHint');
         this.setTitle('thTargetTime', 'sortHint');
         this.setText('thTags', 'tags');
@@ -1148,12 +1151,18 @@ class TaskManager {
             // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
             if (e.target.closest('.task-select')) return;
 
-            // 클립은 행의 일부가 아니라 누르는 것이다. 여기서 멈추지 않으면
+            // 첨부는 행의 일부가 아니라 누르는 것이다. 여기서 멈추지 않으면
             // 파일을 열면서 행까지 선택된다.
-            const clip = e.target.closest('.attach-mark');
-            if (clip) {
+            const link = e.target.closest('.attach-link');
+            if (link) {
                 e.stopPropagation();
-                this.openAttachmentsFor(clip);
+                this.openAttachment(link.dataset.path);
+                return;
+            }
+            const more = e.target.closest('.attach-more');
+            if (more) {
+                e.stopPropagation();
+                this.openAttachmentsFor(more);
                 return;
             }
 
@@ -2607,17 +2616,11 @@ ${filePath}`);
 
     // position: fixed 라 좌표를 직접 준다. 카운터 바로 아래 왼쪽 끝에 맞추되,
     // 화면 오른쪽으로 넘치면 안쪽으로 당긴다.
-    // 클립을 눌렀을 때. 하나뿐이면 곧장 연다 - 이름은 툴팁이 이미 말하고
-    // 있으므로 고르라고 한 번 더 묻는 것은 늘리기만 한다. 여럿이면 고를 자리를
-    // 낸다.
+    // '+N' 을 눌렀을 때. 감춘 것을 보자는 뜻이므로 언제나 전체 목록을 낸다.
     async openAttachmentsFor(clip) {
         const task = this.tasks.find(t => t.id === clip.dataset.taskId);
         const files = (task && task.attachments) || [];
         if (files.length === 0) return;
-        if (files.length === 1) {
-            this.openAttachment(files[0].path);
-            return;
-        }
         await this.showAttachMenu(clip, files);
     }
 
@@ -3078,13 +3081,22 @@ ${filePath}`);
                 return `<span class="tag" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
             }).join(' ') : '';
             
-            // 클립은 있고 없고를 말하고, 눌리면 파일을 연다. 개수는 하나를 넘을
-            // 때만 적는다 - 1 은 클립이 이미 말하고 있다.
+            // 이름이 선다. 클립 하나로는 무엇이 붙어 있는지 알 수 없어, 알려면
+            // 매번 눌러 봐야 했다 - 이름이야말로 링크가 끊긴 뒤에도 남기려던 것이다.
+            //
+            // 다만 한 줄에 하나씩이라 개수만큼 행이 높아진다. ATTACH_ROWS 까지만
+            // 세우고 나머지는 '+N' 이 받는다 - 열 개가 붙은 작업 하나가 표를
+            // 통째로 늘리는 것을 막는다.
             const files = task.attachments || [];
+            const shown = files.slice(0, ATTACH_ROWS);
             const attachMarkup = files.length
-                ? `<span class="attach-mark" data-task-id="${task.id}" title="${
-                    this.escapeHtml(files.map(a => a.name).join(', '))}">📎${
-                    files.length > 1 ? `<span class="attach-count">${files.length}</span>` : ''}</span>`
+                ? shown.map((file) => `<a class="attach-link" data-path="${
+                        this.escapeHtml(file.path)}" title="${this.escapeHtml(file.path)}"
+                        >${this.escapeHtml(file.name)}</a>`).join('')
+                    + (files.length > shown.length
+                        ? `<span class="attach-more" data-task-id="${task.id}"
+                            >+${files.length - shown.length}</span>`
+                        : '')
                 : '';
 
             row.innerHTML = `

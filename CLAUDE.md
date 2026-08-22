@@ -244,15 +244,30 @@ backup, so a copied 400MB video would be in every backup.
   columns and catches it. Moving the column later, from after Tags to after Task
   Content, meant moving the width rules with it for the same reason.
 
-  **The clip opens the file.** It is not a chip — chips are part of the row and
-  select it; this one stops the click and acts. One attachment opens directly,
-  because the tooltip already names it and asking twice only adds a press.
-  Several put up a list at the clip, `position: fixed` for the same reason the
-  completed-today popover is: `main` is `overflow: hidden` and the sticky
-  `thead` carries `z-index: 1000`, so anything absolute inside the table is
-  clipped or painted under the header. `check-attachments` runs when that list
-  opens — the one moment worth asking the OS — and dead links are struck
-  through rather than dropped.
+  **The cell holds the file names, and each one is a link.** A paperclip says
+  only that something is attached; to learn *what*, you had to press it every
+  time — and the name is the very thing the split name/path exists to outlive
+  the file. The header says `첨부` / `Files` for the same reason: every column
+  beside it is a word, and a lone glyph does not read as one of them.
+
+  Names need width, so the column is 13% and **tags and task content both give
+  some up** — the two time columns and status must not, because a narrowed time
+  clips its value and a narrowed status wraps its badge. `check:ui` asserts
+  exactly that.
+
+  One name per line, capped at `ATTACH_ROWS` (3) with the rest behind `+N`, or a
+  task carrying ten files would stretch the whole table. `+N` always opens the
+  full list, including the names already on screen — hiding them there would
+  make it a different list than the one it is completing.
+
+  These are not chips — chips are part of the row and select it; a name stops
+  the click and opens its file. The `+N` list is `position: fixed` for the same
+  reason the completed-today popover is: `main` is `overflow: hidden` and the
+  sticky `thead` carries `z-index: 1000`, so anything absolute inside the table
+  is clipped or painted under the header. `check-attachments` runs when that
+  list opens — the one moment worth asking the OS, since checking every visible
+  row on every render would put an IPC round trip in the render path — and dead
+  links are struck through rather than dropped.
 - **`webUtils.getPathForFile(file)`, not `file.path`.** Electron 32 removed the
   latter, so a drop handler reading `file.path` gets `undefined` and silently
   attaches nothing. It lives in `preload.js` as `pathForFile` because `webUtils`

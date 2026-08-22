@@ -158,11 +158,12 @@ pressing again clear them. Notifications work the same way around muting.
 The edit form has an attachment area. Drop files on it, or press **Choose
 files**. There is no limit on how many.
 
-A paperclip appears in the task list, just after the task content, on any task
-carrying a file. Press it to open the file; if there is more than one, it puts
-up the list so you can pick. Files that have moved or been deleted are shown
-struck through rather than hidden. The column only appears once something in the
-list has an attachment, so a list without any looks exactly as it did before.
+A **Files** column appears in the task list, just after the task content, on any
+task carrying a file. It lists the file names, and clicking one opens it. Three
+names fit; beyond that a `+2` opens the full list, where files that have moved
+or been deleted are shown struck through rather than hidden. The column only
+appears once something in the list has an attachment, so a list without any
+looks exactly as it did before.
 
 **A file is linked, never copied.** Tasktory stores the path and the file name
 and nothing else, so attaching a 400MB video costs two short strings — your

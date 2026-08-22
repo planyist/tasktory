@@ -3056,8 +3056,14 @@ describe('the attachment column earns its place', () => {
     const withFile = (id) => task(id, {
         attachments: [{ name: 'spec.pdf', path: '/docs/spec.pdf' }]
     })
+    const many = (count) => task('m', {
+        attachments: Array.from({ length: count }, (_, i) =>
+            ({ name: `file${i}.pdf`, path: `/docs/file${i}.pdf` }))
+    })
     const shown = () =>
         document.getElementById('tasksTable').classList.contains('has-attachments')
+    const names = () => [...document.querySelectorAll('#tasksBody .attach-link')]
+        .map((a) => a.textContent)
 
     test('a list with no attachments does not show it', async () => {
         await boot([task('a'), task('b')])
@@ -3069,7 +3075,7 @@ describe('the attachment column earns its place', () => {
         await boot([task('a'), withFile('b')])
 
         expect(shown()).toBe(true)
-        expect(document.querySelectorAll('#tasksBody .attach-mark')).toHaveLength(1)
+        expect(names()).toEqual(['spec.pdf'])
     })
 
     // Deciding per page would add and remove the column as you page, and the
@@ -3091,71 +3097,80 @@ describe('the attachment column earns its place', () => {
             .toBe(cells.findIndex((c) => c.classList.contains('task-content')) + 1)
     })
 
-    // 클립은 행의 일부가 아니라 누르는 것이다. 멈추지 않으면 파일을 열면서
-    // 행까지 선택된다.
-    test('pressing the clip opens the file and leaves the row alone', async () => {
-        const manager = await boot([withFile('a')])
+    // 클립 하나로는 무엇이 붙어 있는지 알 수 없어, 알려면 매번 눌러 봐야 했다.
+    // 이름이야말로 링크가 끊긴 뒤에도 남기려던 것이다.
+    test('every name is written out, not just a count', async () => {
+        await boot([task('a', { attachments: [
+            { name: '견적서.xlsx', path: 'C:/docs/견적서.xlsx' },
+            { name: 'notes.txt', path: '/docs/notes.txt' }
+        ] })])
 
-        document.querySelector('#tasksBody .attach-mark').click()
-        await settle()
-
-        expect(electronAPI.openAttachment).toHaveBeenCalledWith('/docs/spec.pdf')
-        expect(manager.selectedTaskIds.size).toBe(0)
+        expect(names()).toEqual(['견적서.xlsx', 'notes.txt'])
+        expect(document.querySelector('#tasksBody .attach-link').title)
+            .toBe('C:/docs/견적서.xlsx')
     })
 
-    // 이름은 툴팁이 이미 말하고 있으므로, 하나뿐일 때 한 번 더 고르라고 묻는 것은
-    // 늘리기만 한다. 여럿일 때만 고를 자리를 낸다.
-    test('several files bring up a list instead of opening one', async () => {
-        await boot([task('a', { attachments: [
+    // 첨부는 행의 일부가 아니라 누르는 것이다. 멈추지 않으면 파일을 열면서
+    // 행까지 선택된다.
+    test('pressing a name opens that file and leaves the row alone', async () => {
+        const manager = await boot([task('a', { attachments: [
             { name: 'spec.pdf', path: '/docs/spec.pdf' },
             { name: 'notes.txt', path: '/docs/notes.txt' }
         ] })])
 
-        document.querySelector('#tasksBody .attach-mark').click()
-        await settle()
-
-        expect(electronAPI.openAttachment).not.toHaveBeenCalled()
-        const items = [...document.querySelectorAll('#attachMenu .attach-item')]
-        expect(items.map((i) => i.textContent)).toEqual(['spec.pdf', 'notes.txt'])
-
-        items[1].click()
+        document.querySelectorAll('#tasksBody .attach-link')[1].click()
         await settle()
 
         expect(electronAPI.openAttachment).toHaveBeenCalledWith('/docs/notes.txt')
+        expect(manager.selectedTaskIds.size).toBe(0)
+    })
+
+    // 열 개가 붙은 작업 하나가 표를 통째로 늘리면 안 된다.
+    test('a long list is capped, and the rest hides behind +N', async () => {
+        await boot([many(7)])
+
+        expect(names()).toEqual(['file0.pdf', 'file1.pdf', 'file2.pdf'])
+        expect(document.querySelector('#tasksBody .attach-more').textContent.trim())
+            .toBe('+4')
+    })
+
+    test('+N brings up every file, including the ones already listed', async () => {
+        await boot([many(5)])
+
+        document.querySelector('#tasksBody .attach-more').click()
+        await settle()
+
+        const items = [...document.querySelectorAll('#attachMenu .attach-item')]
+        expect(items).toHaveLength(5)
+
+        items[4].click()
+        await settle()
+
+        expect(electronAPI.openAttachment).toHaveBeenCalledWith('/docs/file4.pdf')
         expect(document.getElementById('attachMenu').classList.contains('is-open')).toBe(false)
     })
 
     // 끊긴 링크는 감추지 않는다. 무엇이 붙어 있었는지가 남는 것이 첨부의 절반이다.
-    test('a file that is gone is shown struck through, not hidden', async () => {
-        await boot([task('a', { attachments: [
-            { name: 'spec.pdf', path: '/docs/spec.pdf' },
-            { name: 'gone.txt', path: '/docs/gone.txt' }
-        ] })])
+    test('a file that is gone is shown struck through in the list', async () => {
+        await boot([many(5)])
         electronAPI.checkAttachments.mockResolvedValueOnce({
-            '/docs/spec.pdf': true, '/docs/gone.txt': false
+            '/docs/file0.pdf': true, '/docs/file1.pdf': true, '/docs/file2.pdf': true,
+            '/docs/file3.pdf': false, '/docs/file4.pdf': true
         })
 
-        document.querySelector('#tasksBody .attach-mark').click()
+        document.querySelector('#tasksBody .attach-more').click()
         await settle()
 
-        const items = [...document.querySelectorAll('#attachMenu .attach-item')]
-        expect(items.map((i) => i.classList.contains('missing'))).toEqual([false, true])
+        expect([...document.querySelectorAll('#attachMenu .attach-item')]
+            .map((i) => i.classList.contains('missing')))
+            .toEqual([false, false, false, true, false])
     })
 
-    test('the count is written only when there is more than one', async () => {
-        await boot([withFile('a'), task('b', { attachments: [
-            { name: 'one.txt', path: '/one.txt' }, { name: 'two.txt', path: '/two.txt' }
-        ] })])
-
-        const marks = [...document.querySelectorAll('#tasksBody .attach-mark')]
-        expect(marks[0].querySelector('.attach-count')).toBeNull()
-        expect(marks[1].querySelector('.attach-count').textContent).toBe('2')
-    })
-
-    test('the mark names the files it stands for', async () => {
+    // 옆 칸들은 전부 말인데 여기만 그림이면 무슨 칸인지 읽히지 않는다.
+    test('the header is a word, in the reader language', async () => {
         await boot([withFile('a')])
 
-        expect(document.querySelector('#tasksBody .attach-mark').title).toBe('spec.pdf')
+        expect(document.getElementById('thAttachments').textContent).toBe('Files')
     })
 
     test('an empty list still spans the whole row', async () => {

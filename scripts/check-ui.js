@@ -187,11 +187,14 @@ app.whenReady().then(async () => {
         filed1.cols.join(',') === filed2.cols.join(','),
         `${visible(filed1).join(',')} vs ${visible(filed2).join(',')}`)
 
+    // 이름이 서려면 폭이 필요해 태그와 작업 내용이 함께 내준다. 시각 두 칸과
+    // 상태는 건드리지 않는다 - 그쪽이 좁아지면 값이 잘리거나 배지가 줄바꿈된다.
     const [plainCols, filedCols] = [visible(page1), visible(filed1)]
-    check('첨부 컬럼은 작업 내용에서만 자리를 가져온다',
+    check('첨부 컬럼은 태그와 작업 내용에서만 자리를 가져온다',
         plainCols.length + 1 === filedCols.length
-        && plainCols.slice(0, 5).join(',') === filedCols.slice(0, 5).join(',')
+        && plainCols.slice(0, 4).join(',') === filedCols.slice(0, 4).join(',')
         && plainCols[6] === filedCols[7]
+        && filedCols[4] < plainCols[4]
         && filedCols[5] < plainCols[5],
         `${plainCols.join(',')} → ${filedCols.join(',')}`)
 
