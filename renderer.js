@@ -542,6 +542,7 @@ class TaskManager {
         this.setText('thDoneTags', 'tags');
         this.setText('thDoneContent', 'taskContent');
         this.setTitle('doneClose', 'doneClose');
+        this.setText('doneHeading', 'completedView');
         for (const [days, key] of [[7, 'doneLast7'], [30, 'doneLast30'], [90, 'doneLast90']]) {
             const chip = document.querySelector(`#donePresets [data-done-days="${days}"]`);
             if (chip) chip.textContent = this.getLocalizedText(key);
@@ -1351,11 +1352,14 @@ class TaskManager {
         document.getElementById('doneClose')
             .addEventListener('click', () => this.closeCompletedView());
 
+        // 엔터로만 먹으면 친 사람은 알아도 처음 보는 사람은 모른다. 칸을 벗어나면
+        // 반영하고, 선택기로 고른 값도 change 를 타고 여기로 온다.
         for (const id of ['doneFrom', 'doneTo']) {
             const input = document.getElementById(id);
             input.addEventListener('change', () => this.applyDoneDates());
+            input.addEventListener('blur', () => this.applyDoneDates());
             input.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter') { e.preventDefault(); this.applyDoneDates(); }
+                if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
             });
         }
 
@@ -2100,7 +2104,12 @@ class TaskManager {
         const chosen = new Date(this.pickerDate);
         chosen.setHours(this.pickerHour, this.pickerMinute, 0, 0);
 
-        this.setDateValue(this.pickerTarget, formatWithPattern(chosen, this.formatFor(this.pickerTarget)));
+        const target = this.pickerTarget;
+        this.setDateValue(target, formatWithPattern(chosen, this.formatFor(target)));
+        // 대입은 이벤트를 내지 않는다. 그래서 선택기로 고른 값은 듣는 쪽에
+        // 닿지 않았고, 기간을 고른 뒤 엔터를 한 번 더 쳐야 반영됐다.
+        const input = document.getElementById(target);
+        if (input) input.dispatchEvent(new Event('change', { bubbles: true }));
         this.closeDateTimePicker();
     }
 
@@ -2702,11 +2711,15 @@ ${filePath}`);
         this.hideCompletedList();
         this.viewBeforeCompleted = this.viewMode;
         this.viewMode = 'completed';
+        // 카운터가 눌린 채로 남는다. 화면만 바뀌면 목록을 거른 것인지 다른
+        // 데이터인지 알 수가 없다 - 들어온 문이 열려 있다고 말해야 한다.
+        document.getElementById('completionCounter').classList.add('is-open');
         this.applyViewMode();
         this.renderTasks();
     }
 
     closeCompletedView() {
+        document.getElementById('completionCounter').classList.remove('is-open');
         this.viewMode = this.viewBeforeCompleted || 'list';
         this.applyViewMode();
         this.renderTasks();
@@ -2788,13 +2801,24 @@ ${filePath}`);
         this.renderCompletedView();
     }
 
+    // 완료 시각이 적히지 않던 시절의 줄이 있다. 그때는 TIMESTAMP 가 곧 완료
+    // 시각이었다 - COMPLETE 를 쓴 순간이 완료한 순간이고, 둘이 갈라지는 것은
+    // 소급해 체크했을 때뿐인데 그런 줄에는 completedAt 이 들어 있다.
+    // 빈 칸으로 두면 "기록이 없다"로 읽히지만 기록은 있다.
+    completedWhen(row) {
+        if (row.completedAt) return row.completedAt;
+        if (!row.timestamp) return '';
+        const at = new Date(row.timestamp);
+        return isNaN(at) ? '' : formatWithPattern(at, 'YYYY-MM-DD HH:mm');
+    }
+
     // 화면에 적히는 값으로 줄을 세운다. TIMESTAMP 로 세우면 소급해 체크한 줄이
     // 엉뚱한 자리에 앉는데, 옆에는 완료 시각이 적혀 있어 정렬이 깨진 것으로
     // 보인다. 완료 시각 칸이 없던 옛 줄만 TIMESTAMP 로 대신한다.
     sortCompleted(rows) {
         const { by, asc } = this.doneSort;
         const value = (row) => by === 'completedAt'
-            ? (row.completedAt || row.timestamp)
+            ? this.completedWhen(row)
             : (row[by] || '');
         const direction = asc ? 1 : -1;
         // 값이 없는 줄은 방향과 상관없이 끝으로. 오르내릴 때마다 위아래로
@@ -2837,7 +2861,7 @@ ${filePath}`);
         box.innerHTML = ranked.map(tag => {
             const parsed = this.parseTagWithColor(tag);
             const on = this.doneTagFilter.has(tag);
-            return `<button type="button" class="quick-chip quick-tag${on ? ' active' : ''}" data-done-tag="${this.escapeHtml(tag)}" style="border-color: ${parsed.color.border}; color: ${parsed.color.text}; background-color: ${on ? parsed.color.bg : 'transparent'}">${this.escapeHtml(parsed.content)}</button>`;
+            return `<button type="button" class="quick-chip quick-tag${on ? ' active' : ''}" data-done-tag="${this.escapeHtml(tag)}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${this.escapeHtml(parsed.content)}</button>`;
         }).join('');
     }
 
@@ -2892,8 +2916,7 @@ ${filePath}`);
 
         body.innerHTML = rows.map(row => `
                 <tr>
-                    <td>${this.escapeHtml(row.completedAt
-                        ? this.formatDateTime(row.completedAt) : '')}</td>
+                    <td>${this.escapeHtml(this.formatDateTime(this.completedWhen(row)))}</td>
                     <td>${this.escapeHtml(row.startTime
                         ? this.formatDateTime(row.startTime) : '')}</td>
                     <td>${this.escapeHtml(row.targetTime

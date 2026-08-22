@@ -1903,21 +1903,74 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
     min-height: 0;
 }
 
+/* 이 줄의 컨트롤은 한 가족이어야 한다. 높이도 테두리도 배경도 제각각이면
+   무엇이 버튼이고 무엇이 입력칸인지 읽는 데 힘이 든다. 모두 --control-height 에
+   같은 테두리, 같은 흰 바탕이다. */
+.done-header {
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+/* 무엇을 보고 있는지 먼저 말한다. 화면만 바뀌면 목록을 거른 것인지 다른
+   데이터인지 알 수가 없다. */
+.done-heading {
+    font-size: 13px;
+    font-weight: 700;
+    color: #2c3e50;
+    margin-right: 2px;
+}
+
 /* 날짜만 받으므로 좁아도 되지만, 글자가 잘리면 안 된다. 재보니 열 글자가
    69px 이고 좌우 여백 16px 과 선택기 버튼 34px 이 붙는다 - 어느 표기를 골라도
    들어가도록 130px 로 둔다. */
+/* 흰 바탕은 감싸는 쪽이 낸다. 입력칸 자신은 투명해야 하는데 - 글자를 그리는
+   겹침 층이 그 아래에 있다 - 그러면 이 줄에서 혼자만 바탕이 없어 보인다. */
 .done-date {
     width: 130px;
     flex: 0 0 auto;
+    gap: 0;
+    background-color: #ffffff;
+    border-radius: 4px;
+}
+
+body.dark-mode .done-date {
+    background-color: #3d3d3d;
+}
+
+/* 입력칸과 선택기 버튼을 한 덩어리로 붙인다. 6px 틈을 두면 둘이 따로 놀아
+   줄 위에 조각이 하나 더 있는 것처럼 보인다. */
+.done-date input[type="text"] {
+    height: var(--control-height);
+    border: 1px solid #d8dee6;
+    border-right: none;
+    border-radius: 4px 0 0 4px;
+}
+
+.done-date .datetime-pick-btn {
+    border-color: #d8dee6;
+    border-radius: 0 4px 4px 0;
+}
+
+.done-date .dtf-ghost {
+    padding-left: 9px;
 }
 
 .done-tilde {
     color: #6b7280;
+    font-size: 12px;
 }
 
 .done-presets {
     display: flex;
     gap: 4px;
+}
+
+body.dark-mode .done-heading {
+    color: #e8eef5;
+}
+
+body.dark-mode .done-date input[type="text"] {
+    border-color: #4a5058;
 }
 
 /* 이 기간의 로그에 실제로 있는 태그. 상태 칩은 전부 완료라 뜻이 없어 내지
@@ -1945,6 +1998,17 @@ body.dark-mode .done-tilde {
 /* 눌러서 여는 것이라고 말해 주어야 한다. */
 .completion-counter {
     cursor: pointer;
+}
+
+/* 완료 화면이 열려 있는 동안 들어온 문도 열린 채로 남는다. 화면만 바뀌면
+   목록을 거른 것인지 다른 데이터인지 구분할 수가 없다. */
+.completion-counter.is-open {
+    background-color: #e3f2fd;
+    box-shadow: inset 0 0 0 1px #007bff;
+}
+
+body.dark-mode .completion-counter.is-open {
+    background-color: #1a3a5a;
 }
 
 /* 격자와 같은 이유로 여기만 스크롤한다. 바깥이 스크롤하면 머리가 함께 밀려

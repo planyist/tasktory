@@ -214,6 +214,28 @@ app.whenReady().then(async () => {
         && filedCols[5] < plainCols[5],
         `${plainCols.join(',')} → ${filedCols.join(',')}`)
 
+    // 완료 화면의 기간 줄. 높이도 배경도 제각각이면 무엇이 버튼이고 무엇이
+    // 입력칸인지 읽는 데 힘이 든다.
+    await run(`taskManager.openCompletedView(); 'ok'`)
+    const family = JSON.parse(await run(`(() => {
+        // 입력칸이 아니라 감싼 상자를 잰다. 입력칸 자신은 투명해야 한다 -
+        // 글자를 그리는 겹침 층이 그 아래에 있다.
+        const ids = ['#doneOlder', '.done-date', '.done-date .datetime-pick-btn',
+                     '#donePresets button', '#doneClose'];
+        const seen = ids.map(sel => {
+            const el = document.querySelector(sel);
+            return el ? { h: Math.round(el.getBoundingClientRect().height),
+                          bg: getComputedStyle(el).backgroundColor } : null;
+        });
+        return JSON.stringify(seen);
+    })()`))
+    const heights = [...new Set(family.filter(Boolean).map(one => one.h))]
+    const grounds = [...new Set(family.filter(Boolean).map(one => one.bg))]
+    check('완료 화면 기간 줄이 한 가족',
+        family.every(Boolean) && heights.length === 1 && grounds.length === 1,
+        `높이 ${heights.join('/')} 배경 ${grounds.join(' / ')}`)
+    await run(`taskManager.closeCompletedView(); 'ok'`)
+
     // --- 3. 페이저가 생겼다 사라져도 표 높이가 그대로 -----------------------
     await run(seed(5))
     const few = JSON.parse(await run(geometry))

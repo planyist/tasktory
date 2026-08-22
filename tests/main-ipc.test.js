@@ -677,6 +677,19 @@ describe('reading completions written before the columns existed', () => {
         expect(row.completedAt).toBe('')
     })
 
+    // 더 옛날에는 표시가 앞에 붙었고, 그때의 화면 언어를 따랐다. 그 시절 줄에는
+    // 완료 시각이 아예 없다 - 남아 있는 것은 TIMESTAMP 뿐이다.
+    test('strips the marker when it was a prefix, in either language', async () => {
+        expect((await readBack('(완료) 테스트')).content).toBe('테스트')
+        expect((await readBack('(completed) yrdydfgdf')).content).toBe('yrdydfgdf')
+        expect((await readBack('(완료) 테스트')).completedAt).toBe('')
+    })
+
+    // 표시가 아예 없던 줄도 있다. 그대로 두어야 한다.
+    test('a line with no marker at all is left exactly as it is', async () => {
+        expect((await readBack('test')).content).toBe('test')
+    })
+
     // 새 칸이 채워져 있으면 그쪽이 이긴다.
     test('the columns win when they are there', async () => {
         fs.writeFileSync(path.join(logsDir, '2026-08-12.tsv'),

@@ -592,10 +592,17 @@ ipcMain.handle('show-notification', async (event, title, body) => {
 const CONTENT_WITH_COMPLETION =
     /^(.*?) \(completed\)(?: at (\d{4}-\d{2}-\d{2} \d{2}:\d{2}))?(?: (.*))?$/;
 
+// 더 옛날에는 표시가 앞에 붙었고, 말도 그때의 화면 언어를 따랐다:
+//   '(완료) 테스트', '(completed) yrdydfgdf'
+// 이것들은 완료 시각을 아예 담지 않는다 - 그 시절 그 값은 TIMESTAMP 뿐이었다.
+const COMPLETION_PREFIX = /^\((?:completed|완료)\)\s+/;
+
 const splitLegacyContent = (content) => {
     const found = CONTENT_WITH_COMPLETION.exec(content);
-    if (!found) return { content, completedAt: '', note: '' };
-    return { content: found[1], completedAt: found[2] || '', note: (found[3] || '').trim() };
+    if (found) {
+        return { content: found[1], completedAt: found[2] || '', note: (found[3] || '').trim() };
+    }
+    return { content: content.replace(COMPLETION_PREFIX, ''), completedAt: '', note: '' };
 }
 
 const completedFromTsv = (logData) => {

@@ -2046,6 +2046,82 @@ describe('the completed view', () => {
         expect(contents()).toEqual(['목표 있음', '목표 없음'])
     })
 
+    // 완료 시각이 적히지 않던 시절의 줄이 있다. 빈 칸으로 두면 "기록이 없다"로
+    // 읽히지만 기록은 있다 - 그때는 TIMESTAMP 가 곧 완료한 순간이었다.
+    test('a row with no completion time falls back to when it was logged', async () => {
+        await openDone([{
+            ...done('2026-08-11', '옛날 줄', { completedAt: '' }),
+            timestamp: '2026-08-11T07:27:48+09:00'
+        }])
+
+        expect(cells()[0][0]).toContain('2026-08-11 07:27')
+    })
+
+    // 표의 태그와 완료 화면의 칩이 다르게 보이면 같은 태그로 읽히지 않는다.
+    test('the tag chips are filled the same way the table fills them', async () => {
+        await openDone([done('2026-08-20', 'a', { tags: '#[BLUE]업무' })])
+
+        const chip = document.querySelector('#doneTags [data-done-tag]')
+        const inRow = document.querySelector('#doneBody .task-tags .tag')
+        const background = (el) => el.style.backgroundColor
+        expect(background(chip)).toBe(background(inRow))
+        expect(background(chip)).not.toBe('transparent')
+        expect(background(chip)).not.toBe('')
+    })
+
+    // 엔터로만 먹으면 친 사람은 알아도 처음 보는 사람은 모른다.
+    test('leaving the field applies it, without pressing Enter', async () => {
+        const manager = await openDone([])
+
+        const field = document.getElementById('doneFrom')
+        field.value = '2026-01-01'
+        field.dispatchEvent(new Event('blur'))
+        await settle()
+
+        expect(electronAPI.getCompletedRange.mock.calls.slice(-1)[0][0]).toBe('2026-01-01')
+    })
+
+    // 대입은 이벤트를 내지 않는다. 선택기로 고른 값이 듣는 쪽에 닿지 않으면
+    // 고르고 나서 엔터를 한 번 더 쳐야 한다.
+    test('a date picked from the calendar applies straight away', async () => {
+        const manager = await openDone([])
+
+        manager.openDateTimePicker('doneFrom')
+        manager.pickerDate = new Date(2026, 0, 1)
+        manager.applyDateTimePicker()
+        await settle()
+
+        expect(electronAPI.getCompletedRange.mock.calls.slice(-1)[0][0]).toBe('2026-01-01')
+    })
+
+    // 날짜만 받는 칸에서 시각을 고를 수 있는데 확인하면 사라지는 것이 제일 나쁘다.
+    test('the picker hides its time column for a date-only field', async () => {
+        const manager = await openDone([])
+
+        manager.openDateTimePicker('doneFrom')
+        expect(document.querySelector('.dtp-time').style.display).toBe('none')
+
+        manager.closeDateTimePicker()
+        manager.showModal()
+        manager.openDateTimePicker('startDateTime')
+        expect(document.querySelector('.dtp-time').style.display).not.toBe('none')
+    })
+
+    // 화면만 바뀌면 목록을 거른 것인지 다른 데이터인지 알 수가 없다.
+    test('it says what it is, and the counter stays lit while it is open', async () => {
+        await boot([])
+        const counter = document.getElementById('completionCounter')
+
+        counter.click()
+        await settle()
+        expect(document.getElementById('doneHeading').textContent).toBe('Completed')
+        expect(counter.classList.contains('is-open')).toBe(true)
+
+        document.getElementById('doneClose').click()
+        await settle()
+        expect(counter.classList.contains('is-open')).toBe(false)
+    })
+
     test('counts what it is showing', async () => {
         await openDone([done('2026-08-20', 'a'), done('2026-08-20', 'b')])
 
