@@ -2097,7 +2097,10 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
     background: transparent;
 }
 
+/* 두 번 누르면 편집 창이 열린다. 한 번은 아무 일도 하지 않지만, 손댈 수 있는
+   것이라는 표시는 있어야 한다 - 없으면 눌러 볼 생각 자체가 나지 않는다. */
 .cal-chip {
+    cursor: pointer;
     display: flex;
     gap: 3px;
     align-items: baseline;

@@ -55,7 +55,8 @@ and that one works from anywhere - you do not have to click Tasktory first.
 ### Views
 
 - **List** — the table. Everything you can do to a task happens here
-- **Calendar** — a month grid; a task sits on its target day. View-only
+- **Calendar** — a month grid; a task sits on its target day. Double-click one
+  to edit it
 - **Side strip** — 150px, read-only, for when you want it out of the way
 
 ### Finding things
@@ -204,7 +205,9 @@ Toggle it with the calendar button at the top right, next to collapse.
 - A task with no target time has no length to draw, so it sits at the top of its
   start day without a time
 - Colours match the table's status badges
-- **View-only.** Nothing in a cell is clickable — the list does all of that
+- **Double-click a task to edit it.** That is the only thing a cell reacts to —
+  a single click does nothing, and there is no selection here; the list still
+  does the rest
 
 Collapsed, it becomes a mini month grid — 150px is too narrow for task names,
 so each day shows its number and a coloured underline for its most pressing

@@ -1805,7 +1805,8 @@ describe('unfocused opacity', () => {
 })
 
 // A list answers "what is there"; a calendar answers "when does it pile up".
-// View-only on purpose - nothing in a cell is clickable.
+// View-only, with one deliberate hole: a chip opens the editor on a double
+// click. Nothing else in a cell reacts.
 describe('calendar view', () => {
     const at = (day, time) => `2026-08-${String(day).padStart(2, '0')} ${time}`
     const cells = () => Array.from(document.querySelectorAll('#calGrid .cal-day'))
@@ -1826,6 +1827,46 @@ describe('calendar view', () => {
         manager.renderTasks()
         return manager
     }
+
+    // "저건 언제였지" 를 보다가 고치고 싶어지는 것은 달력 앞에서 늘 일어난다.
+    // 그때마다 목록으로 돌아가면 달력을 두 번 보게 된다.
+    test('a double click on a chip opens the editor', async () => {
+        const manager = await openCalendar([
+            task('a', { content: '분기 보고서', targetDateTime: at(21, '18:00') })
+        ])
+
+        const chip = cellFor(21).querySelector('.cal-chip')
+        chip.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 2 }))
+        await settle()
+
+        expect(document.getElementById('taskModal').style.display).toBe('block')
+        expect(document.getElementById('taskContent').value).toBe('분기 보고서')
+        expect(manager.editingTaskId).toBe('a')
+    })
+
+    // 한 번 누르는 것은 여전히 아무 일도 하지 않는다. 선택도 편집도 아니다.
+    test('a single click still does nothing at all', async () => {
+        const manager = await openCalendar([
+            task('a', { targetDateTime: at(21, '18:00') })
+        ])
+
+        cellFor(21).querySelector('.cal-chip')
+            .dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+        await settle()
+
+        expect(document.getElementById('taskModal').style.display).not.toBe('block')
+        expect(manager.selectedTaskIds.size).toBe(0)
+    })
+
+    // 칩이 아닌 곳은 그대로 보기 전용이다.
+    test('double clicking empty space in a cell opens nothing', async () => {
+        await openCalendar([task('a', { targetDateTime: at(21, '18:00') })])
+
+        cellFor(14).dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 2 }))
+        await settle()
+
+        expect(document.getElementById('taskModal').style.display).not.toBe('block')
+    })
 
     test('hides the table, the action bar and pagination', async () => {
         await openCalendar([task('a')])

@@ -1286,6 +1286,20 @@ class TaskManager {
             this.renderTasks();
         });
 
+        // 칸 안의 일정을 두 번 누르면 편집 창이 열린다. 달력이 보기 전용이라는
+        // 규칙에서 이것만 빠져나온다 - "저건 언제였지"를 보다가 고치고 싶어지는
+        // 것은 달력 앞에서 늘 일어나는 일이고, 그때마다 목록으로 돌아가는 것은
+        // 달력을 두 번 보게 만든다.
+        //
+        // 한 번 누르는 것은 여전히 아무 일도 하지 않는다. 그래서 표와 달리 기다릴
+        // 것이 없고, 되돌릴 토글도 없다 - detail 만 보면 된다. dblclick 을 쓰지
+        // 않는 것은 표와 같은 이유다: 두 클릭 사이에 다시 그려지면 오지 않는다.
+        document.getElementById('calGrid').addEventListener('click', (e) => {
+            if (e.detail < 2) return;
+            const chip = e.target.closest('.cal-chip');
+            if (chip) this.editTask(chip.dataset.taskId);
+        });
+
         this.setupWindowDrag();
 
         // 접힘 미니 달력에서 날짜를 누르면 그날 목록으로 바꾼다. 여기만은 눌러야
@@ -2334,7 +2348,7 @@ ${filePath}`);
         const text = this.escapeHtml(task.content.split('\n')[0].replace(/^\s*\d+\s*[.)]\s*/, ''));
         const marks = task.highlighted ? ' highlighted' : '';
 
-        return `<div class="cal-chip ${status.status}${marks}" title="${title}">` +
+        return `<div class="cal-chip ${status.status}${marks}" data-task-id="${task.id}" title="${title}">` +
             (time ? `<span class="cal-chip-time">${time}</span>` : '') +
             `<span class="cal-chip-text">${text}</span></div>`;
     }
