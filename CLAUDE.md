@@ -224,6 +224,22 @@ backup, so a copied 400MB video would be in every backup.
   and `task.attachments || []` is the read side.
 - Dedup is by path, in `addAttachments`. Dropping the same file twice is a
   no-op; two different files with the same name are both kept.
+- **The table gets a paperclip column, but only when the list has attachments.**
+  Putting the clip at the end of the task content was the cheaper option and it
+  does not work: content length differs per row, so the clip lands somewhere new
+  on every line and cannot be scanned down. A column can.
+
+  Most lists never carry a file, though, so the column is `display: none` until
+  one does — and the decision reads **the whole task list, not the visible
+  page**, or the column would appear and disappear as you page, which is exactly
+  the shifting the table is built to prevent. Its 4% comes out of task content,
+  the widest column and the only one that wraps.
+
+  **`nth-child` counts hidden cells.** Inserting the column at position 6 pushed
+  content to 7 and status to 8 while the width rules stayed put, so the two
+  swapped widths — status took 36% and content 12%. The percentages still summed
+  to 100, so the jsdom check saw nothing wrong; `check:ui` measures the real
+  columns and catches it.
 - **`webUtils.getPathForFile(file)`, not `file.path`.** Electron 32 removed the
   latter, so a drop handler reading `file.path` gets `undefined` and silently
   attaches nothing. It lives in `preload.js` as `pathForFile` because `webUtils`

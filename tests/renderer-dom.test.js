@@ -710,7 +710,8 @@ describe('multi-select', () => {
 
         expect(document.querySelectorAll('#tasksBody .action-btn')).toHaveLength(0)
         expect(document.getElementById('thActions')).toBeNull()
-        expect(document.querySelector('#tasksBody tr').cells).toHaveLength(7)
+        // select, #, start, target, tags, files, content, status
+        expect(document.querySelector('#tasksBody tr').cells).toHaveLength(8)
     })
 
     // The bar is always present. One that appeared on selection pushed the
@@ -2848,6 +2849,54 @@ describe('notification wording', () => {
 // The # column is the order the user arranged by hand - the up/down buttons and
 // the position field write it. Sorting is a way of looking at that order for a
 // moment, never a change to it.
+// 내용 끝에 클립을 붙이면 내용 길이가 행마다 달라 매 행 다른 자리에 놓인다.
+// 한 줄로 내려훑으려면 제 컬럼이어야 한다. 다만 대부분의 목록에는 첨부가 없으니
+// 있을 때만 낸다.
+describe('the attachment column earns its place', () => {
+    const withFile = (id) => task(id, {
+        attachments: [{ name: 'spec.pdf', path: '/docs/spec.pdf' }]
+    })
+    const shown = () =>
+        document.getElementById('tasksTable').classList.contains('has-attachments')
+
+    test('a list with no attachments does not show it', async () => {
+        await boot([task('a'), task('b')])
+
+        expect(shown()).toBe(false)
+    })
+
+    test('one attachment anywhere brings it out', async () => {
+        await boot([task('a'), withFile('b')])
+
+        expect(shown()).toBe(true)
+        expect(document.querySelectorAll('#tasksBody .attach-mark')).toHaveLength(1)
+    })
+
+    // Deciding per page would add and remove the column as you page, and the
+    // table is built on the promise that columns do not move.
+    test('the whole list decides, not the page', async () => {
+        const manager = await boot([...Array.from({ length: 12 }, (_, i) => task('t' + i)), withFile('z')])
+        manager.tasksPerPage = 10
+        manager.currentPage = 1
+        manager.renderTasks()
+
+        expect(shown()).toBe(true)
+    })
+
+    test('the mark names the files it stands for', async () => {
+        await boot([withFile('a')])
+
+        expect(document.querySelector('#tasksBody .attach-mark').title).toBe('spec.pdf')
+    })
+
+    test('an empty list still spans the whole row', async () => {
+        await boot([])
+
+        expect(document.querySelector('#tasksBody .empty-message').getAttribute('colspan'))
+            .toBe('7')
+    })
+})
+
 describe('sorting the table', () => {
     const at = (day, time) => `2026-08-${String(day).padStart(2, '0')} ${time}`
     const setup = () => [
@@ -2858,7 +2907,10 @@ describe('sorting the table', () => {
     const header = (which) => document.querySelector(`th[data-sort="${which}"]`)
     const column = (n) =>
         rows().map((row) => row.cells[n].textContent.trim())
-    const contents = () => column(5)
+    // 컬럼 번호가 아니라 클래스로 잡는다. 첨부 컬럼이 생기면서 내용 칸이
+    // 한 자리 밀렸고, 번호로 읽던 검사가 엉뚱한 칸을 보고 있었다.
+    const contents = () =>
+        rows().map((row) => row.querySelector('.task-content').textContent.trim())
     const numbers = () => column(1)
 
     test('leaves the stored order alone', async () => {

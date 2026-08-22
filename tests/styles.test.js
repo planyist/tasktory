@@ -55,12 +55,22 @@ describe('styles.css', () => {
     })
 
     // table-layout: fixed 에서 선언한 폭의 합이 100%가 아니면 마지막 칸이 어긋난다.
-    test('the seven column widths add up to 100%', () => {
-        const widths = [...CSS.matchAll(/th:nth-child\(\d\)\s*\{\s*width:\s*([\d.]+)%/g)]
-            .map((m) => Number(m[1]))
+    // 첨부 컬럼이 있을 때와 없을 때, 두 벌 모두 100% 여야 한다. 한쪽만 맞으면
+    // 첨부가 있는 목록에서만 폭이 어긋난다.
+    test('each set of column widths adds up to 100%', () => {
+        const base = [...CSS.matchAll(/^th:nth-child\((\d)\)\s*\{\s*width:\s*([\d.]+)%/gm)]
+            .map((m) => ({ n: Number(m[1]), w: Number(m[2]) }))
+        const withFiles = [...CSS.matchAll(
+            /#tasksTable\.has-attachments th:nth-child\((\d)\)\s*\{\s*width:\s*([\d.]+)%/g)]
+            .map((m) => ({ n: Number(m[1]), w: Number(m[2]) }))
 
-        expect(widths).toHaveLength(7)
-        expect(widths.reduce((a, b) => a + b, 0)).toBe(100)
+        expect(base).toHaveLength(8)
+        expect(base.reduce((a, c) => a + c.w, 0)).toBe(100)
+
+        // 겹쳐 쓰는 것만 바꾸므로, 덮이지 않은 자리는 기본값이 그대로 쓰인다
+        const merged = new Map(base.map((c) => [c.n, c.w]))
+        for (const c of withFiles) merged.set(c.n, c.w)
+        expect([...merged.values()].reduce((a, b) => a + b, 0)).toBe(100)
     })
 
     // 이 둘이 빠지면 페이지를 넘길 때마다 헤더와 칸이 좌우로 흔들린다.

@@ -173,6 +173,28 @@ app.whenReady().then(async () => {
         page1.cols.join(',') === page2.cols.join(','),
         `${page1.cols.join(',')} vs ${page2.cols.join(',')}`)
 
+    // 첨부 컬럼이 나와도 마찬가지고, 나오고 안 나오고가 다른 칸의 폭을 흔들어도
+    // 안 된다. 숨긴 칸도 nth-child 는 세므로, 폭 규칙을 함께 밀지 않으면 내용과
+    // 상태가 서로의 폭을 가져간다 - 합은 100% 그대로라 계산으로는 안 잡힌다.
+    const visible = (g) => g.cols.filter(w => w > 0)
+    await run(seed(14, `taskManager.tasks[12].attachments =
+        [{ name: 'spec.pdf', path: 'C:/docs/spec.pdf' }];
+        taskManager.renderTasks();`))
+    const filed1 = JSON.parse(await run(geometry))
+    await run(`taskManager.currentPage = 2; taskManager.renderTasks(); 'ok';`)
+    const filed2 = JSON.parse(await run(geometry))
+    check('첨부 컬럼이 있어도 페이지마다 폭이 같다',
+        filed1.cols.join(',') === filed2.cols.join(','),
+        `${visible(filed1).join(',')} vs ${visible(filed2).join(',')}`)
+
+    const [plainCols, filedCols] = [visible(page1), visible(filed1)]
+    check('첨부 컬럼은 작업 내용에서만 자리를 가져온다',
+        plainCols.length + 1 === filedCols.length
+        && plainCols.slice(0, 5).join(',') === filedCols.slice(0, 5).join(',')
+        && plainCols[6] === filedCols[7]
+        && filedCols[6] < plainCols[5],
+        `${plainCols.join(',')} → ${filedCols.join(',')}`)
+
     // --- 3. 페이저가 생겼다 사라져도 표 높이가 그대로 -----------------------
     await run(seed(5))
     const few = JSON.parse(await run(geometry))

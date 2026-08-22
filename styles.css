@@ -1420,13 +1420,41 @@ th:last-child {
     border-right: none;
 }
 
-th:nth-child(1) { width: 4%; } /* select */
-th:nth-child(2) { width: 5%; } /* # */
+/* 첨부 컬럼은 6번이다. 숨어 있을 때는 0% 를 주고 그 몫은 작업 내용이 가진다.
+   nth-child 는 숨긴 칸도 세므로, 컬럼을 끼울 때 뒤 번호를 함께 밀지 않으면
+   내용과 상태가 서로의 폭을 가져간다. 합은 두 경우 모두 정확히 100% 다. */
+th:nth-child(1) { width: 4%; }  /* select */
+th:nth-child(2) { width: 5%; }  /* # */
 th:nth-child(3) { width: 15%; } /* Start Time */
 th:nth-child(4) { width: 15%; } /* Target Time */
 th:nth-child(5) { width: 13%; } /* Tags */
-th:nth-child(6) { width: 36%; } /* Task Content */
-th:nth-child(7) { width: 12%; } /* Status */
+th:nth-child(6) { width: 0%; }  /* 첨부 - 숨어 있는 동안 */
+th:nth-child(7) { width: 36%; } /* Task Content */
+th:nth-child(8) { width: 12%; } /* Status */
+
+/* 첨부가 나오면 그 4% 는 작업 내용에서 가져온다 - 가장 넓고 줄바꿈이 되는
+   유일한 칸이라 조금 줄어도 잃는 것이 없다. */
+#tasksTable.has-attachments th:nth-child(6) { width: 4%; }
+#tasksTable.has-attachments th:nth-child(7) { width: 32%; }
+
+/* 첨부가 없는 동안에는 자리를 차지하지 않는다 */
+#tasksTable:not(.has-attachments) .attach-col {
+    display: none;
+}
+
+.attach-col {
+    text-align: center;
+}
+
+/* 클립은 있고 없고만 말하면 된다. 몇 개인지는 편집 창이 답한다.
+   손가락 커서는 주지 않는다 - 눌러도 행이 선택될 뿐이고, 칩과 같은 규칙이다. */
+.attach-mark {
+    color: #7a828e;
+}
+
+body.dark-mode .attach-mark {
+    color: #9aa5b1;
+}
 
 tbody tr {
     border-bottom: 1px solid #e0e0e0;

@@ -472,6 +472,7 @@ class TaskManager {
         // 라벨만 바꾼다. th 전체에 넣으면 정렬 세모가 지워진다.
         this.setText('thStartTimeLabel', 'startTime');
         this.setText('thTargetTimeLabel', 'targetTime');
+        this.setTitle('thAttachments', 'attachmentsColumn');
         this.setTitle('thStartTime', 'sortHint');
         this.setTitle('thTargetTime', 'sortHint');
         this.setText('thTags', 'tags');
@@ -2854,7 +2855,7 @@ ${filePath}`);
         if (this.tasks.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="empty-message">
+                    <td colspan="${this.tasks.some(t => !t.completed && (t.attachments || []).length) ? 8 : 7}" class="empty-message">
                         ${this.getLocalizedText('noTasks')}
                     </td>
                 </tr>
@@ -2862,6 +2863,11 @@ ${filePath}`);
             this.renderPagination(0);
             return;
         }
+
+        // 컬럼을 낼지는 지금 페이지가 아니라 전체 목록이 정한다. 페이지마다
+        // 생겼다 사라지면 폭이 흔들려 "넘겨도 같아야 한다"는 규칙이 깨진다.
+        document.getElementById('tasksTable').classList.toggle('has-attachments',
+            this.tasks.some(t => !t.completed && (t.attachments || []).length > 0));
 
         const activeTasks = this.sortForDisplay(this.filteredActiveTasks());
 
@@ -2873,7 +2879,7 @@ ${filePath}`);
             const message = filtered ? this.getLocalizedText('noSearchResults') : this.getLocalizedText('allCompleted');
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" class="empty-message">
+                    <td colspan="${this.tasks.some(t => !t.completed && (t.attachments || []).length) ? 8 : 7}" class="empty-message">
                         ${message}
                     </td>
                 </tr>
@@ -2942,6 +2948,10 @@ ${filePath}`);
                 <td>${this.formatDateTime(task.startDateTime)}${cadenceMarkup}</td>
                 <td>${this.formatDateTime(task.targetDateTime)}${notificationFlag}</td>
                 <td class="task-tags">${displayTags}</td>
+                <td class="attach-col">${(task.attachments || []).length
+                    ? `<span class="attach-mark" title="${this.escapeHtml(
+                        (task.attachments || []).map(a => a.name).join(', '))}">📎</span>`
+                    : ''}</td>
                 <td class="task-content">${plainContent}</td>
                 <td><span class="status ${taskStatus.status}" title="${taskStatus.text}">${taskStatus.text}</span></td>
             `;
