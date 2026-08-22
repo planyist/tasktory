@@ -213,6 +213,9 @@ shortcuts; the arrows step by whatever width is on screen. The search box filter
 it, and the tag chips under the search box — the same row the list uses — narrow
 it to the tags this period actually holds.
 
+It pages the same way the list does, with the same page-size setting, and keeps
+its own place so paging here does not move the list.
+
 It reads the log files, not the task list, because a finished task leaves the
 list. That also means it can show history from long before this feature existed.
 It is read-only: there is no un-complete.

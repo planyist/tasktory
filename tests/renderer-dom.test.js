@@ -2123,6 +2123,60 @@ describe('the completed view', () => {
         expect(counter.classList.contains('is-open')).toBe(false)
     })
 
+    // 스크롤로 몇 백 줄을 훑게 두면 어디까지 봤는지 놓친다. 목록과 같은 페이저다.
+    test('pages the same way the list does', async () => {
+        const manager = await openDone(Array.from({ length: 25 }, (_, i) =>
+            done('2026-08-20', 'row' + i, { completedAt: `2026-08-20 ${String(i % 24).padStart(2, '0')}:00` })))
+        manager.tasksPerPage = 10
+        manager.donePage = 1
+        manager.renderCompletedView()
+        await settle()
+
+        expect(contents()).toHaveLength(10)
+        expect(document.getElementById('paginationTotal').textContent).toContain('25')
+
+        document.getElementById('nextPageBtn').click()
+        await settle()
+        expect(manager.donePage).toBe(2)
+        expect(contents()).toHaveLength(10)
+
+        document.getElementById('nextPageBtn').click()
+        await settle()
+        expect(contents()).toHaveLength(5)
+    })
+
+    // 한쪽을 넘겼다고 다른 쪽이 움직이면 돌아왔을 때 있던 자리가 아니다.
+    test('it keeps a page number of its own, apart from the list', async () => {
+        const manager = await openDone(Array.from({ length: 25 }, (_, i) =>
+            done('2026-08-20', 'row' + i)))
+        manager.tasksPerPage = 10
+        manager.currentPage = 3
+        manager.donePage = 1
+        manager.renderCompletedView()
+        await settle()
+
+        document.getElementById('nextPageBtn').click()
+        await settle()
+
+        expect(manager.donePage).toBe(2)
+        expect(manager.currentPage).toBe(3)
+    })
+
+    // 3쪽을 보다 걸러서 한 쪽으로 줄면 없는 쪽에 남는다.
+    test('narrowing the period comes back to the first page', async () => {
+        const manager = await openDone(Array.from({ length: 25 }, (_, i) =>
+            done('2026-08-20', 'row' + i)))
+        manager.tasksPerPage = 10
+        manager.donePage = 3
+        manager.renderCompletedView()
+        await settle()
+
+        document.querySelector('#donePresets [data-done-days="7"]').click()
+        await settle()
+
+        expect(manager.donePage).toBe(1)
+    })
+
     // 목록에서 칩이 검색 상자 바로 아래에 있다. 화면이 바뀌었다고 자리가
     // 옮겨 다니면 매번 찾아야 한다.
     test('the chips sit where the list keeps them, under the search box', async () => {
@@ -2164,17 +2218,18 @@ describe('the completed view', () => {
         expect(document.querySelector('#quickFilters [data-quick]')).not.toBeNull()
     })
 
-    test('counts what it is showing', async () => {
+    // 몇 건인지는 페이저 줄이 말한다. 목록과 같은 자리, 같은 문구다.
+    test('counts what it is showing, in the pager row', async () => {
         await openDone([done('2026-08-20', 'a'), done('2026-08-20', 'b')])
 
-        expect(document.getElementById('doneCount').textContent).toContain('2')
+        expect(document.getElementById('paginationTotal').textContent).toContain('2')
     })
 
     test('says so when the period holds nothing', async () => {
         await openDone([])
 
         expect(document.querySelector('#doneBody .empty-message')).not.toBeNull()
-        expect(document.getElementById('doneCount').textContent).toContain('0')
+        expect(document.getElementById('paginationTotal').textContent).toContain('0')
     })
 
     // 아무 일도 하지 않는 입력칸을 띄워 두는 것은 감추는 것보다 나쁘다.
@@ -2201,8 +2256,9 @@ describe('the completed view', () => {
         await openDone([done('2026-08-20', 'a')])
 
         expect(document.getElementById('taskActionBar').style.display).toBe('none')
-        expect(document.getElementById('paginationContainer').style.display).toBe('none')
         expect(document.querySelector('.table-container').style.display).toBe('none')
+        // 페이저는 남는다. 여기도 넘길 것이 있다.
+        expect(document.getElementById('paginationContainer').style.display).not.toBe('none')
     })
 
     // 읽기 전용이다. 고를 것도 고칠 것도 없다.

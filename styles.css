@@ -2023,20 +2023,6 @@ body.dark-mode .done-note {
     color: #9aa5b1;
 }
 
-/* 몇 건인지는 목록 아래, 페이저가 서던 자리에 둔다. */
-.done-count {
-    min-height: 24px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 11px;
-    color: #6b7280;
-}
-
-body.dark-mode .done-count {
-    color: #9aa5b1;
-}
-
 .calendar-view {
     display: flex;
     flex-direction: column;

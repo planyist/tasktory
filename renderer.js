@@ -325,6 +325,9 @@ class TaskManager {
         this.doneRange = null;
         // 완료 화면에서 고른 태그. 목록의 빠른 필터와 같이 여러 개를 켤 수 있다.
         this.doneTagFilter = new Set();
+        // 완료 화면의 쪽 번호. 목록과 따로 센다 - 한쪽을 넘겼다고 다른 쪽이
+        // 움직이면 돌아왔을 때 있던 자리가 아니다.
+        this.donePage = 1;
         // 완료 화면의 정렬. 기본은 최근에 끝낸 것이 위.
         this.doneSort = { by: 'completedAt', asc: false };
         // 완료 화면에 들어오기 전의 보기. 나갈 때 여기로 돌아간다.
@@ -971,6 +974,7 @@ class TaskManager {
             localStorage.setItem('tasksPerPage', String(this.tasksPerPage));
             // 20건짜리 3페이지를 보다 100으로 바꾸면 3페이지는 없는 쪽이 된다
             this.currentPage = 1;
+            this.donePage = 1;
             this.renderTasks();
         });
 
@@ -1332,6 +1336,7 @@ class TaskManager {
         for (const chip of document.querySelectorAll('#donePresets [data-done-days]')) {
             chip.addEventListener('click', () => {
                 this.setDoneWindow(Number(chip.dataset.doneDays));
+                this.donePage = 1;
                 this.renderCompletedView();
             });
         }
@@ -1425,6 +1430,7 @@ class TaskManager {
             // 다르므로 서로의 것을 집지 않는다.
             if (chip.hasAttribute('data-done-all')) {
                 this.doneTagFilter.clear();
+                this.donePage = 1;
                 this.renderCompletedView();
                 return;
             }
@@ -1432,6 +1438,7 @@ class TaskManager {
                 const tag = chip.dataset.doneTag;
                 if (this.doneTagFilter.has(tag)) this.doneTagFilter.delete(tag);
                 else this.doneTagFilter.add(tag);
+                this.donePage = 1;
                 this.renderCompletedView();
                 return;
             }
@@ -2680,7 +2687,7 @@ ${filePath}`);
         show('calendarView', calendar && !this.isCollapsed);
         show('completedView', done && !this.isCollapsed);
         show('taskActionBar', list);
-        show('paginationContainer', list);
+        show('paginationContainer', list || done);
         document.querySelector('.table-container').style.display =
             (list || (done && this.isCollapsed)) ? '' : 'none';
 
@@ -2764,6 +2771,7 @@ ${filePath}`);
         let next = { from: shift(from, span * direction), to: shift(to, span * direction) };
         if (next.to > today) next = { from: shift(today, -(span - 1)), to: today };
         this.doneRange = next;
+        this.donePage = 1;
         this.renderCompletedView();
     }
 
@@ -2782,6 +2790,7 @@ ${filePath}`);
         // 거꾸로 넣으면 바로잡는다. 빈 화면을 보여주고 왜인지 모르게 두는 것보다
         // 낫고, 두 칸이 다시 그려지면서 무엇이 적용됐는지도 보인다.
         this.doneRange = from <= to ? { from, to } : { from: to, to: from };
+        this.donePage = 1;
         this.renderCompletedView();
     }
 
@@ -2910,10 +2919,18 @@ ${filePath}`);
                 .some(field => (field || '').toLowerCase().includes(query)));
         }
 
-        const count = document.getElementById('doneCount');
-        if (count) count.textContent = `${rows.length}` + ' ' + this.getLocalizedText('doneCountSuffix');
-
         this.updateDoneSortIndicators();
+
+        // 목록과 같은 페이저를 쓴다. 몇 건인지도 거기 적히므로 따로 세지 않는다.
+        const totalPages = Math.max(1, Math.ceil(rows.length / this.tasksPerPage));
+        if (this.donePage > totalPages) this.donePage = totalPages;
+        this.renderPagination(totalPages, {
+            count: rows.length,
+            page: this.donePage,
+            goTo: (to) => { this.donePage = to; this.renderCompletedView(); }
+        });
+        const start = (this.donePage - 1) * this.tasksPerPage;
+        rows = rows.slice(start, start + this.tasksPerPage);
 
         if (rows.length === 0) {
             body.innerHTML = `<tr><td colspan="6" class="empty-message">${this.escapeHtml(this.getLocalizedText('nothingCompletedInRange'))}</td></tr>`;
@@ -3531,7 +3548,9 @@ ${link.dataset.path}`
         }
     }
 
-    renderPagination(totalPages) {
+    // 목록과 완료 화면이 같은 페이저를 쓴다. 두 벌을 두면 한쪽만 고쳐진다.
+    // 기본값은 목록이라, 부르던 자리는 그대로 둔다.
+    renderPagination(totalPages, options = {}) {
         const paginationContainer = document.getElementById('paginationContainer');
         const pageNumbers = document.getElementById('pageNumbers');
         const prevBtn = document.getElementById('prevPageBtn');
@@ -3541,7 +3560,10 @@ ${link.dataset.path}`
 
         // 총 개수는 페이지가 하나뿐이어도 보여준다. "몇 건인가"는 페이지를
         // 넘길 일이 있을 때만 궁금한 값이 아니다.
-        const count = this.filteredActiveTasks().length;
+        const count = options.count !== undefined
+            ? options.count : this.filteredActiveTasks().length;
+        const page = options.page || this.currentPage;
+        const goTo = options.goTo || ((to) => { this.currentPage = to; this.renderTasks(); });
         if (total) {
             total.textContent = this.getLocalizedText('totalCount').replace('{n}', count);
         }
@@ -3558,56 +3580,43 @@ ${link.dataset.path}`
         if (totalPages <= 1) return;
 
         // Previous button
-        prevBtn.disabled = this.currentPage === 1;
-        prevBtn.onclick = () => {
-            if (this.currentPage > 1) {
-                this.currentPage--;
-                this.renderTasks();
-            }
-        };
+        prevBtn.disabled = page === 1;
+        prevBtn.onclick = () => { if (page > 1) goTo(page - 1); };
 
         // Next button
-        nextBtn.disabled = this.currentPage === totalPages;
-        nextBtn.onclick = () => {
-            if (this.currentPage < totalPages) {
-                this.currentPage++;
-                this.renderTasks();
-            }
-        };
+        nextBtn.disabled = page === totalPages;
+        nextBtn.onclick = () => { if (page < totalPages) goTo(page + 1); };
 
         // Smart pagination display logic
         if (totalPages <= 5) {
             // Show all pages when 5 or fewer pages
             for (let i = 1; i <= totalPages; i++) {
-                this.createPageButton(i, pageNumbers);
+                this.createPageButton(i, pageNumbers, page, goTo);
             }
         } else {
             // Show 1, 2, ..., last-1, last format for 6+ pages
-            this.createPageButton(1, pageNumbers);
-            this.createPageButton(2, pageNumbers);
+            this.createPageButton(1, pageNumbers, page, goTo);
+            this.createPageButton(2, pageNumbers, page, goTo);
             
             if (totalPages > 4) {
                 this.createEllipsis(pageNumbers);
             }
             
             if (totalPages > 3) {
-                this.createPageButton(totalPages - 1, pageNumbers);
+                this.createPageButton(totalPages - 1, pageNumbers, page, goTo);
             }
-            this.createPageButton(totalPages, pageNumbers);
+            this.createPageButton(totalPages, pageNumbers, page, goTo);
         }
     }
 
-    createPageButton(pageNum, container) {
+    createPageButton(pageNum, container, page, goTo) {
         const pageBtn = document.createElement('button');
         pageBtn.className = 'page-number';
         pageBtn.textContent = pageNum;
-        if (pageNum === this.currentPage) {
+        if (pageNum === page) {
             pageBtn.classList.add('active');
         }
-        pageBtn.onclick = () => {
-            this.currentPage = pageNum;
-            this.renderTasks();
-        };
+        pageBtn.onclick = () => goTo(pageNum);
         container.appendChild(pageBtn);
     }
 
