@@ -276,7 +276,7 @@ const writeLogEntry = async (logEntry) => {
         }
         
         if (!fileExists) {
-            const header = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\n';
+            const header = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE\n';
             await fs.writeFile(todayLogFile, header);
         }
         
@@ -336,6 +336,11 @@ const writeLogEntry = async (logEntry) => {
             .filter(Boolean)
             .join('; ');
         
+        // 완료 시각과 메모는 제 칸으로 간다. CONTENT 는 작업 내용 그대로다 -
+        // '(completed)' 를 덧붙이는 것은 ACTION 이 이미 하는 말의 되풀이였다.
+        const completedAt = logEntry.completedAt || '';
+        const note = logEntry.note || '';
+
         let content = logEntry.details || logEntry.task.content || '';
         
         const escapeTsvValue = (value) => {
@@ -344,7 +349,9 @@ const writeLogEntry = async (logEntry) => {
             return value.replace(/\t/g, ' ').replace(/\n/g, ' ').replace(/\r/g, ' ');
         };
         
-        const logLine = `${escapeTsvValue(timestamp)}\t${escapeTsvValue(action)}\t${escapeTsvValue(status)}\t${escapeTsvValue(taskId)}\t${escapeTsvValue(startTime)}\t${escapeTsvValue(targetTime)}\t${escapeTsvValue(tags)}\t${escapeTsvValue(content)}\t${escapeTsvValue(attachments)}\n`;
+        const logLine = [timestamp, action, status, taskId, startTime, targetTime,
+            tags, content, attachments, completedAt, note]
+            .map(escapeTsvValue).join('\t') + '\n';
         
         console.log('IPC: Writing log line:', logLine.substring(0, 100) + '...');
         
@@ -579,15 +586,37 @@ ipcMain.handle('show-notification', async (event, title, body) => {
 
 // ACTION 은 TSV의 두 번째 열이다. 개수와 목록을 한 함수에서 뽑아, 카운터와
 // 목록이 서로 다른 답을 내놓는 일이 없게 한다.
+// COMPLETED_AT / NOTE 가 생기기 전의 줄은 그 둘이 CONTENT 안에 섞여 있다:
+//   '테스트 (completed) at 2026-08-11 07:27 메모'
+// 이미 디스크에 쌓인 것이므로 읽을 때 되돌린다.
+const CONTENT_WITH_COMPLETION =
+    /^(.*?) \(completed\)(?: at (\d{4}-\d{2}-\d{2} \d{2}:\d{2}))?(?: (.*))?$/;
+
+const splitLegacyContent = (content) => {
+    const found = CONTENT_WITH_COMPLETION.exec(content);
+    if (!found) return { content, completedAt: '', note: '' };
+    return { content: found[1], completedAt: found[2] || '', note: (found[3] || '').trim() };
+}
+
 const completedFromTsv = (logData) => {
     return logData.split('\n')
         .filter(line => line.trim() && !line.startsWith('TIMESTAMP\tACTION\tSTATUS'))
         .map(line => line.split('\t'))
         .filter(columns => columns.length >= 2 && columns[1].trim() === 'COMPLETE')
-        .map(columns => ({
-            timestamp: (columns[0] || '').trim(),
-            content: (columns[7] || '').trim()
-        }));
+        .map(columns => {
+            const legacy = splitLegacyContent((columns[7] || '').trim());
+            return {
+                timestamp: (columns[0] || '').trim(),
+                taskId: (columns[3] || '').trim(),
+                startTime: (columns[4] || '').trim(),
+                targetTime: (columns[5] || '').trim(),
+                tags: (columns[6] || '').trim(),
+                content: legacy.content,
+                attachments: (columns[8] || '').trim(),
+                completedAt: (columns[9] || '').trim() || legacy.completedAt,
+                note: (columns[10] || '').trim() || legacy.note
+            };
+        });
 }
 
 // v0.2.5 이하의 로그는 고정폭 포맷이라 ACTION이 25~40번째 문자에 위치한다.
@@ -598,7 +627,7 @@ const completedFromLegacy = (logData) => {
         .filter(line => line.substring(25, 40).trim() === 'COMPLETE')
         .map(line => ({
             timestamp: line.substring(0, 25).trim(),
-            content: line.split('\t').pop().trim()
+            ...splitLegacyContent(line.split('\t').pop().trim())
         }));
 }
 

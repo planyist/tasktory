@@ -929,11 +929,13 @@ describe('multi-select', () => {
         field.value = '2026-08-01 09:00'
         await submitConfirm()
 
-        // The chosen time goes into the log body; the row itself is gone.
+        // 고른 시각은 제 칸으로 간다. 내용 문자열에 섞어 넣던 시절에는 완료
+        // 화면이 그것으로 정렬할 수 없었다. 행 자체는 사라진다.
         const logged = electronAPI.addLog.mock.calls.map((c) => c[0]).find(
             (entry) => entry.action === 'COMPLETE'
         )
-        expect(logged.details).toContain('at 2026-08-01 09:00')
+        expect(logged.completedAt).toBe('2026-08-01 09:00')
+        expect(logged.task.content).toBe('task a')
         expect(manager.tasks).toHaveLength(0)
     })
 
@@ -1278,7 +1280,7 @@ describe('muted-notification marker placement', () => {
 
 describe('history export and import', () => {
     // main.js 가 파일에 쓰는 머리와 같아야 한다
-    const HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS'
+    const HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE'
     const row = (ts, action) => `${ts}\t${action}\tPENDING\ttask-1\t\t\t\tnote`
 
     // The backup JSON stores each log as one escaped string, which is fine for

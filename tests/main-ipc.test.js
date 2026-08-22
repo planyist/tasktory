@@ -82,7 +82,7 @@ describe('add-log', () => {
 
         const contents = await readLog()
         expect(contents.split('\n')[0]).toBe(
-            'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS'
+            'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE'
         )
     })
 
@@ -136,7 +136,7 @@ describe('add-log', () => {
         const [row] = dataLines(await readLog())
         const columns = row.split('\t')
 
-        expect(columns).toHaveLength(9)
+        expect(columns).toHaveLength(11)
         expect(columns[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/)
         expect(columns[1]).toBe('COMPLETE')
         expect(columns[2]).toBe('COMPLETED')
@@ -145,6 +145,23 @@ describe('add-log', () => {
         expect(columns[5]).toBe('2026-08-04T18:00')
         expect(columns[6]).toBe('#work')
         expect(columns[7]).toBe('write tests')
+    })
+
+    // 완료 시각과 메모는 제 칸에 있어야 한다. CONTENT 문자열에 섞어 넣던
+    // 시절에는 완료 화면이 그것으로 정렬할 수 없었고, 작업 내용에는
+    // '(completed)' 가 들러붙었다 - ACTION 이 이미 하는 말의 되풀이였다.
+    test('the completion time and note get columns of their own', async () => {
+        await electron.__invoke('add-log', {
+            ...makeEntry('COMPLETE', { status: 'completed' }),
+            completedAt: '2026-08-04 17:30',
+            note: '검토까지 끝냄'
+        })
+
+        const columns = dataLines(await readLog())[0].split('\t')
+
+        expect(columns[7]).toBe('write tests')
+        expect(columns[9]).toBe('2026-08-04 17:30')
+        expect(columns[10]).toBe('검토까지 끝냄')
     })
 
     // A log line is a permanent record: without the offset there is no way to
@@ -174,7 +191,7 @@ describe('add-log', () => {
 
         const rows = dataLines(await readLog())
         expect(rows).toHaveLength(1)
-        expect(rows[0].split('\t')).toHaveLength(9)
+        expect(rows[0].split('\t')).toHaveLength(11)
         expect(rows[0].split('\t')[7]).toBe('a b c d')
     })
 
@@ -531,6 +548,71 @@ describe('the collapse shortcut reaches outside the window', () => {
 // 지켜보며 마지막 자리를 기억했는데, 그 이벤트는 Windows 가 옮겼을 때도 뜬다.
 // 밀려난 자리가 "사용자가 둔 자리"로 덮이면서 되돌릴 기준이 사라졌다.
 // 판단 부분만 떼어냈으므로 Electron 없이 확인한다.
+// 완료 시각과 메모가 제 칸을 갖기 전의 줄은 그 둘이 CONTENT 안에 섞여 있다.
+// 13개월치가 이미 디스크에 있으므로, 읽을 때 되돌리지 않으면 완료 화면이
+// 과거를 통째로 잘못 보여준다.
+describe('reading completions written before the columns existed', () => {
+    const oldStyle = (content) => [
+        'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS',
+        ['2026-08-11T07:27:48+09:00', 'COMPLETE', 'OVERDUE', 'task-1',
+         '2026-08-06 01:04', '2026-08-06 02:00', '#[RED]test', content, ''].join('\t')
+    ].join('\n') + '\n'
+
+    const readBack = async (content) => {
+        fs.writeFileSync(path.join(logsDir, '2026-08-11.tsv'), oldStyle(content))
+        return (await electron.__invoke('get-completed-tasks', '2026-08-11'))[0]
+    }
+
+    beforeEach(() => fs.mkdirSync(logsDir, { recursive: true }))
+
+    test('pulls the completion time and note back out of the content', async () => {
+        const row = await readBack('테스트 (completed) at 2026-08-11 07:27 검토 끝')
+
+        expect(row.content).toBe('테스트')
+        expect(row.completedAt).toBe('2026-08-11 07:27')
+        expect(row.note).toBe('검토 끝')
+    })
+
+    test('a completion with no time and no note leaves both empty', async () => {
+        const row = await readBack('테스투 (completed)')
+
+        expect(row.content).toBe('테스투')
+        expect(row.completedAt).toBe('')
+        expect(row.note).toBe('')
+    })
+
+    test('a note without a time still comes out as a note', async () => {
+        const row = await readBack('512 (completed) adfasdf')
+
+        expect(row.content).toBe('512')
+        expect(row.completedAt).toBe('')
+        expect(row.note).toBe('adfasdf')
+    })
+
+    // 내용에 괄호가 들어 있을 뿐인 줄을 잘라내면 안 된다.
+    test('content that merely mentions something in brackets is left alone', async () => {
+        const row = await readBack('보고서 (초안) 검토')
+
+        expect(row.content).toBe('보고서 (초안) 검토')
+        expect(row.completedAt).toBe('')
+    })
+
+    // 새 칸이 채워져 있으면 그쪽이 이긴다.
+    test('the columns win when they are there', async () => {
+        fs.writeFileSync(path.join(logsDir, '2026-08-12.tsv'),
+            ['TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE',
+             ['2026-08-12T09:00:00+09:00', 'COMPLETE', 'COMPLETED', 'task-2',
+              '2026-08-12 08:00', '2026-08-12 10:00', '', '분기 보고서', '',
+              '2026-08-12 09:30', '초안까지'].join('\t')].join('\n') + '\n')
+
+        const row = (await electron.__invoke('get-completed-tasks', '2026-08-12'))[0]
+
+        expect(row.content).toBe('분기 보고서')
+        expect(row.completedAt).toBe('2026-08-12 09:30')
+        expect(row.note).toBe('초안까지')
+    })
+})
+
 describe('boundsToRestore', () => {
     // beforeEach 가 환경변수를 세운 뒤 main.js 를 다시 읽는다. 그 전에 require 하면
     // userData 경로가 undefined 라 모듈 로딩 자체가 터진다.

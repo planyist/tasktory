@@ -39,7 +39,7 @@ const CALENDAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="non
 const LIST_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
 
 // main.js가 로그 파일에 쓰는 헤더와 같아야 한다
-const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS';
+const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE';
 
 // 토큰 하나당 정규식 조각과 값 추출기. 형식 문자열 하나로 출력과 입력을 모두
 // 만들어내므로 둘이 어긋날 수 없다.
@@ -1599,13 +1599,14 @@ class TaskManager {
         return true;
     }
 
-    async addLog(action, task, details = null) {
+    async addLog(action, task, details = null, extra = {}) {
         try {
             const logEntry = {
                 action,
                 task: { ...task },
                 details: details,
-                timestamp: new Date().toISOString()
+                timestamp: new Date().toISOString(),
+                ...extra
             };
 
             console.log('Adding log entry:', action, 'for task:', task.id, 'details:', details);
@@ -4085,15 +4086,14 @@ ${link.dataset.path}`
         if (taskIndex !== -1) {
             const task = this.tasks[taskIndex];
 
-            // 사용자가 고른 완료 시각은 로그 본문에 남긴다. TIMESTAMP는 어디까지나
+            // 사용자가 고른 완료 시각은 제 칸에 남긴다. TIMESTAMP는 어디까지나
             // "이 조작을 언제 했는가"라서, 소급해 체크한 시각으로 덮으면 안 된다.
-            const parts = [`${task.content} (completed)`];
-            if (completedAt) parts.push(`at ${completedAt}`);
-            if (details) parts.push(details);
-            const logDetails = parts.join(' ');
+            // 내용 문자열에 섞어 넣던 시절에는 완료 화면이 그것으로 정렬할 수
+            // 없었고, 내용에 '(completed)' 가 들러붙었다.
             // 로그는 완료 상태로 남긴다. 반복이면 태스크 자체는 다음 회차로
             // 넘어가지만, 이번 회차를 해냈다는 기록은 그대로 있어야 한다.
-            await this.addLog('COMPLETE', { ...task, completed: true }, logDetails);
+            await this.addLog('COMPLETE', { ...task, completed: true }, null,
+                { completedAt: completedAt || '', note: details || '' });
 
             // 반복 작업은 사라지지 않고 다음 회차로 이동한다. 그 행이 곧 규칙이라
             // 없애버리면 반복을 다시 볼 방법이 없어진다.
