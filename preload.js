@@ -11,6 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     importData: (data) => ipcRenderer.invoke('import-data', data),
     getLogPath: () => ipcRenderer.invoke('get-log-path'),
     openLogFolder: () => ipcRenderer.invoke('open-log-folder'),
+    getCollapseShortcut: () => ipcRenderer.invoke('get-collapse-shortcut'),
+    // 메인에서 렌더러로 오는 유일한 통보. 전역 단축키는 창이 포커스를 잃은
+    // 동안에도 눌리므로, 키 이벤트로는 닿을 수가 없다.
+    onToggleCollapse: (callback) => ipcRenderer.on('toggle-collapse', () => callback()),
     getOpenAtLogin: () => ipcRenderer.invoke('get-open-at-login'),
     setOpenAtLogin: (openAtLogin) => ipcRenderer.invoke('set-open-at-login', openAtLogin),
     setAlwaysOnTop: (onTop) => ipcRenderer.invoke('set-always-on-top', onTop),

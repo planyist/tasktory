@@ -74,7 +74,7 @@
                             </svg>
                         </button>
                         <button type="button" id="viewModeBtn" class="btn icon-btn view-toggle"></button>
-                        <button id="collapseBtn" class="btn icon-btn" title="Collapse view (Ctrl+M)">
+                        <button id="collapseBtn" class="btn icon-btn" title="Collapse view ({key})">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                                 <polyline points="14,4 14,10 20,10"/>
                                 <polyline points="10,20 10,14 4,14"/>
@@ -510,7 +510,7 @@
             <ul>
                 <li><strong id="aboutListViewTitle">List:</strong> <span id="aboutListViewDesc">The table. Everything you can do to a task happens here</span></li>
                 <li><strong id="aboutCalendarViewTitle">Calendar:</strong> <span id="aboutCalendarViewDesc">A month grid, toggled from the buttons at the top right. A task sits on its target day, and one with no target time sits on its start day. View-only - nothing in a cell is clickable</span></li>
-                <li><strong id="aboutCollapsedViewTitle">Side strip:</strong> <span id="aboutCollapsedViewDesc">Ctrl+M. Read-only, always on top. In calendar view it stands up a single day - today, or the next day with work if today is clear</span></li>
+                <li><strong id="aboutCollapsedViewTitle">Side strip:</strong> <span id="aboutCollapsedViewDesc">{key}. Read-only, always on top. In calendar view it stands up a single day - today, or the next day with work if today is clear</span></li>
             </ul>
 
             <h3 id="aboutSearchTitle">Search and Filters</h3>
@@ -531,7 +531,7 @@
             <h3 id="aboutKeyboardShortcutsTitle">Keyboard Shortcuts</h3>
             <ul>
                 <li><strong>Ctrl+N:</strong> <span id="aboutAddNewTask">Add new task</span></li>
-                <li><strong>Ctrl+M:</strong> <span id="aboutCollapseView">Collapse to the side strip</span></li>
+                <li><strong id="aboutCollapseViewKey">{key}:</strong> <span id="aboutCollapseView">Collapse to the side strip</span></li>
                 <li><strong>ESC:</strong> <span id="aboutCloseModal">Close modal or date picker</span></li>
             </ul>
             

@@ -44,7 +44,12 @@ const task = (id, overrides = {}) => ({
 let electronAPI
 let stored
 
+// 메인이 전역 단축키를 눌렀을 때 부르는 콜백. 붙잡아 두어야 창 밖에서 누른 것을
+// 흉내 낼 수 있다.
+let toggleCollapseListener = null
+
 const boot = async (tasks = []) => {
+    toggleCollapseListener = null
     stored = tasks
     electronAPI = {
         loadTasks: jest.fn(async () => JSON.parse(JSON.stringify(stored))),
@@ -80,6 +85,10 @@ const boot = async (tasks = []) => {
         openLogFolder: jest.fn(async () => true),
         moveWindowBy: jest.fn(),
         resizeAndPositionWindow: jest.fn(async () => true),
+        getCollapseShortcut: jest.fn(async () => ({
+            accelerator: 'CommandOrControl+Alt+Shift+M', registered: true
+        })),
+        onToggleCollapse: jest.fn((cb) => { toggleCollapseListener = cb }),
         getOpenAtLogin: jest.fn(async () => ({ supported: true, openAtLogin: false })),
         setOpenAtLogin: jest.fn(async (v) => v)
     }
@@ -2853,6 +2862,63 @@ describe('notification wording', () => {
 // 내용 끝에 클립을 붙이면 내용 길이가 행마다 달라 매 행 다른 자리에 놓인다.
 // 한 줄로 내려훑으려면 제 컬럼이어야 한다. 다만 대부분의 목록에는 첨부가 없으니
 // 있을 때만 낸다.
+describe('collapsing from outside the window', () => {
+    const press = (key, mods = {}) => document.dispatchEvent(
+        new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...mods }))
+
+    test('the global shortcut toggles even though no key reached the page', async () => {
+        const manager = await boot([])
+
+        expect(typeof toggleCollapseListener).toBe('function')
+        toggleCollapseListener()
+        await settle()
+
+        expect(manager.isCollapsed).toBe(true)
+    })
+
+    // 전역 등록은 자기 창의 키까지 가로채므로 둘 다 걸면 보통은 한 번만 돈다.
+    // 그것은 OS 의 사정이지 우리가 정한 규칙이 아니고, 둘 다 돌면 접었다 펴져
+    // 아무 일도 없는 것처럼 보인다.
+    test('the in-window handler stays off while the global one holds', async () => {
+        const manager = await boot([])
+
+        press('m', { ctrlKey: true, altKey: true, shiftKey: true })
+        await settle()
+
+        expect(manager.isCollapsed).toBe(false)
+    })
+
+    // 다른 프로그램이 먼저 잡았을 때. 조용히 넘어가되 창 안에서는 계속 들어야
+    // 한다 - 그러지 않으면 단축키가 통째로 사라진다.
+    test('a refused registration falls back to listening in the window', async () => {
+        electronAPI = null
+        const manager = await boot([])
+        electronAPI.getCollapseShortcut.mockResolvedValue({
+            accelerator: 'CommandOrControl+Alt+Shift+M', registered: false
+        })
+        await manager.setupCollapseShortcut()
+
+        press('m', { ctrlKey: true, altKey: true, shiftKey: true })
+        await settle()
+
+        expect(manager.isCollapsed).toBe(true)
+    })
+
+    // 조합은 main.js 한 곳에서 나온다. 문구에 적어 두면 키를 바꾼 날 화면
+    // 어딘가가 옛 키를 계속 안내한다.
+    test('the help shows the combination main.js actually registered', async () => {
+        const manager = await boot([])
+        manager.showAboutModal()
+        await settle()
+
+        expect(document.getElementById('aboutCollapseViewKey').textContent)
+            .toBe('Ctrl+Alt+Shift+M:')
+        expect(document.getElementById('collapseBtn').title).toContain('Ctrl+Alt+Shift+M')
+        expect(document.getElementById('aboutCollapsedViewDesc').textContent)
+            .toContain('Ctrl+Alt+Shift+M')
+    })
+})
+
 // 값은 OS 가 가지고 있고 앱은 읽기만 한다. 그래서 화면이 고른 상태를 그리지
 // 못하면, 설정이 제대로 써지고 있어도 버튼이 죽은 것으로 보인다 - 실제로
 // .backup-btn.active 규칙이 없어 그렇게 신고됐다.

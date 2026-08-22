@@ -27,7 +27,8 @@ pending. The row you highlighted stays highlighted.
 <img src="docs/screenshots/collapsed.png" alt="Collapsed side strip" align="right" width="150">
 
 Collapsed, it becomes a 150px strip that stays out of the way — today's work in
-time order, with a mini calendar above it. Ctrl+M toggles it.
+time order, with a mini calendar above it. Ctrl+Alt+Shift+M toggles it,
+and that one works from anywhere - you do not have to click Tasktory first.
 
 <br clear="right">
 
@@ -248,8 +249,15 @@ Colours: `RED`, `GREEN`, `BLUE`, `YELLOW`, `PURPLE`, `ORANGE`, `GRAY`, `PINK`.
 ### Keyboard shortcuts
 
 - `Ctrl/Cmd + N` — add a task
-- `Ctrl/Cmd + M` — collapse to the side strip and back
+- `Ctrl/Cmd + Alt + Shift + M` — collapse to the side strip and back
 - `Esc` — close a dialog or the date picker
+
+The collapse shortcut works from anywhere, including while you are in another
+application — putting the note aside without going to find it first is the whole
+point of it. That is also why it takes three modifiers: a global shortcut claims
+the combination from every other program while Tasktory runs, so it has to be
+one nothing else wants. If another program got there first, Tasktory says
+nothing and the shortcut simply works inside its own window instead.
 
 ### Moving the window
 

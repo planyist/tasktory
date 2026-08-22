@@ -6,6 +6,8 @@
 // directory named by TASKTORY_USERDATA so file I/O runs against a temp dir.
 
 const handlers = new Map()
+const shortcuts = new Map()
+const taken = new Set()
 
 const app = {
     disableHardwareAcceleration: () => {},
@@ -51,11 +53,30 @@ module.exports = {
     // undefined 가 되어, 나중에 그 경로를 건드리는 순간 조용히 터진다.
     powerMonitor: { on: () => {} },
 
+    // 전역 단축키. 등록을 기록해 두어 테스트가 무엇이 어떤 조합으로 걸렸는지
+    // 확인할 수 있게 한다. free 는 "아무도 안 쓰고 있다"는 가정이고,
+    // __takeShortcut() 으로 뒤집어 실패한 등록을 흉내 낸다.
+    globalShortcut: {
+        register: (accelerator, callback) => {
+            if (taken.has(accelerator)) return false
+            shortcuts.set(accelerator, callback)
+            return true
+        },
+        isRegistered: (accelerator) => shortcuts.has(accelerator),
+        unregisterAll: () => shortcuts.clear()
+    },
+
     // Test helpers
     __invoke: (channel, ...args) => {
         const handler = handlers.get(channel)
         if (!handler) throw new Error(`No IPC handler registered for "${channel}"`)
         return handler(null, ...args)
     },
-    __handlers: handlers
+    __handlers: handlers,
+    __shortcuts: shortcuts,
+    __takeShortcut: (accelerator) => taken.add(accelerator),
+    __freeShortcuts: () => {
+        taken.clear()
+        shortcuts.clear()
+    }
 }

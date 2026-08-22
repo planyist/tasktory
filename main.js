@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, powerMonitor, screen, dialog, shell } = require('electron')
+const { app, BrowserWindow, globalShortcut, ipcMain, powerMonitor, screen, dialog, shell } = require('electron')
 const fs = require('fs').promises
 const path = require('path')
 
@@ -133,7 +133,10 @@ const keepWindowWhereItWasPut = () => {
     screen.on('display-removed', restore)
 }
 
-module.exports = { boundsToRestore }
+const COLLAPSE_SHORTCUT = 'CommandOrControl+Alt+Shift+M'
+let collapseShortcutRegistered = false
+
+module.exports = { boundsToRestore, registerCollapseShortcut, COLLAPSE_SHORTCUT }
 
 // GPU 가속 비활성화 (호환성 문제 해결)
 app.disableHardwareAcceleration()
@@ -143,14 +146,41 @@ app.disableHardwareAcceleration()
 // package.json 의 build.appId 와 같아야 설치본의 시작 메뉴 바로가기와 맞는다.
 if (process.platform === 'win32') app.setAppUserModelId('com.tasktory.app')
 
+// 창 밖에서도 접을 수 있어야 한다 - 다른 일을 하는 중에 스티키 노트를 치우는
+// 것이 이 단축키의 쓸모 전부다.
+//
+// 조합이 흔하면 전역 등록은 그 키를 다른 프로그램에서 빼앗는다. 재보니 이 컴퓨터
+// 에서 Ctrl+Alt+M 은 이미 누가 쓰고 있었고, Ctrl+Shift+M 은 VS Code 의 문제 패널과
+// 크롬 개발자도구가 쓴다. 수식키 세 개짜리는 그런 일이 거의 없다.
+// 실패하면 조용히 넘어간다. 다른 프로그램이 먼저 잡았다는 뜻이고, 그때는 창 안에서
+// 듣는 쪽으로 되돌아간다 - 렌더러가 registered 를 보고 정한다.
+function registerCollapseShortcut() {
+    collapseShortcutRegistered = globalShortcut.register(COLLAPSE_SHORTCUT, () => {
+        const win = BrowserWindow.getAllWindows()[0]
+        if (!win) return
+        // 최소화된 채로 접으면 화면에 아무 일도 일어나지 않아 단축키가 죽은 것으로
+        // 읽힌다. 되살려 놓고 접는다.
+        if (win.isMinimized()) win.restore()
+        win.webContents.send('toggle-collapse')
+    })
+    return collapseShortcutRegistered
+}
+
 app.whenReady().then(() => {
     createWindow()
-    
+    registerCollapseShortcut()
+
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
             createWindow()
         }
     })
+})
+
+// 전역 등록은 프로세스가 아니라 OS 가 들고 있다. 풀지 않으면 앱이 사라진 뒤에도
+// 그 조합이 잡혀 있는 것으로 남는다.
+app.on('will-quit', () => {
+    globalShortcut.unregisterAll()
 })
 
 app.on('window-all-closed', () => {
@@ -499,6 +529,13 @@ ipcMain.handle('set-always-on-top', async (event, onTop) => {
 // 로그인 자동 실행. 값은 OS 가 소유한다 - 사용자가 작업 관리자의 시작 프로그램에서
 // 끌 수 있으므로 앱이 따로 저장해 두면 화면과 실제가 어긋난다. 늘 여기서 읽는다.
 // Linux 에서는 Electron 이 이 API 를 구현하지 않아 언제나 false 를 돌려준다.
+// 조합 문자열은 여기서만 정한다. 도움말과 버튼 툴팁이 이 값을 받아 쓰므로,
+// 키를 바꿔도 화면의 안내가 뒤처지지 않는다.
+ipcMain.handle('get-collapse-shortcut', async () => ({
+    accelerator: COLLAPSE_SHORTCUT,
+    registered: collapseShortcutRegistered
+}))
+
 ipcMain.handle('get-open-at-login', async () => ({
     supported: process.platform === 'win32' || process.platform === 'darwin',
     openAtLogin: app.getLoginItemSettings().openAtLogin

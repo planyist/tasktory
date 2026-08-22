@@ -459,6 +459,74 @@ describe('get-log-path', () => {
     })
 })
 
+// 창 밖에서도 접혀야 한다 - 다른 일을 하다가 스티키 노트를 치우는 것이 이
+// 단축키의 쓸모 전부이고, document 의 keydown 은 포커스가 있어야만 닿는다.
+describe('the collapse shortcut reaches outside the window', () => {
+    const main = () => require('../main.js')
+    const sent = []
+    const win = (state = {}) => ({
+        isMinimized: () => Boolean(state.minimized),
+        restore: () => { state.minimized = false; state.restored = true },
+        webContents: { send: (channel) => sent.push(channel) }
+    })
+
+    beforeEach(() => {
+        sent.length = 0
+        electron.__freeShortcuts()
+    })
+
+    test('registers a combination unlikely to be taken elsewhere', () => {
+        expect(main().registerCollapseShortcut()).toBe(true)
+        expect(electron.__shortcuts.has(main().COLLAPSE_SHORTCUT)).toBe(true)
+        // 수식키 세 개. Ctrl+Alt+M 은 이 컴퓨터에서 이미 쓰이고 있었고
+        // Ctrl+Shift+M 은 VS Code 와 크롬 개발자도구가 쓴다.
+        expect(main().COLLAPSE_SHORTCUT).toBe('CommandOrControl+Alt+Shift+M')
+    })
+
+    test('pressing it tells the renderer to toggle', () => {
+        const state = {}
+        jest.spyOn(electron.BrowserWindow, 'getAllWindows').mockReturnValue([win(state)])
+        main().registerCollapseShortcut()
+
+        electron.__shortcuts.get(main().COLLAPSE_SHORTCUT)()
+
+        expect(sent).toEqual(['toggle-collapse'])
+    })
+
+    // 최소화된 채로 접으면 화면에 아무 일도 일어나지 않아 단축키가 죽은 것으로
+    // 읽힌다.
+    test('a minimised window comes back before it collapses', () => {
+        const state = { minimized: true }
+        jest.spyOn(electron.BrowserWindow, 'getAllWindows').mockReturnValue([win(state)])
+        main().registerCollapseShortcut()
+
+        electron.__shortcuts.get(main().COLLAPSE_SHORTCUT)()
+
+        expect(state.restored).toBe(true)
+        expect(sent).toEqual(['toggle-collapse'])
+    })
+
+    // 다른 프로그램이 먼저 잡았을 때. 조용히 넘어가고, 렌더러가 그 값을 보고
+    // 창 안에서 듣는 쪽으로 되돌아간다.
+    test('a combination already taken is reported, not thrown', () => {
+        electron.__takeShortcut(main().COLLAPSE_SHORTCUT)
+
+        expect(main().registerCollapseShortcut()).toBe(false)
+        expect(electron.__invoke('get-collapse-shortcut'))
+            .resolves.toEqual({
+                accelerator: main().COLLAPSE_SHORTCUT, registered: false
+            })
+    })
+
+    test('the renderer is told which combination to show', async () => {
+        main().registerCollapseShortcut()
+
+        await expect(electron.__invoke('get-collapse-shortcut')).resolves.toEqual({
+            accelerator: 'CommandOrControl+Alt+Shift+M', registered: true
+        })
+    })
+})
+
 // 잠금에서 돌아오면 창이 밀려 있다는 신고에서 나온 로직. 첫 시도는 'moved' 를
 // 지켜보며 마지막 자리를 기억했는데, 그 이벤트는 Windows 가 옮겼을 때도 뜬다.
 // 밀려난 자리가 "사용자가 둔 자리"로 덮이면서 되돌릴 기준이 사라졌다.

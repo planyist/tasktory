@@ -300,6 +300,8 @@ class TaskManager {
         // 편집 중인 첨부. 저장을 눌러야 작업에 반영된다.
         this.editingAttachments = [];
         this.isElectron = typeof window.electronAPI !== 'undefined';
+        // main.js 가 알려 주기 전까지 쓰는 값. 브라우저 모드에서는 이대로 남는다.
+        this.collapseAccelerator = 'Ctrl+Alt+Shift+M';
         this.locale = this.getSelectedLanguage();
         this.darkMode = localStorage.getItem('darkMode') === 'true';
         this.dateFormat = localStorage.getItem('dateFormat') || DATE_FORMATS[0];
@@ -384,6 +386,39 @@ class TaskManager {
         this.updateCompletionCounter();
         this.updateCompletionCounterText();
         this.startNotificationCheck();
+        await this.setupCollapseShortcut();
+    }
+
+    // 접기 단축키. 창 밖에서도 눌려야 하므로 메인이 전역으로 잡고, 눌리면
+    // toggle-collapse 를 보내온다.
+    //
+    // 창 안 핸들러는 그 등록이 실패했을 때만 건다. 전역 등록은 자기 창의 키까지
+    // 가로채므로 보통은 둘 다 걸어도 한 번만 도는데, 그것은 OS 의 사정이지 우리가
+    // 정한 규칙이 아니다 - 둘 다 돌면 접었다 펴져 아무 일도 없는 것처럼 보인다.
+    async setupCollapseShortcut() {
+        this.collapseAccelerator = 'Ctrl+Alt+Shift+M';
+        let registered = false;
+
+        if (this.isElectron && window.electronAPI.getCollapseShortcut) {
+            const shortcut = await window.electronAPI.getCollapseShortcut();
+            // CommandOrControl 은 Electron 의 표기이고 사람이 읽을 것은 아니다.
+            this.collapseAccelerator = shortcut.accelerator
+                .replace('CommandOrControl', navigator.platform.startsWith('Mac') ? 'Cmd' : 'Ctrl');
+            registered = shortcut.registered;
+            window.electronAPI.onToggleCollapse(() => this.toggleCollapse());
+            // 화면에는 이미 기본값이 그려져 있다. 실제 조합이 다르면 다시 그린다.
+            this.updateUIText();
+        }
+
+        if (!registered) {
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey && e.altKey && e.shiftKey && e.key.toLowerCase() === 'm') {
+                    e.preventDefault();
+                    this.toggleCollapse();
+                }
+            });
+        }
+
     }
 
     setupUI() {
@@ -541,6 +576,10 @@ class TaskManager {
         this.setText('aboutAddNewTask', 'addNewTaskShortcut');
         
         this.setText('aboutCollapseView', 'collapseViewShortcut');
+        // 단축키 이름은 어느 말로 읽어도 같다 - 확장자와 같은 이유로 번역하지
+        // 않는다. 조합 자체는 main.js 에서 온다.
+        const shortcutKey = document.getElementById('aboutCollapseViewKey');
+        if (shortcutKey) shortcutKey.textContent = `${this.collapseAccelerator}:`;
         
         this.setText('aboutCloseModal', 'closeModalShortcut');
         
@@ -1593,7 +1632,12 @@ class TaskManager {
     // 키 자체를 돌려준다 - 화면에 빈칸이 뜨는 것보다 무엇이 빠졌는지 보이는 게 낫다.
     getLocalizedText(key) {
         const lang = languageOf(this.locale);
-        return TRANSLATIONS[lang][key] || TRANSLATIONS.en[key] || key;
+        const text = TRANSLATIONS[lang][key] || TRANSLATIONS.en[key] || key;
+        // 접기 단축키는 main.js 가 정하고 여러 문구가 그것을 말한다. 문구마다
+        // 적어 두면 조합을 바꾼 날 화면 어딘가가 옛 키를 계속 안내한다.
+        return text.includes('{key}')
+            ? text.replace('{key}', this.collapseAccelerator)
+            : text;
     }
 
     updateTagsHelpText() {
@@ -4860,12 +4904,6 @@ document.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
         taskManager.showModal();
-    }
-    
-    // Ctrl/Cmd + M: Toggle compact mode
-    if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
-        e.preventDefault();
-        taskManager.toggleCollapse();
     }
     
     // ESC: Close any open modal
