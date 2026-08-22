@@ -192,7 +192,7 @@ app.whenReady().then(async () => {
         plainCols.length + 1 === filedCols.length
         && plainCols.slice(0, 5).join(',') === filedCols.slice(0, 5).join(',')
         && plainCols[6] === filedCols[7]
-        && filedCols[6] < plainCols[5],
+        && filedCols[5] < plainCols[5],
         `${plainCols.join(',')} → ${filedCols.join(',')}`)
 
     // --- 3. 페이저가 생겼다 사라져도 표 높이가 그대로 -----------------------

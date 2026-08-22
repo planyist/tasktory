@@ -720,7 +720,7 @@ describe('multi-select', () => {
 
         expect(document.querySelectorAll('#tasksBody .action-btn')).toHaveLength(0)
         expect(document.getElementById('thActions')).toBeNull()
-        // select, #, start, target, tags, files, content, status
+        // select, #, start, target, tags, content, files, status
         expect(document.querySelector('#tasksBody tr').cells).toHaveLength(8)
     })
 
@@ -3040,6 +3040,75 @@ describe('the attachment column earns its place', () => {
         manager.renderTasks()
 
         expect(shown()).toBe(true)
+    })
+
+    test('it sits after the task content, not before it', async () => {
+        await boot([withFile('a')])
+
+        const cells = [...document.querySelector('#tasksBody tr').cells]
+        expect(cells.findIndex((c) => c.classList.contains('attach-col')))
+            .toBe(cells.findIndex((c) => c.classList.contains('task-content')) + 1)
+    })
+
+    // 클립은 행의 일부가 아니라 누르는 것이다. 멈추지 않으면 파일을 열면서
+    // 행까지 선택된다.
+    test('pressing the clip opens the file and leaves the row alone', async () => {
+        const manager = await boot([withFile('a')])
+
+        document.querySelector('#tasksBody .attach-mark').click()
+        await settle()
+
+        expect(electronAPI.openAttachment).toHaveBeenCalledWith('/docs/spec.pdf')
+        expect(manager.selectedTaskIds.size).toBe(0)
+    })
+
+    // 이름은 툴팁이 이미 말하고 있으므로, 하나뿐일 때 한 번 더 고르라고 묻는 것은
+    // 늘리기만 한다. 여럿일 때만 고를 자리를 낸다.
+    test('several files bring up a list instead of opening one', async () => {
+        await boot([task('a', { attachments: [
+            { name: 'spec.pdf', path: '/docs/spec.pdf' },
+            { name: 'notes.txt', path: '/docs/notes.txt' }
+        ] })])
+
+        document.querySelector('#tasksBody .attach-mark').click()
+        await settle()
+
+        expect(electronAPI.openAttachment).not.toHaveBeenCalled()
+        const items = [...document.querySelectorAll('#attachMenu .attach-item')]
+        expect(items.map((i) => i.textContent)).toEqual(['spec.pdf', 'notes.txt'])
+
+        items[1].click()
+        await settle()
+
+        expect(electronAPI.openAttachment).toHaveBeenCalledWith('/docs/notes.txt')
+        expect(document.getElementById('attachMenu').classList.contains('is-open')).toBe(false)
+    })
+
+    // 끊긴 링크는 감추지 않는다. 무엇이 붙어 있었는지가 남는 것이 첨부의 절반이다.
+    test('a file that is gone is shown struck through, not hidden', async () => {
+        await boot([task('a', { attachments: [
+            { name: 'spec.pdf', path: '/docs/spec.pdf' },
+            { name: 'gone.txt', path: '/docs/gone.txt' }
+        ] })])
+        electronAPI.checkAttachments.mockResolvedValueOnce({
+            '/docs/spec.pdf': true, '/docs/gone.txt': false
+        })
+
+        document.querySelector('#tasksBody .attach-mark').click()
+        await settle()
+
+        const items = [...document.querySelectorAll('#attachMenu .attach-item')]
+        expect(items.map((i) => i.classList.contains('missing'))).toEqual([false, true])
+    })
+
+    test('the count is written only when there is more than one', async () => {
+        await boot([withFile('a'), task('b', { attachments: [
+            { name: 'one.txt', path: '/one.txt' }, { name: 'two.txt', path: '/two.txt' }
+        ] })])
+
+        const marks = [...document.querySelectorAll('#tasksBody .attach-mark')]
+        expect(marks[0].querySelector('.attach-count')).toBeNull()
+        expect(marks[1].querySelector('.attach-count').textContent).toBe('2')
     })
 
     test('the mark names the files it stands for', async () => {

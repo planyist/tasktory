@@ -1148,6 +1148,15 @@ class TaskManager {
             // 체크박스 자체를 누른 경우는 change 이벤트가 이미 처리하므로 뺀다.
             if (e.target.closest('.task-select')) return;
 
+            // 클립은 행의 일부가 아니라 누르는 것이다. 여기서 멈추지 않으면
+            // 파일을 열면서 행까지 선택된다.
+            const clip = e.target.closest('.attach-mark');
+            if (clip) {
+                e.stopPropagation();
+                this.openAttachmentsFor(clip);
+                return;
+            }
+
             // 목록이 비었을 때는 그 자리가 곧 "여기서 시작하라"는 자리다.
             // 안내 문구가 추가 버튼을 가리키고 있으므로 눌러도 열려야 한다.
             if (e.target.closest('.empty-message')) {
@@ -1190,6 +1199,27 @@ class TaskManager {
                 this.pendingRowToggle = box.dataset.taskId;
             }, DOUBLE_CLICK_MS);
         });
+
+        const attachMenu = document.getElementById('attachMenu');
+        attachMenu.addEventListener('click', (e) => {
+            const item = e.target.closest('.attach-item');
+            if (!item) return;
+            this.openAttachment(item.dataset.path);
+            this.hideAttachMenu();
+        });
+
+        // 바깥을 누르거나 Esc 로 닫는다. 표를 스크롤하면 클립이 움직이므로
+        // 그때도 닫는다 - 자리는 열 때 한 번 잡고 따라다니지 않는다.
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.attach-mark') && !e.target.closest('#attachMenu')) {
+                this.hideAttachMenu();
+            }
+        });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') this.hideAttachMenu();
+        });
+        document.querySelector('.table-container')
+            .addEventListener('scroll', () => this.hideAttachMenu());
 
         // 첨부: 고르기 / 끌어다 놓기 / 열기·폴더보기·빼기
         document.getElementById('attachmentPickBtn').addEventListener('click', async () => {
@@ -2563,6 +2593,54 @@ ${filePath}`);
 
     // position: fixed 라 좌표를 직접 준다. 카운터 바로 아래 왼쪽 끝에 맞추되,
     // 화면 오른쪽으로 넘치면 안쪽으로 당긴다.
+    // 클립을 눌렀을 때. 하나뿐이면 곧장 연다 - 이름은 툴팁이 이미 말하고
+    // 있으므로 고르라고 한 번 더 묻는 것은 늘리기만 한다. 여럿이면 고를 자리를
+    // 낸다.
+    async openAttachmentsFor(clip) {
+        const task = this.tasks.find(t => t.id === clip.dataset.taskId);
+        const files = (task && task.attachments) || [];
+        if (files.length === 0) return;
+        if (files.length === 1) {
+            this.openAttachment(files[0].path);
+            return;
+        }
+        await this.showAttachMenu(clip, files);
+    }
+
+    // 목록은 표 바깥에 산다. main 이 overflow: hidden 이고 sticky thead 가
+    // z-index 1000 이라, 표 안에 두면 잘리거나 머리 밑에 그려진다.
+    async showAttachMenu(clip, files) {
+        const menu = document.getElementById('attachMenu');
+        if (!menu) return;
+
+        // 끊긴 링크는 감추지 않고 그대로 보인다. 여는 순간이 OS 에게서 진실을
+        // 배우는 자리이므로, 열기 전에 물어 둔다.
+        const alive = this.isElectron
+            ? await window.electronAPI.checkAttachments(files.map(f => f.path))
+            : {};
+
+        menu.innerHTML = files.map((file) => {
+            const missing = alive[file.path] === false;
+            return `<button type="button" class="attach-item${missing ? ' missing' : ''}"
+                data-path="${this.escapeHtml(file.path)}"
+                title="${this.escapeHtml(missing
+                    ? this.getLocalizedText('fileMissing') : file.path)}"
+                >${this.escapeHtml(file.name)}</button>`;
+        }).join('');
+
+        const at = clip.getBoundingClientRect();
+        const width = menu.offsetWidth || 220;
+        menu.style.top = `${Math.round(at.bottom + 4)}px`;
+        menu.style.left = `${Math.round(Math.max(8,
+            Math.min(at.left, window.innerWidth - width - 8)))}px`;
+        menu.classList.add('is-open');
+    }
+
+    hideAttachMenu() {
+        const menu = document.getElementById('attachMenu');
+        if (menu) menu.classList.remove('is-open');
+    }
+
     placeCompletedList() {
         const box = document.getElementById('completedList');
         const counter = document.getElementById('completionCounter');
@@ -2986,17 +3064,23 @@ ${filePath}`);
                 return `<span class="tag" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
             }).join(' ') : '';
             
+            // 클립은 있고 없고를 말하고, 눌리면 파일을 연다. 개수는 하나를 넘을
+            // 때만 적는다 - 1 은 클립이 이미 말하고 있다.
+            const files = task.attachments || [];
+            const attachMarkup = files.length
+                ? `<span class="attach-mark" data-task-id="${task.id}" title="${
+                    this.escapeHtml(files.map(a => a.name).join(', '))}">📎${
+                    files.length > 1 ? `<span class="attach-count">${files.length}</span>` : ''}</span>`
+                : '';
+
             row.innerHTML = `
                 <td class="select-col"><input type="checkbox" class="task-select" data-task-id="${task.id}"${this.selectedTaskIds.has(task.id) ? ' checked' : ''}></td>
                 <td>${actualPosition}</td>
                 <td>${this.formatDateTime(task.startDateTime)}${cadenceMarkup}</td>
                 <td>${this.formatDateTime(task.targetDateTime)}${notificationFlag}</td>
                 <td class="task-tags">${displayTags}</td>
-                <td class="attach-col">${(task.attachments || []).length
-                    ? `<span class="attach-mark" title="${this.escapeHtml(
-                        (task.attachments || []).map(a => a.name).join(', '))}">📎</span>`
-                    : ''}</td>
                 <td class="task-content">${plainContent}</td>
+                <td class="attach-col">${attachMarkup}</td>
                 <td><span class="status ${taskStatus.status}" title="${taskStatus.text}">${taskStatus.text}</span></td>
             `;
             
