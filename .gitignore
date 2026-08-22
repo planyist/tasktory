@@ -1,7 +1,8 @@
 # Node.js dependencies
 node_modules/
 
-# Build outputs. dist-build/ 는 dist/ 가 잠겼을 때 쓰는 대체 출력 경로다
+# Build outputs. dist-build*/ 는 옛 우회 경로 - 지금은 scripts/build-win.js 가
+# dist/.staging 을 쓰고 설치기만 dist 로 올린다
 # (CLAUDE.md 의 빌드 함정 참고). 여기에 없으면 산출물 전체가 커밋된다.
 dist/
 dist-build*/

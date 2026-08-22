@@ -108,7 +108,10 @@ npm run build:mac     # macOS (.dmg)
 npm run build:linux   # Linux (.AppImage)
 ```
 
-Output goes to `dist/`.
+Output goes to `dist/`. The Windows build stages into `dist/.staging` first and
+copies the installer up, because electron-builder cannot empty
+`dist/win-unpacked` while anything holds the packed app inside it — most often
+a copy of Tasktory that is still running.
 
 ### In a browser
 

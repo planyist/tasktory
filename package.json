@@ -21,7 +21,7 @@
     "test": "node scripts/run-tests.js",
     "start": "electron .",
     "build": "electron-builder",
-    "build:win": "electron-builder --win",
+    "build:win": "node scripts/build-win.js",
     "build:mac": "electron-builder --mac",
     "build:linux": "electron-builder --linux",
     "dist": "npm run build",

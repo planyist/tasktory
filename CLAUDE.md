@@ -18,7 +18,9 @@ Tasktory is an Electron-based desktop application designed to help users manage 
 >
 > **`npx asar list` only reads. `npx asar extract-file` writes into the current directory** — run it on `package.json` from the project root and it silently replaces the real one with the packaged copy, which is whatever version that build was. The symptom is `npm error Missing script: "test"`, several commands after the damage. `git checkout -- package.json` restores it. Use `list`, or extract into a scratch directory.
 >
-> **The build fails if anything holds `dist/win-unpacked/resources/app.asar`** — `EnsureEmptyDir ... being used by another process`. Usually the installed app is running, but a scanner can hold it with no process visible in `Get-Process`. Build elsewhere rather than hunting the handle: `npx electron-builder --win -c.directories.output=dist-build`.
+> **The build fails if anything holds `dist/win-unpacked/resources/app.asar`** — `remove ... The process cannot access the file because it is being used by another process`. Usually the installed app is running, but a scanner can hold it with no process visible in `Get-Process`: measured here, that file has been locked since 12 August with no Tasktory or electron process alive, and the directory cannot even be renamed.
+>
+> **`npm run build:win` routes around it.** `scripts/build-win.js` builds into `dist/.staging`, copies the installer up into `dist/`, and deletes the staging directory — so the lock is never touched and the only thing left behind is the installer, in the one place every other installer lives. Do not go back to `-c.directories.output=dist-buildN` by hand: that convention ran to twenty-one numbered directories holding 1.6GB, and nothing said which was current.
 
 ## Recurring Tasks
 
