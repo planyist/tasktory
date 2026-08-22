@@ -1464,89 +1464,18 @@ th:nth-child(8) { width: 12%; } /* Status */
     text-decoration: underline;
 }
 
-/* 세우지 못한 나머지. 누르면 전체 목록이 나온다. */
-.attach-more {
-    display: block;
-    color: #7a828e;
-    cursor: pointer;
-    font-size: 11px;
-}
-
-.attach-more:hover {
-    color: #0366d6;
+/* 파일이 사라졌다. 줄을 지우지 않는 것은 무엇이 붙어 있었는지가 남아야 하기
+   때문이다 - 그것이 이름을 경로와 따로 저장하는 이유이기도 하다. */
+.attach-link.missing {
+    color: #b0b6be;
+    text-decoration: line-through;
 }
 
 body.dark-mode .attach-link {
     color: #7db3f0;
 }
 
-body.dark-mode .attach-more {
-    color: #9aa5b1;
-}
-
-/* 파일을 고르는 자리. main 이 overflow: hidden 이고 sticky thead 가 z-index
-   1000 이라 표 안에 두면 잘리거나 머리 밑에 그려진다 - 완료 목록과 같은 이유로
-   fixed 다. */
-.attach-menu {
-    display: none;
-    position: fixed;
-    z-index: 1200;
-    min-width: 180px;
-    max-width: 340px;
-    max-height: 260px;
-    overflow-y: auto;
-    padding: 4px;
-    background-color: #ffffff;
-    border: 1px solid #d8dee6;
-    border-radius: 6px;
-    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.14);
-}
-
-.attach-menu.is-open {
-    display: block;
-}
-
-.attach-item {
-    display: block;
-    width: 100%;
-    padding: 5px 8px;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    font-size: 12px;
-    color: #2c3e50;
-    text-align: left;
-    cursor: pointer;
-    /* 파일 이름은 길다. 줄바꿈보다 자르는 쪽이 목록으로 읽힌다. */
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.attach-item:hover {
-    background-color: #eef4fb;
-}
-
-/* 끊긴 링크는 감추지 않는다. 무엇이 붙어 있었는지가 남는 것이 첨부의 절반이다. */
-.attach-item.missing {
-    color: #b0b6be;
-    text-decoration: line-through;
-}
-
-body.dark-mode .attach-menu {
-    background-color: #2b3037;
-    border-color: #4a5058;
-}
-
-body.dark-mode .attach-item {
-    color: #cbd5e0;
-}
-
-body.dark-mode .attach-item:hover {
-    background-color: #3a4048;
-}
-
-body.dark-mode .attach-item.missing {
+body.dark-mode .attach-link.missing {
     color: #6b7280;
 }
 

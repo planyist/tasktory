@@ -3125,45 +3125,37 @@ describe('the attachment column earns its place', () => {
         expect(manager.selectedTaskIds.size).toBe(0)
     })
 
-    // 열 개가 붙은 작업 하나가 표를 통째로 늘리면 안 된다.
-    test('a long list is capped, and the rest hides behind +N', async () => {
-        await boot([many(7)])
+    // 자르지 않는다. 작업 내용은 열 줄이 되어도 그대로 늘어나고, 표는 그것을
+    // 감당하도록 만들어져 있다.
+    test('a long list is written out in full, not capped', async () => {
+        await boot([many(10)])
 
-        expect(names()).toEqual(['file0.pdf', 'file1.pdf', 'file2.pdf'])
-        expect(document.querySelector('#tasksBody .attach-more').textContent.trim())
-            .toBe('+4')
+        expect(names()).toHaveLength(10)
+        expect(names()[9]).toBe('file9.pdf')
     })
 
-    test('+N brings up every file, including the ones already listed', async () => {
-        await boot([many(5)])
-
-        document.querySelector('#tasksBody .attach-more').click()
-        await settle()
-
-        const items = [...document.querySelectorAll('#attachMenu .attach-item')]
-        expect(items).toHaveLength(5)
-
-        items[4].click()
-        await settle()
-
-        expect(electronAPI.openAttachment).toHaveBeenCalledWith('/docs/file4.pdf')
-        expect(document.getElementById('attachMenu').classList.contains('is-open')).toBe(false)
-    })
-
-    // 끊긴 링크는 감추지 않는다. 무엇이 붙어 있었는지가 남는 것이 첨부의 절반이다.
-    test('a file that is gone is shown struck through in the list', async () => {
-        await boot([many(5)])
-        electronAPI.checkAttachments.mockResolvedValueOnce({
-            '/docs/file0.pdf': true, '/docs/file1.pdf': true, '/docs/file2.pdf': true,
-            '/docs/file3.pdf': false, '/docs/file4.pdf': true
+    // 끊긴 링크는 감추지 않는다. 무엇이 붙어 있었는지가 남는 것이 첨부의 절반이고,
+    // 이름이 늘 보이므로 그 표시도 늘 보여야 한다 - 눌러야 알 수 있으면 안 된다.
+    test('a file that is gone is struck through without being clicked', async () => {
+        const manager = await boot([many(3)])
+        electronAPI.checkAttachments.mockResolvedValue({
+            '/docs/file0.pdf': true, '/docs/file1.pdf': false, '/docs/file2.pdf': true
         })
-
-        document.querySelector('#tasksBody .attach-more').click()
+        manager.renderTasks()
         await settle()
 
-        expect([...document.querySelectorAll('#attachMenu .attach-item')]
-            .map((i) => i.classList.contains('missing')))
-            .toEqual([false, false, false, true, false])
+        const links = [...document.querySelectorAll('#tasksBody .attach-link')]
+        expect(links.map((a) => a.classList.contains('missing')))
+            .toEqual([false, true, false])
+        expect(links[1].title).toContain('/docs/file1.pdf')
+    })
+
+    // 화면에 첨부가 하나도 없으면 아예 묻지 않는다 - 대부분의 목록이 그렇고,
+    // 그 경우 렌더 경로에 IPC 왕복이 붙으면 순전히 낭비다.
+    test('a list with no attachments asks the OS nothing', async () => {
+        await boot([task('a'), task('b')])
+
+        expect(electronAPI.checkAttachments).not.toHaveBeenCalled()
     })
 
     // 옆 칸들은 전부 말인데 여기만 그림이면 무슨 칸인지 읽히지 않는다.

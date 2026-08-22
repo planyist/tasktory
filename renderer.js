@@ -32,9 +32,6 @@ const LEAD_CHOICES = [0, 5, 10, 15, 30, 60, 120, 180, 360, 1440];
 // 다만 실제 더블클릭 간격보다 짧게 잡으면 안 된다. 짧으면 토글이 먼저 일어났다가
 // 두 번째 클릭에 되돌려지는데, 되돌리기가 제대로 동작해도 그 사이가 눈에는
 // 토글로 보인다. 130ms 까지 내렸다가 바로 그 신고를 받았다.
-// 칸에 세우는 첨부 줄 수. 넘치면 '+N' 이 나머지를 받는다.
-const ATTACH_ROWS = 3;
-
 const DOUBLE_CLICK_MS = 200;
 
 // 보기 전환 버튼의 두 아이콘. 누르면 무엇이 되는지를 그린다.
@@ -305,6 +302,8 @@ class TaskManager {
         this.isElectron = typeof window.electronAPI !== 'undefined';
         // main.js 가 알려 주기 전까지 쓰는 값. 브라우저 모드에서는 이대로 남는다.
         this.collapseAccelerator = 'Ctrl+Alt+Shift+M';
+        // 늦게 도착한 첨부 확인이 새로 그린 화면을 칠하지 못하게 하는 표
+        this.attachCheckToken = 0;
         this.locale = this.getSelectedLanguage();
         this.darkMode = localStorage.getItem('darkMode') === 'true';
         this.dateFormat = localStorage.getItem('dateFormat') || DATE_FORMATS[0];
@@ -1159,12 +1158,6 @@ class TaskManager {
                 this.openAttachment(link.dataset.path);
                 return;
             }
-            const more = e.target.closest('.attach-more');
-            if (more) {
-                e.stopPropagation();
-                this.openAttachmentsFor(more);
-                return;
-            }
 
             // 목록이 비었을 때는 그 자리가 곧 "여기서 시작하라"는 자리다.
             // 안내 문구가 추가 버튼을 가리키고 있으므로 눌러도 열려야 한다.
@@ -1208,27 +1201,6 @@ class TaskManager {
                 this.pendingRowToggle = box.dataset.taskId;
             }, DOUBLE_CLICK_MS);
         });
-
-        const attachMenu = document.getElementById('attachMenu');
-        attachMenu.addEventListener('click', (e) => {
-            const item = e.target.closest('.attach-item');
-            if (!item) return;
-            this.openAttachment(item.dataset.path);
-            this.hideAttachMenu();
-        });
-
-        // 바깥을 누르거나 Esc 로 닫는다. 표를 스크롤하면 클립이 움직이므로
-        // 그때도 닫는다 - 자리는 열 때 한 번 잡고 따라다니지 않는다.
-        document.addEventListener('click', (e) => {
-            if (!e.target.closest('.attach-mark') && !e.target.closest('#attachMenu')) {
-                this.hideAttachMenu();
-            }
-        });
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape') this.hideAttachMenu();
-        });
-        document.querySelector('.table-container')
-            .addEventListener('scroll', () => this.hideAttachMenu());
 
         // 첨부: 고르기 / 끌어다 놓기 / 열기·폴더보기·빼기
         document.getElementById('attachmentPickBtn').addEventListener('click', async () => {
@@ -2616,46 +2588,29 @@ ${filePath}`);
 
     // position: fixed 라 좌표를 직접 준다. 카운터 바로 아래 왼쪽 끝에 맞추되,
     // 화면 오른쪽으로 넘치면 안쪽으로 당긴다.
-    // '+N' 을 눌렀을 때. 감춘 것을 보자는 뜻이므로 언제나 전체 목록을 낸다.
-    async openAttachmentsFor(clip) {
-        const task = this.tasks.find(t => t.id === clip.dataset.taskId);
-        const files = (task && task.attachments) || [];
-        if (files.length === 0) return;
-        await this.showAttachMenu(clip, files);
-    }
+    // 끊긴 링크는 감추지 않는다. 무엇이 붙어 있었는지가 남는 것이 첨부의
+    // 절반이다. 예전에는 눌러야 나오는 목록에서만 알 수 있었는데, 이제 이름이
+    // 늘 보이므로 표시도 늘 보여야 한다.
+    //
+    // 그릴 때마다 묻지만, 화면에 첨부가 하나도 없으면 아예 묻지 않는다 -
+    // 대부분의 목록이 그렇고, 그 경우 렌더 경로에 IPC 왕복이 붙지 않는다.
+    async markMissingAttachments() {
+        const links = [...document.querySelectorAll('#tasksBody .attach-link')];
+        if (!this.isElectron || links.length === 0) return;
 
-    // 목록은 표 바깥에 산다. main 이 overflow: hidden 이고 sticky thead 가
-    // z-index 1000 이라, 표 안에 두면 잘리거나 머리 밑에 그려진다.
-    async showAttachMenu(clip, files) {
-        const menu = document.getElementById('attachMenu');
-        if (!menu) return;
+        // 그리는 중에 또 그려질 수 있다. 늦게 온 답이 새 화면을 칠하면 안 된다.
+        const token = ++this.attachCheckToken;
+        const alive = await window.electronAPI.checkAttachments(
+            [...new Set(links.map(link => link.dataset.path))]);
+        if (token !== this.attachCheckToken) return;
 
-        // 끊긴 링크는 감추지 않고 그대로 보인다. 여는 순간이 OS 에게서 진실을
-        // 배우는 자리이므로, 열기 전에 물어 둔다.
-        const alive = this.isElectron
-            ? await window.electronAPI.checkAttachments(files.map(f => f.path))
-            : {};
-
-        menu.innerHTML = files.map((file) => {
-            const missing = alive[file.path] === false;
-            return `<button type="button" class="attach-item${missing ? ' missing' : ''}"
-                data-path="${this.escapeHtml(file.path)}"
-                title="${this.escapeHtml(missing
-                    ? this.getLocalizedText('fileMissing') : file.path)}"
-                >${this.escapeHtml(file.name)}</button>`;
-        }).join('');
-
-        const at = clip.getBoundingClientRect();
-        const width = menu.offsetWidth || 220;
-        menu.style.top = `${Math.round(at.bottom + 4)}px`;
-        menu.style.left = `${Math.round(Math.max(8,
-            Math.min(at.left, window.innerWidth - width - 8)))}px`;
-        menu.classList.add('is-open');
-    }
-
-    hideAttachMenu() {
-        const menu = document.getElementById('attachMenu');
-        if (menu) menu.classList.remove('is-open');
+        for (const link of document.querySelectorAll('#tasksBody .attach-link')) {
+            if (alive[link.dataset.path] === false) {
+                link.classList.add('missing');
+                link.title = `${this.getLocalizedText('fileMissing')}
+${link.dataset.path}`;
+            }
+        }
     }
 
     placeCompletedList() {
@@ -3081,23 +3036,15 @@ ${filePath}`);
                 return `<span class="tag" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
             }).join(' ') : '';
             
-            // 이름이 선다. 클립 하나로는 무엇이 붙어 있는지 알 수 없어, 알려면
+            // 이름이 전부 선다. 클립 하나로는 무엇이 붙어 있는지 알 수 없어, 알려면
             // 매번 눌러 봐야 했다 - 이름이야말로 링크가 끊긴 뒤에도 남기려던 것이다.
             //
-            // 다만 한 줄에 하나씩이라 개수만큼 행이 높아진다. ATTACH_ROWS 까지만
-            // 세우고 나머지는 '+N' 이 받는다 - 열 개가 붙은 작업 하나가 표를
-            // 통째로 늘리는 것을 막는다.
-            const files = task.attachments || [];
-            const shown = files.slice(0, ATTACH_ROWS);
-            const attachMarkup = files.length
-                ? shown.map((file) => `<a class="attach-link" data-path="${
-                        this.escapeHtml(file.path)}" title="${this.escapeHtml(file.path)}"
-                        >${this.escapeHtml(file.name)}</a>`).join('')
-                    + (files.length > shown.length
-                        ? `<span class="attach-more" data-task-id="${task.id}"
-                            >+${files.length - shown.length}</span>`
-                        : '')
-                : '';
+            // 개수만큼 행이 높아지지만 자르지 않는다. 작업 내용은 열 줄이 되어도
+            // 그대로 늘어나고, 표는 그것을 감당하도록 만들어져 있다.
+            const attachMarkup = (task.attachments || []).map((file) =>
+                `<a class="attach-link" data-path="${this.escapeHtml(file.path)}"
+                    title="${this.escapeHtml(file.path)}"
+                    >${this.escapeHtml(file.name)}</a>`).join('');
 
             row.innerHTML = `
                 <td class="select-col"><input type="checkbox" class="task-select" data-task-id="${task.id}"${this.selectedTaskIds.has(task.id) ? ' checked' : ''}></td>
@@ -3115,6 +3062,7 @@ ${filePath}`);
 
         this.updateSelectionUI();
         this.renderPagination(totalPages);
+        this.markMissingAttachments();
     }
 
     renderMiniCollapsedTasks() {

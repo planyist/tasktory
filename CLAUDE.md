@@ -255,19 +255,22 @@ backup, so a copied 400MB video would be in every backup.
   clips its value and a narrowed status wraps its badge. `check:ui` asserts
   exactly that.
 
-  One name per line, capped at `ATTACH_ROWS` (3) with the rest behind `+N`, or a
-  task carrying ten files would stretch the whole table. `+N` always opens the
-  full list, including the names already on screen — hiding them there would
-  make it a different list than the one it is completing.
+  One name per line, **all of them**. A cap of three with the rest behind `+N`
+  was tried and is wrong: task content already wraps to ten lines and the row
+  simply grows, so there is nothing about attachments that needs protecting from
+  the same thing. Measured with five files: a 125px row beside 50px neighbours,
+  and the table reads fine.
 
   These are not chips — chips are part of the row and select it; a name stops
-  the click and opens its file. The `+N` list is `position: fixed` for the same
-  reason the completed-today popover is: `main` is `overflow: hidden` and the
-  sticky `thead` carries `z-index: 1000`, so anything absolute inside the table
-  is clipped or painted under the header. `check-attachments` runs when that
-  list opens — the one moment worth asking the OS, since checking every visible
-  row on every render would put an IPC round trip in the render path — and dead
-  links are struck through rather than dropped.
+  the click and opens its file.
+
+  **Dead links are struck through in the cell, without being clicked.** While
+  the names were hidden behind a clip that had to be pressed, `check-attachments`
+  could wait for the press. Now that the names are always on screen the mark has
+  to be too, so `markMissingAttachments()` runs at the end of `renderTasks`. It
+  returns immediately when no attachment is on screen — the usual case — so the
+  render path only pays an IPC round trip on lists that have one. A token guards
+  against a slow answer painting a table that has since been redrawn.
 - **`webUtils.getPathForFile(file)`, not `file.path`.** Electron 32 removed the
   latter, so a drop handler reading `file.path` gets `undefined` and silently
   attaches nothing. It lives in `preload.js` as `pathForFile` because `webUtils`
