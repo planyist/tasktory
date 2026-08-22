@@ -1870,7 +1870,7 @@ describe('the completed view', () => {
 
         document.getElementById('completionCounter').click()
         await settle()
-        document.getElementById('doneClose').click()
+        document.getElementById('completionCounter').click()
         await settle()
 
         expect(manager.viewMode).toBe('calendar')
@@ -2061,7 +2061,7 @@ describe('the completed view', () => {
     test('the tag chips are filled the same way the table fills them', async () => {
         await openDone([done('2026-08-20', 'a', { tags: '#[BLUE]업무' })])
 
-        const chip = document.querySelector('#doneTags [data-done-tag]')
+        const chip = document.querySelector('#quickFilters [data-done-tag]')
         const inRow = document.querySelector('#doneBody .task-tags .tag')
         const background = (el) => el.style.backgroundColor
         expect(background(chip)).toBe(background(inRow))
@@ -2107,19 +2107,61 @@ describe('the completed view', () => {
         expect(document.querySelector('.dtp-time').style.display).not.toBe('none')
     })
 
-    // 화면만 바뀌면 목록을 거른 것인지 다른 데이터인지 알 수가 없다.
-    test('it says what it is, and the counter stays lit while it is open', async () => {
+    // 화면만 바뀌면 목록을 거른 것인지 다른 데이터인지 알 수가 없다. 카운터가
+    // 이미 '완료'라고 적혀 있으므로 제목을 한 번 더 두는 대신, 들어온 그 문이
+    // 눌린 채로 남는다 - 그것이 곧 나가는 문이기도 하다.
+    test('the counter stays lit while it is open, and is the way out', async () => {
         await boot([])
         const counter = document.getElementById('completionCounter')
 
         counter.click()
         await settle()
-        expect(document.getElementById('doneHeading').textContent).toBe('Completed')
         expect(counter.classList.contains('is-open')).toBe(true)
 
-        document.getElementById('doneClose').click()
+        counter.click()
         await settle()
         expect(counter.classList.contains('is-open')).toBe(false)
+    })
+
+    // 목록에서 칩이 검색 상자 바로 아래에 있다. 화면이 바뀌었다고 자리가
+    // 옮겨 다니면 매번 찾아야 한다.
+    test('the chips sit where the list keeps them, under the search box', async () => {
+        await openDone([done('2026-08-20', 'a', { tags: '#[BLUE]업무' })])
+
+        expect(document.querySelector('#quickFilters [data-done-tag]')).not.toBeNull()
+        // 목록의 칩은 함께 있지 않다. 여기서는 상태가 전부 완료라 뜻이 없다.
+        expect(document.querySelector('#quickFilters [data-quick]')).toBeNull()
+    })
+
+    test('All clears the tags without touching the period', async () => {
+        const manager = await openDone([
+            done('2026-08-20', '계약', { tags: '#[RED]긴급' }),
+            done('2026-08-20', '예산', { tags: '#[BLUE]업무' })
+        ])
+        const before = manager.doneRange
+
+        document.querySelectorAll('#quickFilters [data-done-tag]')[0].click()
+        await settle()
+        expect(contents()).toHaveLength(1)
+
+        document.querySelector('#quickFilters [data-done-all]').click()
+        await settle()
+
+        expect(contents()).toHaveLength(2)
+        expect(manager.doneRange).toEqual(before)
+    })
+
+    // 나올 때 목록의 칩이 돌아와야 한다. 완료 쪽 칩이 남아 있으면 목록을
+    // 거르지 못한다.
+    test('leaving gives the list its own chips back', async () => {
+        const manager = await boot([task('a', { tags: '#[BLUE]업무' })])
+        document.getElementById('completionCounter').click()
+        await settle()
+        document.getElementById('completionCounter').click()
+        await settle()
+
+        expect(document.querySelector('#quickFilters [data-done-tag]')).toBeNull()
+        expect(document.querySelector('#quickFilters [data-quick]')).not.toBeNull()
     })
 
     test('counts what it is showing', async () => {
@@ -2158,7 +2200,6 @@ describe('the completed view', () => {
     test('hides the list controls that mean nothing here', async () => {
         await openDone([done('2026-08-20', 'a')])
 
-        expect(document.getElementById('quickFilters').style.display).toBe('none')
         expect(document.getElementById('taskActionBar').style.display).toBe('none')
         expect(document.getElementById('paginationContainer').style.display).toBe('none')
         expect(document.querySelector('.table-container').style.display).toBe('none')
@@ -2277,7 +2318,7 @@ describe('the completed view', () => {
             done('2026-08-20', '보고', { tags: '#[BLUE]업무' })
         ])
 
-        const chips = [...document.querySelectorAll('#doneTags [data-done-tag]')]
+        const chips = [...document.querySelectorAll('#quickFilters [data-done-tag]')]
         expect(chips.map((c) => c.textContent)).toEqual(['#업무', '#긴급'])
 
         chips[1].click()
@@ -2293,16 +2334,16 @@ describe('the completed view', () => {
             done('2026-08-20', '예산', { tags: '#[BLUE]업무' })
         ])
 
-        document.querySelectorAll('#doneTags [data-done-tag]')[0].click()
+        document.querySelectorAll('#quickFilters [data-done-tag]')[0].click()
         await settle()
 
-        expect(document.querySelectorAll('#doneTags [data-done-tag]')).toHaveLength(2)
+        expect(document.querySelectorAll('#quickFilters [data-done-tag]')).toHaveLength(2)
     })
 
     test('a period with no tags shows no chips at all', async () => {
         await openDone([done('2026-08-20', '태그 없음')])
 
-        expect(document.querySelectorAll('#doneTags [data-done-tag]')).toHaveLength(0)
+        expect(document.querySelectorAll('#quickFilters [data-done-tag]')).toHaveLength(0)
     })
 })
 

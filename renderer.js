@@ -541,8 +541,6 @@ class TaskManager {
         this.setText('thDoneFiles', 'attachmentsColumn');
         this.setText('thDoneTags', 'tags');
         this.setText('thDoneContent', 'taskContent');
-        this.setTitle('doneClose', 'doneClose');
-        this.setText('doneHeading', 'completedView');
         for (const [days, key] of [[7, 'doneLast7'], [30, 'doneLast30'], [90, 'doneLast90']]) {
             const chip = document.querySelector(`#donePresets [data-done-days="${days}"]`);
             if (chip) chip.textContent = this.getLocalizedText(key);
@@ -1331,15 +1329,6 @@ class TaskManager {
         document.getElementById('doneNewer')
             .addEventListener('click', () => this.moveDoneRange(1));
 
-        document.getElementById('doneTags').addEventListener('click', (e) => {
-            const chip = e.target.closest('[data-done-tag]');
-            if (!chip) return;
-            const tag = chip.dataset.doneTag;
-            if (this.doneTagFilter.has(tag)) this.doneTagFilter.delete(tag);
-            else this.doneTagFilter.add(tag);
-            this.renderCompletedView();
-        });
-
         for (const chip of document.querySelectorAll('#donePresets [data-done-days]')) {
             chip.addEventListener('click', () => {
                 this.setDoneWindow(Number(chip.dataset.doneDays));
@@ -1349,9 +1338,6 @@ class TaskManager {
 
         // 두 칸은 다 치고 나서 반영한다. 한 글자마다 읽으면 '2026' 만 친 순간
         // 말이 안 되는 기간으로 한 번 다녀온다.
-        document.getElementById('doneClose')
-            .addEventListener('click', () => this.closeCompletedView());
-
         // 엔터로만 먹으면 친 사람은 알아도 처음 보는 사람은 모른다. 칸을 벗어나면
         // 반영하고, 선택기로 고른 값도 change 를 타고 여기로 온다.
         for (const id of ['doneFrom', 'doneTo']) {
@@ -1434,6 +1420,21 @@ class TaskManager {
         document.getElementById('quickFilters').addEventListener('click', (e) => {
             const chip = e.target.closest('.quick-chip');
             if (!chip) return;
+
+            // 완료 화면일 때는 같은 상자에 완료 쪽 칩이 들어 있다. 속성이
+            // 다르므로 서로의 것을 집지 않는다.
+            if (chip.hasAttribute('data-done-all')) {
+                this.doneTagFilter.clear();
+                this.renderCompletedView();
+                return;
+            }
+            if (chip.hasAttribute('data-done-tag')) {
+                const tag = chip.dataset.doneTag;
+                if (this.doneTagFilter.has(tag)) this.doneTagFilter.delete(tag);
+                else this.doneTagFilter.add(tag);
+                this.renderCompletedView();
+                return;
+            }
 
             if (chip.hasAttribute('data-quick-all')) {
                 this.quickFilters.status.clear();
@@ -2678,9 +2679,6 @@ ${filePath}`);
 
         show('calendarView', calendar && !this.isCollapsed);
         show('completedView', done && !this.isCollapsed);
-        // 빠른 필터는 활성 작업의 상태와 태그로 만든다. 여기서는 전부 완료이므로
-        // 상태 칩은 뜻이 없고, 눌러도 아무 일이 없는 칩을 띄워 둘 이유가 없다.
-        show('quickFilters', !done);
         show('taskActionBar', list);
         show('paginationContainer', list);
         document.querySelector('.table-container').style.display =
@@ -2844,7 +2842,9 @@ ${filePath}`);
     // 없으니 여기에는 없다 - 눌러도 아무 일이 없는 칩을 띄우느니 없는 편이 낫다.
     // 목록의 빠른 필터와 같은 모양을 쓰므로 거기서 배운 것이 그대로 통한다.
     renderDoneTags(rows) {
-        const box = document.getElementById('doneTags');
+        // 목록에서는 이 칩들이 검색 상자 바로 아래에 있다. 화면이 바뀌었다고
+        // 자리가 옮겨 다니면 매번 찾아야 한다 - 같은 상자에 그린다.
+        const box = document.getElementById('quickFilters');
         if (!box) return;
 
         const seen = new Map();
@@ -2858,11 +2858,17 @@ ${filePath}`);
             .slice(0, TaskManager.QUICK_FILTER_LIMIT)
             .map(([tag]) => tag);
 
-        box.innerHTML = ranked.map(tag => {
+        // 목록의 줄과 같은 모양이다. 맨 앞의 '전체' 로 한 번에 푼다.
+        const cleared = this.doneTagFilter.size === 0;
+        const chips = [`<button type="button" class="quick-chip quick-all${
+            cleared ? ' active' : ''}" data-done-all>${
+            this.getLocalizedText('showAll')}</button>`];
+
+        box.innerHTML = chips.concat(ranked.map(tag => {
             const parsed = this.parseTagWithColor(tag);
             const on = this.doneTagFilter.has(tag);
             return `<button type="button" class="quick-chip quick-tag${on ? ' active' : ''}" data-done-tag="${this.escapeHtml(tag)}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${this.escapeHtml(parsed.content)}</button>`;
-        }).join('');
+        })).join('');
     }
 
     async renderCompletedView() {

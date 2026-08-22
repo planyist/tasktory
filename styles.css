@@ -1911,15 +1911,6 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
     flex-wrap: wrap;
 }
 
-/* 무엇을 보고 있는지 먼저 말한다. 화면만 바뀌면 목록을 거른 것인지 다른
-   데이터인지 알 수가 없다. */
-.done-heading {
-    font-size: 13px;
-    font-weight: 700;
-    color: #2c3e50;
-    margin-right: 2px;
-}
-
 /* 날짜만 받으므로 좁아도 되지만, 글자가 잘리면 안 된다. 재보니 열 글자가
    69px 이고 좌우 여백 16px 과 선택기 버튼 34px 이 붙는다 - 어느 표기를 골라도
    들어가도록 130px 로 둔다. */
@@ -1965,34 +1956,12 @@ body.dark-mode .done-date {
     gap: 4px;
 }
 
-body.dark-mode .done-heading {
-    color: #e8eef5;
-}
-
 body.dark-mode .done-date input[type="text"] {
     border-color: #4a5058;
 }
 
-/* 이 기간의 로그에 실제로 있는 태그. 상태 칩은 전부 완료라 뜻이 없어 내지
-   않는다 - 눌러도 아무 일이 없는 칩을 띄우느니 없는 편이 낫다. */
-.done-tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    padding: 4px 0;
-}
-
-.done-tags:empty {
-    display: none;
-}
-
 body.dark-mode .done-tilde {
     color: #9aa5b1;
-}
-
-/* 나가는 문은 오른쪽 끝에. 기간 컨트롤과 섞이면 기간을 지우는 버튼처럼 보인다. */
-.done-close {
-    margin-left: auto;
 }
 
 /* 눌러서 여는 것이라고 말해 주어야 한다. */

@@ -201,16 +201,17 @@ Set a repeat in the task's edit form. The row then *is* the rule:
 ### Completed
 
 Press the **Completed** counter at the top left. Hovering it lists what you
-finished today; clicking it opens the whole history. Leaving puts you back in
-whichever view you came from.
+finished today; clicking it opens the whole history. The counter stays lit while
+you are in there — press it again to go back to whichever view you came from.
 
 It shows the completion time, the start and target times, tags, the task
 content with any note underneath, and the files that were attached — click a
 file name to open it. Press a time header to sort by it.
 
 The period is two dates you can type or pick, with **Last 7 / 30 / 90 days** as
-shortcuts; the arrows step by whatever width is on screen. The search box and
-the tag chips filter what is shown.
+shortcuts; the arrows step by whatever width is on screen. The search box filters
+it, and the tag chips under the search box — the same row the list uses — narrow
+it to the tags this period actually holds.
 
 It reads the log files, not the task list, because a finished task leaves the
 list. That also means it can show history from long before this feature existed.

@@ -104,6 +104,18 @@ app.whenReady().then(async () => {
     const moveTo = (x, y) => dbg.sendCommand('Input.dispatchMouseEvent',
         { type: 'mouseMoved', x, y })
 
+    // 같은 값이 두 번 연속 나올 때까지 읽는다. 전이가 끝났다는 뜻이다.
+    const settled = async (expression, tries = 20) => {
+        let previous = null;
+        for (let i = 0; i < tries; i++) {
+            await new Promise((r) => setTimeout(r, 80))
+            const now = await run(expression)
+            if (now === previous) return now
+            previous = now
+        }
+        return previous
+    }
+
     const addHoverBg = async (dark) => {
         await run(`taskManager.darkMode = ${dark}; taskManager.applyTheme(); 'ok'`)
         const box = JSON.parse(await run(`(() => {
@@ -112,9 +124,10 @@ app.whenReady().then(async () => {
                                     y: Math.round(r.top + r.height / 2) });
         })()`))
         await moveTo(box.x, box.y)
-        // 배경색에 transition 이 걸려 있어, 바로 읽으면 중간 색이 나온다
-        await new Promise((r) => setTimeout(r, 400))
-        const bg = await run(
+        // 배경색에 transition 이 걸려 있다. 고정 시간을 기다리는 것으로는 모자란다 -
+        // 400ms 로도 rgb(46,159,77) 처럼 한 걸음 못 간 값이 잡혀 검사가 이따금
+        // 실패했고, 무작위로 실패하는 검사는 없느니만 못하다. 값이 멎을 때까지 본다.
+        const bg = await settled(
             `getComputedStyle(document.getElementById('addTaskBtn')).backgroundColor`)
         await moveTo(2, 2)
         await new Promise((r) => setTimeout(r, 300))
@@ -221,7 +234,7 @@ app.whenReady().then(async () => {
         // 입력칸이 아니라 감싼 상자를 잰다. 입력칸 자신은 투명해야 한다 -
         // 글자를 그리는 겹침 층이 그 아래에 있다.
         const ids = ['#doneOlder', '.done-date', '.done-date .datetime-pick-btn',
-                     '#donePresets button', '#doneClose'];
+                     '#donePresets button', '#doneNewer'];
         const seen = ids.map(sel => {
             const el = document.querySelector(sel);
             return el ? { h: Math.round(el.getBoundingClientRect().height),
