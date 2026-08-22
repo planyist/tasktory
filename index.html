@@ -27,7 +27,7 @@
         
         <main>
             <div class="table-controls">
-                <div id="completionCounter" class="completion-counter">
+                <div id="completionCounter" class="completion-counter" role="button" tabindex="0">
                     <span id="completionCounterText"></span> <span id="completionCount" class="completion-count">0</span>
                     <div id="completedList" class="completed-list"></div>
                 </div>
@@ -156,23 +156,46 @@
                             <polyline points="15,18 9,12 15,6"/>
                         </svg>
                     </button>
-                    <span id="doneLabel" class="calendar-label"></span>
+                    <div class="datetime-field done-date">
+                        <input type="text" id="doneFrom" autocomplete="off"><span class="dtf-ghost" data-ghost="doneFrom" aria-hidden="true"></span>
+                        <button type="button" class="datetime-pick-btn" data-target="doneFrom">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+                        </button>
+                    </div>
+                    <span class="done-tilde">~</span>
+                    <div class="datetime-field done-date">
+                        <input type="text" id="doneTo" autocomplete="off"><span class="dtf-ghost" data-ghost="doneTo" aria-hidden="true"></span>
+                        <button type="button" class="datetime-pick-btn" data-target="doneTo">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>
+                        </button>
+                    </div>
                     <button type="button" id="doneNewer" class="calendar-nav">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <polyline points="9,18 15,12 9,6"/>
                         </svg>
                     </button>
-                    <button type="button" id="doneRecent" class="calendar-today"></button>
+                    <div id="donePresets" class="done-presets">
+                        <button type="button" class="quick-chip" data-done-days="7"></button>
+                        <button type="button" class="quick-chip" data-done-days="30"></button>
+                        <button type="button" class="quick-chip" data-done-days="90"></button>
+                    </div>
+                    <button type="button" id="doneClose" class="calendar-nav done-close">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
                 </div>
+                <div id="doneTags" class="done-tags"></div>
                 <div class="done-body">
                     <table id="doneTable">
                         <thead>
                             <tr>
-                                <th id="thDoneAt">Completed</th>
-                                <th id="thDoneTarget">Target Time</th>
+                                <th id="thDoneAt" class="sortable" data-done-sort="completedAt"><span id="thDoneAtLabel">Completed</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
+                                <th id="thDoneStart" class="sortable" data-done-sort="startTime"><span id="thDoneStartLabel">Start Time</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
+                                <th id="thDoneTarget" class="sortable" data-done-sort="targetTime"><span id="thDoneTargetLabel">Target Time</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
                                 <th id="thDoneTags">Tags</th>
                                 <th id="thDoneContent">Task Content</th>
-                                <th id="thDoneNote">Note</th>
+                                <th id="thDoneFiles">Files</th>
                             </tr>
                         </thead>
                         <tbody id="doneBody"></tbody>

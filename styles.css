@@ -883,6 +883,7 @@ body.dark-mode .selection-summary.has-selection {
 
 body.dark-mode .datetime-field input[type="text"] {
     caret-color: #e0e0e0;
+    background-color: transparent;
 }
 
 body.dark-mode .dtf-ghost {
@@ -1902,6 +1903,50 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
     min-height: 0;
 }
 
+/* 날짜만 받으므로 좁아도 되지만, 글자가 잘리면 안 된다. 재보니 열 글자가
+   69px 이고 좌우 여백 16px 과 선택기 버튼 34px 이 붙는다 - 어느 표기를 골라도
+   들어가도록 130px 로 둔다. */
+.done-date {
+    width: 130px;
+    flex: 0 0 auto;
+}
+
+.done-tilde {
+    color: #6b7280;
+}
+
+.done-presets {
+    display: flex;
+    gap: 4px;
+}
+
+/* 이 기간의 로그에 실제로 있는 태그. 상태 칩은 전부 완료라 뜻이 없어 내지
+   않는다 - 눌러도 아무 일이 없는 칩을 띄우느니 없는 편이 낫다. */
+.done-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding: 4px 0;
+}
+
+.done-tags:empty {
+    display: none;
+}
+
+body.dark-mode .done-tilde {
+    color: #9aa5b1;
+}
+
+/* 나가는 문은 오른쪽 끝에. 기간 컨트롤과 섞이면 기간을 지우는 버튼처럼 보인다. */
+.done-close {
+    margin-left: auto;
+}
+
+/* 눌러서 여는 것이라고 말해 주어야 한다. */
+.completion-counter {
+    cursor: pointer;
+}
+
 /* 격자와 같은 이유로 여기만 스크롤한다. 바깥이 스크롤하면 머리가 함께 밀려
    올라가 어느 기간을 보는지 알 수 없어진다. */
 .done-body {
@@ -1918,11 +1963,12 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
 }
 
 /* 합이 정확히 100% 여야 한다. */
-#doneTable th:nth-child(1) { width: 16%; } /* 완료 시각 */
-#doneTable th:nth-child(2) { width: 16%; } /* 목표 시각 */
-#doneTable th:nth-child(3) { width: 14%; } /* 태그 */
-#doneTable th:nth-child(4) { width: 34%; } /* 내용 */
-#doneTable th:nth-child(5) { width: 20%; } /* 메모 */
+#doneTable th:nth-child(1) { width: 15%; } /* 완료 시각 */
+#doneTable th:nth-child(2) { width: 15%; } /* 시작 시간 */
+#doneTable th:nth-child(3) { width: 15%; } /* 목표 시각 */
+#doneTable th:nth-child(4) { width: 12%; } /* 태그 */
+#doneTable th:nth-child(5) { width: 28%; } /* 내용 + 메모 */
+#doneTable th:nth-child(6) { width: 15%; } /* 첨부 */
 
 #doneTable td {
     padding: 6px 8px;
@@ -1931,8 +1977,12 @@ body.dark-mode .container.collapsed-mode .drag-bar > span {
     overflow-wrap: break-word;
 }
 
-/* 메모는 없을 때가 더 많다. 있을 때만 눈에 들어오면 된다. */
+/* 메모는 대부분 비어 있고, 있을 때는 그 작업에 딸린 말이다. 옆 칸을 하나 더
+   내주는 것보다 내용 밑에 붙는 편이 읽기에도 자연스럽고 폭도 덜 든다. */
 .done-note {
+    display: block;
+    margin-top: 2px;
+    font-size: 11px;
     color: #6b7280;
 }
 

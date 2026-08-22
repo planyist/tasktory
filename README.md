@@ -57,7 +57,7 @@ and that one works from anywhere - you do not have to click Tasktory first.
 - **List** — the table. Everything you can do to a task happens here
 - **Calendar** — a month grid; a task sits on its target day. Double-click one
   to edit it
-- **Completed** — what you finished, read from the logs, thirty days at a time
+- **Completed** — what you finished, read from the logs; open it from the counter
 - **Side strip** — 150px, read-only, for when you want it out of the way
 
 ### Finding things
@@ -200,14 +200,21 @@ Set a repeat in the task's edit form. The row then *is* the rule:
 
 ### Completed
 
-The third view, after list and calendar — press the view button twice. It shows
-what you finished, thirty days at a time, newest first, with the completion time
-and any note you left when ticking it off. The arrows step a period back and
-forward; **Recent** returns to today.
+Press the **Completed** counter at the top left. Hovering it lists what you
+finished today; clicking it opens the whole history. Leaving puts you back in
+whichever view you came from.
+
+It shows the completion time, the start and target times, tags, the task
+content with any note underneath, and the files that were attached — click a
+file name to open it. Press a time header to sort by it.
+
+The period is two dates you can type or pick, with **Last 7 / 30 / 90 days** as
+shortcuts; the arrows step by whatever width is on screen. The search box and
+the tag chips filter what is shown.
 
 It reads the log files, not the task list, because a finished task leaves the
 list. That also means it can show history from long before this feature existed.
-The search box filters it. It is read-only: there is no un-complete.
+It is read-only: there is no un-complete.
 
 ### Calendar view
 

@@ -153,6 +153,22 @@ app.whenReady().then(async () => {
     check('표 머리가 테마별로 다른 색', headLight !== headDark, `light=${headLight} dark=${headDark}`)
     await run(`taskManager.darkMode = false; taskManager.applyTheme(); 'ok';`)
 
+    // 날짜 칸의 글자는 겹침 층이 그리고 입력칸 자신은 투명하다. 입력칸이 배경을
+    // 칠하면 그 층을 덮어 값이 통째로 사라지는데, jsdom 은 이 우선순위를 틀리게
+    // 답한다. 실제로 body.dark-mode input[type="text"] 가 그렇게 덮고 있었고,
+    // 다크에서만 날짜가 빈 칸으로 보였다.
+    const fieldBg = async (dark) => {
+        await run(`taskManager.darkMode = ${dark}; taskManager.applyTheme();
+                   taskManager.showModal(); 'ok'`)
+        return run(`getComputedStyle(document.getElementById('startDateTime')).backgroundColor`)
+    }
+    const [bgLight, bgDark] = [await fieldBg(false), await fieldBg(true)]
+    const seeThrough = (colour) => /rgba\(0, 0, 0, 0\)|transparent/.test(colour)
+    check('날짜 칸이 두 테마 모두 배경을 칠하지 않는다',
+        seeThrough(bgLight) && seeThrough(bgDark), `light=${bgLight} dark=${bgDark}`)
+    await run(`taskManager.hideModal(); taskManager.darkMode = false;
+               taskManager.applyTheme(); 'ok'`)
+
     // --- 2. 페이지를 넘겨도 표가 흔들리지 않는다 ---------------------------
     const geometry = `(() => {
         const cols = [...document.querySelectorAll('thead th')]

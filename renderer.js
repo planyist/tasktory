@@ -37,15 +37,7 @@ const DOUBLE_CLICK_MS = 200;
 // 보기 전환 버튼의 두 아이콘. 누르면 무엇이 되는지를 그린다.
 const CALENDAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
 const LIST_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
-const DONE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3,4 3,10 9,10"/><polyline points="12,7 12,12 15,14"/></svg>';
-
-// 보기는 셋이고 버튼은 하나다. 아이콘은 "지금 무엇인가"가 아니라 "누르면 무엇이
-// 되는가"를 그리므로, 순서만 정하면 규칙이 그대로 성립한다. 완료에서 한 번
-// 누르면 목록으로 돌아오도록 두었다 - 완료는 가끔 들르는 곳이라 돌아오는 길이
-// 짧아야 한다.
-const VIEW_ORDER = ['list', 'calendar', 'completed'];
-
-// 완료 화면이 한 번에 보는 날 수. 30일이면 "이번 달 뭐 했지"에 답한다.
+// 완료 화면이 처음 보는 날 수. 30일이면 "이번 달 뭐 했지"에 답한다.
 const DONE_WINDOW_DAYS = 30;
 
 // main.js가 로그 파일에 쓰는 헤더와 같아야 한다
@@ -93,6 +85,21 @@ const maskParts = (pattern) => {
         }
     }
     return parts;
+};
+
+// 시각 자리를 떼어낸 형식. 완료 화면의 기간은 날짜만 받으므로 ' 00:00' 이
+// 붙어 있으면 읽는 데 방해만 된다. 형식 문자열에서 잘라내므로 사용자가 고른
+// 표기가 그대로 따라온다.
+const TIME_LETTERS = new Set(['HH', 'hh', 'mm']);
+
+const dateOnlyPattern = (pattern) => {
+    let out = '';
+    for (const part of maskParts(pattern)) {
+        if (part.kind === 'ampm' || TIME_LETTERS.has(part.letters)) break;
+        out += part.kind === 'literal' ? part.text : part.letters;
+    }
+    // 토큰 사이 구분자가 끝에 남는다 ('YYYY-MM-DD ' 의 공백)
+    return out.replace(/[^A-Za-z]+$/, '');
 };
 
 const maskCapacity = (pattern) => maskParts(pattern)
@@ -314,8 +321,14 @@ class TaskManager {
         this.collapseAccelerator = 'Ctrl+Alt+Shift+M';
         // 늦게 도착한 첨부 확인이 새로 그린 화면을 칠하지 못하게 하는 표
         this.attachCheckToken = 0;
-        // 완료 화면이 보는 기간의 끝. null 이면 오늘이다.
-        this.doneRangeEnd = null;
+        // 완료 화면이 보는 기간. 처음 열 때 최근 30일로 채워진다.
+        this.doneRange = null;
+        // 완료 화면에서 고른 태그. 목록의 빠른 필터와 같이 여러 개를 켤 수 있다.
+        this.doneTagFilter = new Set();
+        // 완료 화면의 정렬. 기본은 최근에 끝낸 것이 위.
+        this.doneSort = { by: 'completedAt', asc: false };
+        // 완료 화면에 들어오기 전의 보기. 나갈 때 여기로 돌아간다.
+        this.viewBeforeCompleted = 'list';
         this.locale = this.getSelectedLanguage();
         this.darkMode = localStorage.getItem('darkMode') === 'true';
         this.dateFormat = localStorage.getItem('dateFormat') || DATE_FORMATS[0];
@@ -522,12 +535,18 @@ class TaskManager {
         this.setText('thStartTimeLabel', 'startTime');
         this.setText('thTargetTimeLabel', 'targetTime');
         this.setText('thAttachments', 'attachmentsColumn');
-        this.setText('thDoneAt', 'doneAt');
-        this.setText('thDoneTarget', 'targetTime');
+        this.setText('thDoneAtLabel', 'doneAt');
+        this.setText('thDoneStartLabel', 'startTime');
+        this.setText('thDoneTargetLabel', 'targetTime');
+        this.setText('thDoneFiles', 'attachmentsColumn');
         this.setText('thDoneTags', 'tags');
         this.setText('thDoneContent', 'taskContent');
-        this.setText('thDoneNote', 'doneNote');
-        this.setText('doneRecent', 'doneRecent');
+        this.setTitle('doneClose', 'doneClose');
+        for (const [days, key] of [[7, 'doneLast7'], [30, 'doneLast30'], [90, 'doneLast90']]) {
+            const chip = document.querySelector(`#donePresets [data-done-days="${days}"]`);
+            if (chip) chip.textContent = this.getLocalizedText(key);
+        }
+        this.setTitle('completionCounter', 'openCompletedView');
         this.setTitle('thStartTime', 'sortHint');
         this.setTitle('thTargetTime', 'sortHint');
         this.setText('thTags', 'tags');
@@ -984,7 +1003,7 @@ class TaskManager {
             input.addEventListener('keydown', (e) => {
                 if (e.ctrlKey || e.metaKey || e.altKey) return;
 
-                const format = this.dateFormat;
+                const format = this.formatFor(input);
                 const caret = input.selectionStart;
                 const selecting = input.selectionStart !== input.selectionEnd;
 
@@ -1019,14 +1038,14 @@ class TaskManager {
 
             // 붙여넣기처럼 통째로 들어오는 경우. 숫자만 남겨 앞에서부터 채운다.
             input.addEventListener('input', () => {
-                const { digits, meridiem } = maskRead(input.value, this.dateFormat);
+                const { digits, meridiem } = maskRead(input.value, this.formatFor(input));
                 this.paintMask(input, digits, meridiem);
             });
 
             // 아무것도 넣지 않았으면 비워 둔다. 목표 시각은 비어 있을 수 있고,
             // 틀만 남아 있으면 그것이 값인지 자리표시자인지 알 수 없다.
             input.addEventListener('blur', () => {
-                const { digits, meridiem } = maskRead(input.value, this.dateFormat);
+                const { digits, meridiem } = maskRead(input.value, this.formatFor(input));
                 if (!digits && !meridiem) input.value = '';
                 this.paintGhost(input);
             });
@@ -1089,7 +1108,7 @@ class TaskManager {
         if (document.activeElement === input
             && input.selectionStart === input.selectionEnd) {
             const caret = input.selectionStart;
-            const slots = maskSlots(this.dateFormat);
+            const slots = maskSlots(this.formatFor(input));
             const here = slots.find(slot => slot.index >= caret)
                 || slots[slots.length - 1];
             if (here) {
@@ -1099,7 +1118,7 @@ class TaskManager {
         }
 
         const dim = new Set();
-        for (const slot of maskSlots(this.dateFormat)) {
+        for (const slot of maskSlots(this.formatFor(input))) {
             if (slot.kind === 'digit') {
                 if (text[slot.index] === slot.placeholder) dim.add(slot.index);
             } else if (text[slot.index] === '-' && text[slot.index + 1] === '-') {
@@ -1136,7 +1155,7 @@ class TaskManager {
     }
 
     paintMask(input, digits, meridiem) {
-        this.setMask(input, maskRender(this.dateFormat, digits, meridiem));
+        this.setMask(input, maskRender(this.formatFor(input), digits, meridiem));
     }
 
     // 직접 만든 날짜/시간 선택기
@@ -1292,14 +1311,53 @@ class TaskManager {
             this.renderTasks();
         });
 
+        for (const th of document.querySelectorAll('#doneTable thead [data-done-sort]')) {
+            th.addEventListener('click', () => this.cycleDoneSort(th.dataset.doneSort));
+        }
+
+        // 완료 화면에서도 첨부 이름이 링크다. 표와 같은 클래스를 쓰므로 여는
+        // 방법도 같다 - 다만 여기서는 끊긴 표시를 미리 하지 않는다: 완료한
+        // 일회성 작업은 행이 지워지므로 시간이 지나면 파일 상당수가 사라져
+        // 있고, 화면 절반에 취소선이 그이면 정보가 아니라 소음이다. 눌렀을 때
+        // 알리는 것으로 충분하다.
+        document.getElementById('doneTable').addEventListener('click', (e) => {
+            const link = e.target.closest('.attach-link');
+            if (link) this.openAttachment(link.dataset.path);
+        });
+
         document.getElementById('doneOlder')
-            .addEventListener('click', () => this.moveDoneRange(-DONE_WINDOW_DAYS));
+            .addEventListener('click', () => this.moveDoneRange(-1));
         document.getElementById('doneNewer')
-            .addEventListener('click', () => this.moveDoneRange(DONE_WINDOW_DAYS));
-        document.getElementById('doneRecent').addEventListener('click', () => {
-            this.doneRangeEnd = null;
+            .addEventListener('click', () => this.moveDoneRange(1));
+
+        document.getElementById('doneTags').addEventListener('click', (e) => {
+            const chip = e.target.closest('[data-done-tag]');
+            if (!chip) return;
+            const tag = chip.dataset.doneTag;
+            if (this.doneTagFilter.has(tag)) this.doneTagFilter.delete(tag);
+            else this.doneTagFilter.add(tag);
             this.renderCompletedView();
         });
+
+        for (const chip of document.querySelectorAll('#donePresets [data-done-days]')) {
+            chip.addEventListener('click', () => {
+                this.setDoneWindow(Number(chip.dataset.doneDays));
+                this.renderCompletedView();
+            });
+        }
+
+        // 두 칸은 다 치고 나서 반영한다. 한 글자마다 읽으면 '2026' 만 친 순간
+        // 말이 안 되는 기간으로 한 번 다녀온다.
+        document.getElementById('doneClose')
+            .addEventListener('click', () => this.closeCompletedView());
+
+        for (const id of ['doneFrom', 'doneTo']) {
+            const input = document.getElementById(id);
+            input.addEventListener('change', () => this.applyDoneDates());
+            input.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); this.applyDoneDates(); }
+            });
+        }
 
         // 칸 안의 일정을 두 번 누르면 편집 창이 열린다. 달력이 보기 전용이라는
         // 규칙에서 이것만 빠져나온다 - "저건 언제였지"를 보다가 고치고 싶어지는
@@ -1344,6 +1402,10 @@ class TaskManager {
             this.renderCompletedList();
             box.classList.add('is-open');
         });
+
+        // 올리면 오늘, 누르면 전체. 카운터는 이미 "오늘 몇 건"을 말하고 있으니
+        // 그 다음 물음인 "지난주는?"이 여기서 이어지는 것이 자연스럽다.
+        counter.addEventListener('click', () => this.openCompletedView());
 
         // 목록은 카운터의 자식이라, 목록 위로 옮겨가도 여기서는 벗어난 것이 아니다.
         // 다만 둘 사이 6px 틈을 지날 때 잠깐 벗어나므로 조금 기다렸다 닫는다.
@@ -1690,6 +1752,14 @@ class TaskManager {
 
     // 문구는 i18n.js의 TRANSLATIONS에 있다. 없는 키는 영어로, 영어에도 없으면
     // 키 자체를 돌려준다 - 화면에 빈칸이 뜨는 것보다 무엇이 빠졌는지 보이는 게 낫다.
+    // 칸마다 형식이 다를 수 있다. data-date-format 이 붙어 있으면 그것을 쓴다 -
+    // 마스크도 검증도 선택기도 전부 이 하나에서 나오므로, 칸에 형식만 붙이면
+    // 세 가지가 함께 따라온다.
+    formatFor(input) {
+        const el = typeof input === 'string' ? document.getElementById(input) : input;
+        return (el && el.dataset.dateFormat) || this.dateFormat;
+    }
+
     getLocalizedText(key) {
         const lang = languageOf(this.locale);
         const text = TRANSLATIONS[lang][key] || TRANSLATIONS.en[key] || key;
@@ -1894,7 +1964,12 @@ class TaskManager {
         if (!input || !picker) return;
 
         // 입력값이 형식에 맞으면 그 시각에서, 아니면 지금에서 시작한다
-        const current = parseWithPattern(input.value, this.dateFormat) || new Date();
+        const current = parseWithPattern(input.value, this.formatFor(input)) || new Date();
+        // 날짜만 받는 칸에서는 시각 열이 아무 데도 가지 않는다. 고를 수는 있는데
+        // 확인을 누르면 사라지는 것이 제일 나쁘다.
+        const dateOnly = this.formatFor(input) !== this.dateFormat;
+        const timeColumn = document.querySelector('.dtp-time');
+        if (timeColumn) timeColumn.style.display = dateOnly ? 'none' : '';
         this.pickerTarget = inputId;
         this.pickerDate = new Date(current);
         this.pickerMonth = new Date(current.getFullYear(), current.getMonth(), 1);
@@ -2025,7 +2100,7 @@ class TaskManager {
         const chosen = new Date(this.pickerDate);
         chosen.setHours(this.pickerHour, this.pickerMinute, 0, 0);
 
-        this.setDateValue(this.pickerTarget, formatWithPattern(chosen, this.dateFormat));
+        this.setDateValue(this.pickerTarget, formatWithPattern(chosen, this.formatFor(this.pickerTarget)));
         this.closeDateTimePicker();
     }
 
@@ -2559,10 +2634,11 @@ ${filePath}`);
         }
     }
 
+    // 목록과 달력은 같은 것을 보는 두 방식이라 한 버튼으로 오간다. 완료는
+    // 다른 데이터이므로 이 순환에 끼지 않는다 - 카운터에서 따로 연다.
     toggleViewMode() {
         this.hideCompletedList();
-        const at = VIEW_ORDER.indexOf(this.viewMode);
-        this.viewMode = VIEW_ORDER[(at + 1) % VIEW_ORDER.length];
+        this.viewMode = this.viewMode === 'calendar' ? 'list' : 'calendar';
         localStorage.setItem('viewMode', this.viewMode);
         // 보기를 바꿀 때마다 이번 달로 돌아온다. 지난달을 보다 목록으로 갔다가
         // 돌아왔을 때 엉뚱한 달이 떠 있으면 비어 보인다.
@@ -2603,15 +2679,37 @@ ${filePath}`);
 
         // 아이콘은 "지금 무엇인가"가 아니라 "누르면 무엇이 되는가"를 그린다.
         // 접기 버튼과 같은 규칙이라 둘이 따로 놀지 않는다.
-        const next = VIEW_ORDER[(VIEW_ORDER.indexOf(this.viewMode) + 1) % VIEW_ORDER.length];
         const button = document.getElementById('viewModeBtn');
         if (button) {
-            button.innerHTML = { list: LIST_ICON, calendar: CALENDAR_ICON, completed: DONE_ICON }[next];
-            button.title = this.getLocalizedText(
-                { list: 'listView', calendar: 'calendarView', completed: 'completedView' }[next]);
+            button.innerHTML = calendar ? LIST_ICON : CALENDAR_ICON;
+            button.title = this.getLocalizedText(calendar ? 'listView' : 'calendarView');
+            // 완료 화면에서는 목록·달력 어느 쪽으로도 갈 수 없다. 나가는 문은
+            // 하나여야 헷갈리지 않는다.
+            button.disabled = done;
         }
         document.body.classList.toggle('calendar-mode', calendar);
         document.body.classList.toggle('completed-mode', done);
+    }
+
+    // 완료는 "보기"가 아니라 "가는 곳"이다. 카운터가 이미 오늘 몇 건인지 말하고
+    // 있으니, 눌러서 더 보는 것은 배울 것이 없다 - 새 아이콘은 뜻을 익혀야 한다.
+    // 올리면 오늘, 누르면 전체로 층이 나뉜다.
+    //
+    // 나올 때는 원래 있던 보기로 돌아온다. 달력을 보다 들어왔는데 목록으로
+    // 나오면 왔던 자리를 잃는다.
+    openCompletedView() {
+        if (this.viewMode === 'completed') return this.closeCompletedView();
+        this.hideCompletedList();
+        this.viewBeforeCompleted = this.viewMode;
+        this.viewMode = 'completed';
+        this.applyViewMode();
+        this.renderTasks();
+    }
+
+    closeCompletedView() {
+        this.viewMode = this.viewBeforeCompleted || 'list';
+        this.applyViewMode();
+        this.renderTasks();
     }
 
     // ---- 완료 화면 ---------------------------------------------------------
@@ -2621,25 +2719,126 @@ ${filePath}`);
     //
     // 읽기 전용이다. 완료 취소도 메모 수정도 없으므로 append-only 로그로 충분하고,
     // 그 둘이 필요해지는 날에는 로그가 아니라 저장소가 필요해진다.
+    // 기간은 두 끝으로 들고 있다. 길이를 고정해 두면 화살표가 늘 30일씩 뛰어서,
+    // 일주일을 골라 놓고 넘기면 엉뚱한 데로 간다.
+    //
+    // 로그 파일 이름은 로컬 날짜다. 카운터가 오늘치를 찾을 때 쓰는 것과 같은
+    // 변환을 쓴다 - 둘이 다른 날을 가리키면 개수와 목록이 어긋난다.
     doneRangeKeys() {
-        const end = this.doneRangeEnd || new Date();
+        if (!this.doneRange) this.setDoneWindow(DONE_WINDOW_DAYS);
+        return this.doneRange;
+    }
+
+    setDoneWindow(days) {
+        const end = new Date();
         const start = new Date(end);
-        start.setDate(start.getDate() - (DONE_WINDOW_DAYS - 1));
-        // 로그 파일 이름은 로컬 날짜다. 카운터가 오늘치를 찾을 때 쓰는 것과 같은
-        // 변환을 쓴다 - 둘이 다른 날을 가리키면 개수와 목록이 어긋난다.
-        return {
+        start.setDate(start.getDate() - (days - 1));
+        this.doneRange = {
             from: formatWithPattern(start, 'YYYY-MM-DD'),
             to: formatWithPattern(end, 'YYYY-MM-DD')
         };
     }
 
-    moveDoneRange(days) {
-        const at = new Date(this.doneRangeEnd || new Date());
-        at.setDate(at.getDate() + days);
-        // 앞으로는 오늘까지만. 로그에 내일은 없다.
-        const today = new Date();
-        this.doneRangeEnd = at > today ? today : at;
+    // 지금 보고 있는 폭만큼 통째로 민다. 앞으로는 오늘까지 - 로그에 내일은 없다.
+    moveDoneRange(direction) {
+        const { from, to } = this.doneRangeKeys();
+        const span = Math.round(
+            (new Date(to + 'T00:00:00Z') - new Date(from + 'T00:00:00Z')) / 86400000) + 1;
+        const shift = (key, days) => {
+            const at = new Date(key + 'T00:00:00Z');
+            at.setUTCDate(at.getUTCDate() + days);
+            return at.toISOString().slice(0, 10);
+        };
+        const today = formatWithPattern(new Date(), 'YYYY-MM-DD');
+        let next = { from: shift(from, span * direction), to: shift(to, span * direction) };
+        if (next.to > today) next = { from: shift(today, -(span - 1)), to: today };
+        this.doneRange = next;
         this.renderCompletedView();
+    }
+
+    // 직접 고른 기간. 두 칸 중 하나만 채워도 나머지는 그대로 둔다 - 한쪽을
+    // 고치는 동안 다른 쪽이 비어 화면이 텅 비는 것을 막는다.
+    applyDoneDates() {
+        const read = (id) => {
+            const typed = document.getElementById(id).value.trim();
+            if (!typed) return null;
+            const parsed = parseWithPattern(typed, this.formatFor(id));
+            return parsed ? formatWithPattern(parsed, 'YYYY-MM-DD') : null;
+        };
+        const current = this.doneRangeKeys();
+        const from = read('doneFrom') || current.from;
+        const to = read('doneTo') || current.to;
+        // 거꾸로 넣으면 바로잡는다. 빈 화면을 보여주고 왜인지 모르게 두는 것보다
+        // 낫고, 두 칸이 다시 그려지면서 무엇이 적용됐는지도 보인다.
+        this.doneRange = from <= to ? { from, to } : { from: to, to: from };
+        this.renderCompletedView();
+    }
+
+    // 표와 같은 방식으로 시간 머리를 눌러 줄을 세운다. 다만 여기에는 "원래
+    // 순서"가 없다 - 사람이 배열한 차례가 없고 로그 순서는 곧 완료 순서라
+    // 기본 정렬과 같다. 그래서 세 단계가 아니라 오름/내림 두 단계로 돈다.
+    //
+    // 처음 누르면 내림차순이다. 시간 칸에서 먼저 보고 싶은 것은 최근 쪽이다.
+    cycleDoneSort(column) {
+        if (this.doneSort.by === column) {
+            this.doneSort.asc = !this.doneSort.asc;
+        } else {
+            this.doneSort = { by: column, asc: false };
+        }
+        this.renderCompletedView();
+    }
+
+    // 화면에 적히는 값으로 줄을 세운다. TIMESTAMP 로 세우면 소급해 체크한 줄이
+    // 엉뚱한 자리에 앉는데, 옆에는 완료 시각이 적혀 있어 정렬이 깨진 것으로
+    // 보인다. 완료 시각 칸이 없던 옛 줄만 TIMESTAMP 로 대신한다.
+    sortCompleted(rows) {
+        const { by, asc } = this.doneSort;
+        const value = (row) => by === 'completedAt'
+            ? (row.completedAt || row.timestamp)
+            : (row[by] || '');
+        const direction = asc ? 1 : -1;
+        // 값이 없는 줄은 방향과 상관없이 끝으로. 오르내릴 때마다 위아래로
+        // 옮겨 다니면 사라진 것처럼 보인다.
+        return [...rows].sort((a, b) => {
+            const [x, y] = [value(a), value(b)];
+            if (!x && !y) return 0;
+            if (!x) return 1;
+            if (!y) return -1;
+            return x.localeCompare(y) * direction;
+        });
+    }
+
+    updateDoneSortIndicators() {
+        for (const th of document.querySelectorAll('#doneTable thead [data-done-sort]')) {
+            const active = th.dataset.doneSort === this.doneSort.by;
+            th.classList.toggle('sorted', active);
+            th.classList.toggle('descending', active && !this.doneSort.asc);
+        }
+    }
+
+    // 이 기간의 로그에 실제로 있는 태그만 낸다. 상태 칩은 전부 완료라 뜻이
+    // 없으니 여기에는 없다 - 눌러도 아무 일이 없는 칩을 띄우느니 없는 편이 낫다.
+    // 목록의 빠른 필터와 같은 모양을 쓰므로 거기서 배운 것이 그대로 통한다.
+    renderDoneTags(rows) {
+        const box = document.getElementById('doneTags');
+        if (!box) return;
+
+        const seen = new Map();
+        for (const row of rows) {
+            for (const tag of (row.tags || '').split(/\s+/).filter(t => t.startsWith('#'))) {
+                seen.set(tag, (seen.get(tag) || 0) + 1);
+            }
+        }
+        const ranked = [...seen.entries()]
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, TaskManager.QUICK_FILTER_LIMIT)
+            .map(([tag]) => tag);
+
+        box.innerHTML = ranked.map(tag => {
+            const parsed = this.parseTagWithColor(tag);
+            const on = this.doneTagFilter.has(tag);
+            return `<button type="button" class="quick-chip quick-tag${on ? ' active' : ''}" data-done-tag="${this.escapeHtml(tag)}" style="border-color: ${parsed.color.border}; color: ${parsed.color.text}; background-color: ${on ? parsed.color.bg : 'transparent'}">${this.escapeHtml(parsed.content)}</button>`;
+        }).join('');
     }
 
     async renderCompletedView() {
@@ -2647,19 +2846,31 @@ ${filePath}`);
         if (!body) return;
 
         const { from, to } = this.doneRangeKeys();
-        const label = document.getElementById('doneLabel');
-        if (label) label.textContent = `${from} ~ ${to}`;
+        // 기간은 읽는 자리가 곧 고치는 자리다. 라벨과 입력칸을 따로 두면 어느
+        // 쪽이 진짜인지 알 수 없다.
+        const datePattern = dateOnlyPattern(this.dateFormat);
+        for (const [id, key] of [['doneFrom', from], ['doneTo', to]]) {
+            const field = document.getElementById(id);
+            // 설정에서 표기를 바꾸면 여기도 따라와야 한다. 한 번 붙이고 마는
+            // 대신 그릴 때마다 다시 적는다.
+            field.dataset.dateFormat = datePattern;
+            const parsed = parseWithPattern(key, 'YYYY-MM-DD');
+            this.setDateValue(id, parsed ? formatWithPattern(parsed, datePattern) : key);
+        }
 
         let rows = [];
         if (this.isElectron && window.electronAPI.getCompletedRange) {
             rows = await window.electronAPI.getCompletedRange(from, to) || [];
         }
-        // 보이는 것이 완료 시각이므로 그것으로 줄을 세운다. TIMESTAMP 순으로
-        // 두면 소급해 체크한 줄이 엉뚱한 자리에 앉는데, 화면에는 완료 시각이
-        // 적혀 있어 정렬이 깨진 것처럼 보인다. 완료 시각이 비어 있던 옛 줄은
-        // TIMESTAMP 로 대신한다.
-        const when = (row) => row.completedAt || row.timestamp;
-        rows.sort((a, b) => when(b).localeCompare(when(a)));
+        rows = this.sortCompleted(rows);
+
+        // 칩은 거른 뒤가 아니라 거르기 전 목록으로 만든다. 하나를 고른 순간
+        // 나머지가 사라지면 다른 태그로 갈아탈 수가 없다.
+        this.renderDoneTags(rows);
+        if (this.doneTagFilter.size) {
+            rows = rows.filter(row => (row.tags || '').split(/\s+/)
+                .some(tag => this.doneTagFilter.has(tag)));
+        }
 
         // 검색은 여기서도 든다. 아무 일도 하지 않는 입력칸을 띄워 두는 것은
         // 감추는 것보다 나쁘다.
@@ -2672,20 +2883,28 @@ ${filePath}`);
         const count = document.getElementById('doneCount');
         if (count) count.textContent = `${rows.length}` + ' ' + this.getLocalizedText('doneCountSuffix');
 
+        this.updateDoneSortIndicators();
+
         if (rows.length === 0) {
-            body.innerHTML = `<tr><td colspan="5" class="empty-message">${this.escapeHtml(this.getLocalizedText('nothingCompletedInRange'))}</td></tr>`;
+            body.innerHTML = `<tr><td colspan="6" class="empty-message">${this.escapeHtml(this.getLocalizedText('nothingCompletedInRange'))}</td></tr>`;
             return;
         }
 
         body.innerHTML = rows.map(row => `
                 <tr>
                     <td>${this.escapeHtml(row.completedAt
-                        || this.formatDateTime(row.day + ' 00:00'))}</td>
+                        ? this.formatDateTime(row.completedAt) : '')}</td>
+                    <td>${this.escapeHtml(row.startTime
+                        ? this.formatDateTime(row.startTime) : '')}</td>
                     <td>${this.escapeHtml(row.targetTime
                         ? this.formatDateTime(row.targetTime) : '')}</td>
                     <td class="task-tags">${this.renderTagChips(row.tags)}</td>
-                    <td class="task-content">${this.escapeHtml(row.content)}</td>
-                    <td class="done-note">${this.escapeHtml(row.note || '')}</td>
+                    <td class="task-content">${this.escapeHtml(row.content)}${
+                        row.note ? '<span class="done-note">' + this.escapeHtml(row.note) + '</span>' : ''}</td>
+                    <td class="attach-col">${(row.attachments || []).map(file =>
+                        '<a class="attach-link" data-path="' + this.escapeHtml(file.path) +
+                        '" title="' + this.escapeHtml(file.path) + '">' +
+                        this.escapeHtml(file.name) + '</a>').join('')}</td>
                 </tr>`).join('');
     }
 

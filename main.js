@@ -668,13 +668,26 @@ ipcMain.handle('get-completed-tasks', async (event, dateStr) => readCompleted(da
 //
 // 파일이 없는 날은 readCompleted 가 빈 배열을 주므로 건너뛸 필요가 없다. 3년치
 // 1,095개 파일을 한꺼번에 읽어도 200ms 남짓이고, 화면은 기본 30일만 본다.
+// 로그에는 경로만 적힌다. 이름은 언제나 그 경로의 마지막 조각이므로 - 파일
+// 고르기는 path.basename 을, 끌어다 놓기는 File.name 을 쓰고 둘 다 같은 값이다 -
+// 여기서 되짚으면 저장돼 있던 것과 글자 그대로 같은 이름이 나온다. 로그 형식을
+// 바꾸는 쪽보다 이 편이 낫다: 이미 쌓인 기록에서도 이름이 나온다.
+//
+// 경로를 자르는 일은 renderer 가 하지 않기로 되어 있고, path.basename 은 앱에서
+// 경로를 다루는 유일한 자리다.
+const namedPaths = (joined) => (joined || '')
+    .split(';')
+    .map(one => one.trim())
+    .filter(Boolean)
+    .map(filePath => ({ name: path.basename(filePath), path: filePath }))
+
 ipcMain.handle('get-completed-range', async (event, fromKey, toKey) => {
     const days = []
     for (const key of eachDayKey(fromKey, toKey)) days.push(key)
 
     const perDay = await Promise.all(days.map(async (key) => {
         const rows = await readCompleted(key)
-        return rows.map(row => ({ ...row, day: key }))
+        return rows.map(row => ({ ...row, day: key, attachments: namedPaths(row.attachments) }))
     }))
     return perDay.flat()
 })
