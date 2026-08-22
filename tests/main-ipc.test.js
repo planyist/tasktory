@@ -551,6 +551,86 @@ describe('the collapse shortcut reaches outside the window', () => {
 // 완료 시각과 메모가 제 칸을 갖기 전의 줄은 그 둘이 CONTENT 안에 섞여 있다.
 // 13개월치가 이미 디스크에 있으므로, 읽을 때 되돌리지 않으면 완료 화면이
 // 과거를 통째로 잘못 보여준다.
+// 완료 화면은 하루가 아니라 기간을 본다. 파서도 폴백도 카운터가 쓰는 것과 같은
+// 것이라, 개수·차트·화면 셋이 서로 다른 답을 낼 수가 없다.
+describe('get-completed-range', () => {
+    const write = (day, rows) => {
+        fs.mkdirSync(logsDir, { recursive: true })
+        fs.writeFileSync(path.join(logsDir, `${day}.tsv`),
+            ['TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE', ...rows].join('\n') + '\n')
+    }
+    const done = (day, content, extra = {}) => [
+        `${day}T09:00:00+09:00`, 'COMPLETE', 'COMPLETED', extra.id || 'task-1',
+        `${day} 08:00`, `${day} 10:00`, extra.tags || '', content, '',
+        extra.completedAt || '', extra.note || ''
+    ].join('\t')
+    const other = (day) => [
+        `${day}T09:00:00+09:00`, 'ADD', 'PENDING', 'task-9',
+        `${day} 08:00`, `${day} 10:00`, '', 'added something', '', '', ''
+    ].join('\t')
+
+    test('gathers every day in the range, oldest first', async () => {
+        write('2026-08-01', [done('2026-08-01', '첫째 날')])
+        write('2026-08-03', [done('2026-08-03', '셋째 날')])
+
+        const rows = await electron.__invoke('get-completed-range', '2026-08-01', '2026-08-03')
+
+        expect(rows.map(r => r.content)).toEqual(['첫째 날', '셋째 날'])
+        expect(rows.map(r => r.day)).toEqual(['2026-08-01', '2026-08-03'])
+    })
+
+    test('a day with no log file is simply empty, not an error', async () => {
+        const rows = await electron.__invoke('get-completed-range', '2026-08-01', '2026-08-05')
+
+        expect(rows).toEqual([])
+    })
+
+    // 완료만 본다. 같은 파일에 추가·수정·상태변경이 함께 쌓인다.
+    test('takes only the COMPLETE lines out of a mixed file', async () => {
+        write('2026-08-02', [other('2026-08-02'), done('2026-08-02', '끝낸 일'),
+                             other('2026-08-02')])
+
+        const rows = await electron.__invoke('get-completed-range', '2026-08-02', '2026-08-02')
+
+        expect(rows.map(r => r.content)).toEqual(['끝낸 일'])
+    })
+
+    test('the range is inclusive at both ends', async () => {
+        write('2026-08-01', [done('2026-08-01', 'a')])
+        write('2026-08-02', [done('2026-08-02', 'b')])
+        write('2026-08-03', [done('2026-08-03', 'c')])
+
+        const rows = await electron.__invoke('get-completed-range', '2026-08-01', '2026-08-02')
+
+        expect(rows.map(r => r.content)).toEqual(['a', 'b'])
+    })
+
+    test('carries the completion time, note and tags through', async () => {
+        write('2026-08-04', [done('2026-08-04', '분기 보고서', {
+            completedAt: '2026-08-04 17:30', note: '초안까지', tags: '#[BLUE]업무'
+        })])
+
+        const [row] = await electron.__invoke('get-completed-range', '2026-08-04', '2026-08-04')
+
+        expect(row.completedAt).toBe('2026-08-04 17:30')
+        expect(row.note).toBe('초안까지')
+        expect(row.tags).toBe('#[BLUE]업무')
+        expect(row.targetTime).toBe('2026-08-04 10:00')
+    })
+
+    // 날짜를 Date 로 옮겨 하루씩 더하면 서머타임이 있는 지역에서 하루를 건너뛰거나
+    // 두 번 세는 일이 생긴다. 이 스위트는 Asia/Seoul 로 고정돼 있어 그 함정을
+    // 직접 밟지는 않지만, 월을 넘기는 것만은 여기서 확인한다.
+    test('walks across a month boundary', async () => {
+        write('2026-07-31', [done('2026-07-31', '7월 마지막')])
+        write('2026-08-01', [done('2026-08-01', '8월 첫날')])
+
+        const rows = await electron.__invoke('get-completed-range', '2026-07-30', '2026-08-02')
+
+        expect(rows.map(r => r.content)).toEqual(['7월 마지막', '8월 첫날'])
+    })
+})
+
 describe('reading completions written before the columns existed', () => {
     const oldStyle = (content) => [
         'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS',

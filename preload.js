@@ -22,6 +22,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
     showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body),
     getCompletedTasksCount: (dateStr) => ipcRenderer.invoke('get-completed-tasks-count', dateStr),
     getCompletedTasks: (dateStr) => ipcRenderer.invoke('get-completed-tasks', dateStr),
+    getCompletedRange: (fromKey, toKey) =>
+        ipcRenderer.invoke('get-completed-range', fromKey, toKey),
     resizeAndPositionWindow: (width, height, position) => ipcRenderer.invoke('resize-and-position-window', width, height, position),
     // 정보 창의 버전은 package.json 에서 읽는다. 손으로 적으면 릴리스마다
     // 갱신을 잊을 자리가 하나 늘어난다.

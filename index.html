@@ -149,6 +149,38 @@
                 <div id="calGrid" class="calendar-grid"></div>
             </div>
 
+            <div id="completedView" class="completed-view" style="display: none;">
+                <div class="calendar-header">
+                    <button type="button" id="doneOlder" class="calendar-nav">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="15,18 9,12 15,6"/>
+                        </svg>
+                    </button>
+                    <span id="doneLabel" class="calendar-label"></span>
+                    <button type="button" id="doneNewer" class="calendar-nav">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="9,18 15,12 9,6"/>
+                        </svg>
+                    </button>
+                    <button type="button" id="doneRecent" class="calendar-today"></button>
+                </div>
+                <div class="done-body">
+                    <table id="doneTable">
+                        <thead>
+                            <tr>
+                                <th id="thDoneAt">Completed</th>
+                                <th id="thDoneTarget">Target Time</th>
+                                <th id="thDoneTags">Tags</th>
+                                <th id="thDoneContent">Task Content</th>
+                                <th id="thDoneNote">Note</th>
+                            </tr>
+                        </thead>
+                        <tbody id="doneBody"></tbody>
+                    </table>
+                </div>
+                <div id="doneCount" class="done-count"></div>
+            </div>
+
             <!-- Pagination: 표 바깥에 두어야 스크롤과 무관하게 항상 표 아래에 고정된다 -->
             <div id="paginationContainer" class="pagination-container">
                 <span id="paginationTotal" class="pagination-total"></span>
@@ -509,6 +541,7 @@
             <h3 id="aboutViewsTitle">Views</h3>
             <ul>
                 <li><strong id="aboutListViewTitle">List:</strong> <span id="aboutListViewDesc">The table. Everything you can do to a task happens here</span></li>
+                <li><strong id="aboutCompletedViewTitle">Completed:</strong> <span id="aboutCompletedViewDesc">The third view, next to list and calendar. It reads the TSV log. Thirty days at a time, newest first. Read-only</span></li>
                 <li><strong id="aboutCalendarViewTitle">Calendar:</strong> <span id="aboutCalendarViewDesc">A month grid, toggled from the buttons at the top right. A task sits on its target day, and one with no target time sits on its start day. Double-click a task to edit it</span></li>
                 <li><strong id="aboutCollapsedViewTitle">Side strip:</strong> <span id="aboutCollapsedViewDesc">{key}. Read-only, always on top. In calendar view it stands up a single day - today, or the next day with work if today is clear</span></li>
             </ul>

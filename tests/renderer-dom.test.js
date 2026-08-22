@@ -48,6 +48,12 @@ let stored
 // 흉내 낼 수 있다.
 let toggleCollapseListener = null
 
+const formatKey = (date) => [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0')
+].join('-')
+
 const boot = async (tasks = []) => {
     toggleCollapseListener = null
     stored = tasks
@@ -85,6 +91,7 @@ const boot = async (tasks = []) => {
         openLogFolder: jest.fn(async () => true),
         moveWindowBy: jest.fn(),
         resizeAndPositionWindow: jest.fn(async () => true),
+        getCompletedRange: jest.fn(async () => []),
         getCollapseShortcut: jest.fn(async () => ({
             accelerator: 'CommandOrControl+Alt+Shift+M', registered: true
         })),
@@ -1809,6 +1816,167 @@ describe('unfocused opacity', () => {
 // A list answers "what is there"; a calendar answers "when does it pile up".
 // View-only, with one deliberate hole: a chip opens the editor on a double
 // click. Nothing else in a cell reacts.
+// 끝낸 일은 활성 목록에서 사라지므로 메모리에는 없다. TSV 로그가 유일한 기록이고,
+// 일일 카운터와 호버 목록이 이미 그것을 읽는다 - 셋이 같은 파서를 지나므로 서로
+// 다른 답을 낼 수가 없다. 읽기 전용이다: 완료 취소도 메모 수정도 없다.
+describe('the completed view', () => {
+    const done = (day, content, extra = {}) => ({
+        day,
+        timestamp: `${day}T09:00:00+09:00`,
+        taskId: extra.id || ('t-' + content),
+        startTime: `${day} 08:00`,
+        targetTime: extra.targetTime === undefined ? `${day} 18:00` : extra.targetTime,
+        tags: extra.tags || '',
+        content,
+        attachments: '',
+        completedAt: extra.completedAt === undefined ? `${day} 17:00` : extra.completedAt,
+        note: extra.note || ''
+    })
+
+    const openDone = async (rows) => {
+        const manager = await boot([])
+        electronAPI.getCompletedRange.mockResolvedValue(rows)
+        manager.viewMode = 'completed'
+        manager.applyViewMode()
+        manager.renderTasks()
+        await settle()
+        return manager
+    }
+    const cells = () => [...document.querySelectorAll('#doneBody tr')]
+        .map((tr) => [...tr.cells].map((td) => td.textContent.trim()))
+
+    test('reads the log, not the task list', async () => {
+        await openDone([done('2026-08-20', '계약서 확인')])
+
+        expect(electronAPI.getCompletedRange).toHaveBeenCalled()
+        expect(cells()[0][3]).toBe('계약서 확인')
+    })
+
+    // 기본은 최근 30일. "이번 달 뭐 했지" 에 답하는 폭이다.
+    test('asks for the last thirty days, ending today', async () => {
+        await openDone([])
+
+        const [from, to] = electronAPI.getCompletedRange.mock.calls[0]
+        expect(to).toBe(formatKey(new Date()))
+        const days = (new Date(to) - new Date(from)) / 86400000
+        expect(days).toBe(29)
+    })
+
+    // 화면에 적히는 것이 완료 시각이므로 그것으로 줄을 세워야 한다. TIMESTAMP 로
+    // 세우면 소급해 체크한 줄이 엉뚱한 자리에 앉는데, 옆에는 완료 시각이 적혀
+    // 있어 정렬이 깨진 것으로 보인다.
+    test('sorts by the completion time it shows, newest first', async () => {
+        await openDone([
+            done('2026-08-21', '아침에 끝냄', { completedAt: '2026-08-21 09:00' }),
+            done('2026-08-21', '저녁에 끝냄', { completedAt: '2026-08-21 20:00' }),
+            done('2026-08-20', '어제 끝냄', { completedAt: '2026-08-20 12:00' })
+        ])
+
+        expect(cells().map((row) => row[3]))
+            .toEqual(['저녁에 끝냄', '아침에 끝냄', '어제 끝냄'])
+    })
+
+    // 완료 시각이 없던 옛 줄도 자리를 잡아야 한다.
+    test('falls back to the timestamp when the completion time is missing', async () => {
+        await openDone([
+            done('2026-08-19', '옛 줄', { completedAt: '' }),
+            done('2026-08-21', '새 줄')
+        ])
+
+        expect(cells().map((row) => row[3])).toEqual(['새 줄', '옛 줄'])
+    })
+
+    test('counts what it is showing', async () => {
+        await openDone([done('2026-08-20', 'a'), done('2026-08-20', 'b')])
+
+        expect(document.getElementById('doneCount').textContent).toContain('2')
+    })
+
+    test('says so when the period holds nothing', async () => {
+        await openDone([])
+
+        expect(document.querySelector('#doneBody .empty-message')).not.toBeNull()
+        expect(document.getElementById('doneCount').textContent).toContain('0')
+    })
+
+    // 아무 일도 하지 않는 입력칸을 띄워 두는 것은 감추는 것보다 나쁘다.
+    test('the search box filters here too', async () => {
+        const manager = await openDone([
+            done('2026-08-20', '계약서 확인', { note: '법무팀' }),
+            done('2026-08-20', '예산안 검토', { tags: '#[BLUE]업무' })
+        ])
+
+        manager.searchQuery = '예산'
+        manager.renderTasks()
+        await settle()
+        expect(cells().map((row) => row[3])).toEqual(['예산안 검토'])
+
+        manager.searchQuery = '법무'
+        manager.renderTasks()
+        await settle()
+        expect(cells().map((row) => row[3])).toEqual(['계약서 확인'])
+    })
+
+    // 빠른 필터는 활성 작업의 상태와 태그로 만든다. 여기서는 전부 완료라 상태
+    // 칩은 뜻이 없고, 눌러도 아무 일이 없는 칩을 띄워 둘 이유가 없다.
+    test('hides the list controls that mean nothing here', async () => {
+        await openDone([done('2026-08-20', 'a')])
+
+        expect(document.getElementById('quickFilters').style.display).toBe('none')
+        expect(document.getElementById('taskActionBar').style.display).toBe('none')
+        expect(document.getElementById('paginationContainer').style.display).toBe('none')
+        expect(document.querySelector('.table-container').style.display).toBe('none')
+    })
+
+    // 읽기 전용이다. 고를 것도 고칠 것도 없다.
+    test('nothing in a row is selectable or editable', async () => {
+        const manager = await openDone([done('2026-08-20', '계약서 확인')])
+
+        const row = document.querySelector('#doneBody tr')
+        expect(row.querySelector('input')).toBeNull()
+        row.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 2 }))
+        await settle()
+
+        expect(document.getElementById('taskModal').style.display).not.toBe('block')
+        expect(manager.selectedTaskIds.size).toBe(0)
+    })
+
+    test('stepping back a period moves both ends', async () => {
+        const manager = await openDone([])
+        const [firstFrom, firstTo] = electronAPI.getCompletedRange.mock.calls[0]
+
+        manager.moveDoneRange(-30)
+        await settle()
+
+        const [from, to] = electronAPI.getCompletedRange.mock.calls.slice(-1)[0]
+        expect((new Date(firstTo) - new Date(to)) / 86400000).toBe(30)
+        expect((new Date(firstFrom) - new Date(from)) / 86400000).toBe(30)
+    })
+
+    // 로그에 내일은 없다.
+    test('it will not walk past today', async () => {
+        const manager = await openDone([])
+
+        manager.moveDoneRange(30)
+        await settle()
+
+        const [, to] = electronAPI.getCompletedRange.mock.calls.slice(-1)[0]
+        expect(to).toBe(formatKey(new Date()))
+    })
+
+    test('Recent comes back to today', async () => {
+        const manager = await openDone([])
+        manager.moveDoneRange(-60)
+        await settle()
+
+        document.getElementById('doneRecent').click()
+        await settle()
+
+        const [, to] = electronAPI.getCompletedRange.mock.calls.slice(-1)[0]
+        expect(to).toBe(formatKey(new Date()))
+    })
+})
+
 describe('calendar view', () => {
     const at = (day, time) => `2026-08-${String(day).padStart(2, '0')} ${time}`
     const cells = () => Array.from(document.querySelectorAll('#calGrid .cal-day'))
@@ -2167,26 +2335,32 @@ describe('view toggle', () => {
         expect(ids.slice(-2)).toEqual(['viewModeBtn', 'collapseBtn'])
     })
 
-    // The icon shows what you get, not what you have - same rule as collapse.
-    test('shows a calendar in list view and a list in calendar view', async () => {
+    // 아이콘은 "지금 무엇인가"가 아니라 "누르면 무엇이 되는가"를 그린다 -
+    // 접기 버튼과 같은 규칙이고, 보기가 셋이 되어도 순서만 정하면 성립한다.
+    test('the icon names the view the next press gives you', async () => {
         const manager = await boot([task('a')])
 
-        expect(button().innerHTML).toContain('rect')
         expect(button().title).toBe('Calendar view')
-
         manager.toggleViewMode()
-
-        expect(button().innerHTML).not.toContain('rect')
+        expect(button().title).toBe('Completed')
+        manager.toggleViewMode()
         expect(button().title).toBe('List view')
     })
 
-    test('clicking it switches the view', async () => {
+    // 완료는 가끔 들르는 곳이라 돌아오는 길이 짧아야 한다.
+    test('one press comes back to the list from completed', async () => {
         const manager = await boot([task('a')])
 
         button().click()
-
         expect(manager.viewMode).toBe('calendar')
         expect(localStorage.getItem('viewMode')).toBe('calendar')
+
+        button().click()
+        expect(manager.viewMode).toBe('completed')
+
+        button().click()
+        expect(manager.viewMode).toBe('list')
+        expect(localStorage.getItem('viewMode')).toBe('list')
     })
 })
 

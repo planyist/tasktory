@@ -37,6 +37,16 @@ const DOUBLE_CLICK_MS = 200;
 // 보기 전환 버튼의 두 아이콘. 누르면 무엇이 되는지를 그린다.
 const CALENDAR_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="5" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="16" y1="3" x2="16" y2="7"/></svg>';
 const LIST_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>';
+const DONE_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 3-6.7"/><polyline points="3,4 3,10 9,10"/><polyline points="12,7 12,12 15,14"/></svg>';
+
+// 보기는 셋이고 버튼은 하나다. 아이콘은 "지금 무엇인가"가 아니라 "누르면 무엇이
+// 되는가"를 그리므로, 순서만 정하면 규칙이 그대로 성립한다. 완료에서 한 번
+// 누르면 목록으로 돌아오도록 두었다 - 완료는 가끔 들르는 곳이라 돌아오는 길이
+// 짧아야 한다.
+const VIEW_ORDER = ['list', 'calendar', 'completed'];
+
+// 완료 화면이 한 번에 보는 날 수. 30일이면 "이번 달 뭐 했지"에 답한다.
+const DONE_WINDOW_DAYS = 30;
 
 // main.js가 로그 파일에 쓰는 헤더와 같아야 한다
 const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE';
@@ -304,6 +314,8 @@ class TaskManager {
         this.collapseAccelerator = 'Ctrl+Alt+Shift+M';
         // 늦게 도착한 첨부 확인이 새로 그린 화면을 칠하지 못하게 하는 표
         this.attachCheckToken = 0;
+        // 완료 화면이 보는 기간의 끝. null 이면 오늘이다.
+        this.doneRangeEnd = null;
         this.locale = this.getSelectedLanguage();
         this.darkMode = localStorage.getItem('darkMode') === 'true';
         this.dateFormat = localStorage.getItem('dateFormat') || DATE_FORMATS[0];
@@ -510,6 +522,12 @@ class TaskManager {
         this.setText('thStartTimeLabel', 'startTime');
         this.setText('thTargetTimeLabel', 'targetTime');
         this.setText('thAttachments', 'attachmentsColumn');
+        this.setText('thDoneAt', 'doneAt');
+        this.setText('thDoneTarget', 'targetTime');
+        this.setText('thDoneTags', 'tags');
+        this.setText('thDoneContent', 'taskContent');
+        this.setText('thDoneNote', 'doneNote');
+        this.setText('doneRecent', 'doneRecent');
         this.setTitle('thStartTime', 'sortHint');
         this.setTitle('thTargetTime', 'sortHint');
         this.setText('thTags', 'tags');
@@ -594,6 +612,7 @@ class TaskManager {
             aboutSelectDesc: 'aboutSelectDesc',
             aboutListViewDesc: 'aboutListViewDesc',
             aboutCalendarViewDesc: 'aboutCalendarViewDesc',
+            aboutCompletedViewDesc: 'aboutCompletedViewDesc',
             aboutCollapsedViewDesc: 'aboutCollapsedViewDesc',
             aboutSearchColumnDesc: 'aboutSearchColumnDesc',
             aboutChipFilterDesc: 'aboutChipFilterDesc',
@@ -616,6 +635,7 @@ class TaskManager {
             aboutSelectTitle: 'aboutSelectTitle',
             aboutListViewTitle: 'listView',
             aboutCalendarViewTitle: 'calendarView',
+            aboutCompletedViewTitle: 'aboutCompletedViewTitle',
             aboutCollapsedViewTitle: 'sideStrip',
             aboutSearchColumnTitle: 'aboutSearchColumnTitle',
             aboutChipFilterTitle: 'aboutChipFilterTitle',
@@ -1270,6 +1290,15 @@ class TaskManager {
             const now = new Date();
             this.calendarMonth = new Date(now.getFullYear(), now.getMonth(), 1);
             this.renderTasks();
+        });
+
+        document.getElementById('doneOlder')
+            .addEventListener('click', () => this.moveDoneRange(-DONE_WINDOW_DAYS));
+        document.getElementById('doneNewer')
+            .addEventListener('click', () => this.moveDoneRange(DONE_WINDOW_DAYS));
+        document.getElementById('doneRecent').addEventListener('click', () => {
+            this.doneRangeEnd = null;
+            this.renderCompletedView();
         });
 
         // 칸 안의 일정을 두 번 누르면 편집 창이 열린다. 달력이 보기 전용이라는
@@ -2532,7 +2561,8 @@ ${filePath}`);
 
     toggleViewMode() {
         this.hideCompletedList();
-        this.viewMode = this.viewMode === 'calendar' ? 'list' : 'calendar';
+        const at = VIEW_ORDER.indexOf(this.viewMode);
+        this.viewMode = VIEW_ORDER[(at + 1) % VIEW_ORDER.length];
         localStorage.setItem('viewMode', this.viewMode);
         // 보기를 바꿀 때마다 이번 달로 돌아온다. 지난달을 보다 목록으로 갔다가
         // 돌아왔을 때 엉뚱한 달이 떠 있으면 비어 보인다.
@@ -2546,27 +2576,117 @@ ${filePath}`);
         if (this.isCollapsed) this.resizeCollapsedWindow();
     }
 
-    // 달력일 때 숨길 것들: 선택 막대와 페이지 넘김은 보기 전용 화면에서 할 일이 없다.
+    // 목록이 아닌 보기에서 숨길 것들: 선택 막대와 페이지 넘김은 보기 전용
+    // 화면에서 할 일이 없다.
+    //
+    // 접힌 창은 언제나 목록이다. 150px 스트립은 "다음에 뭘 하지"에 답하는
+    // 자리이고, 끝낸 일은 그 물음과 상관이 없다. 달력만은 미니 격자를 따로
+    // 가지고 있어 예외다.
     applyViewMode() {
         const calendar = this.viewMode === 'calendar';
+        const done = this.viewMode === 'completed';
+        const list = !calendar && !done;
         const show = (id, visible) => {
             const el = document.getElementById(id);
             if (el) el.style.display = visible ? '' : 'none';
         };
 
         show('calendarView', calendar && !this.isCollapsed);
-        show('taskActionBar', !calendar);
-        show('paginationContainer', !calendar);
-        document.querySelector('.table-container').style.display = calendar ? 'none' : '';
+        show('completedView', done && !this.isCollapsed);
+        // 빠른 필터는 활성 작업의 상태와 태그로 만든다. 여기서는 전부 완료이므로
+        // 상태 칩은 뜻이 없고, 눌러도 아무 일이 없는 칩을 띄워 둘 이유가 없다.
+        show('quickFilters', !done);
+        show('taskActionBar', list);
+        show('paginationContainer', list);
+        document.querySelector('.table-container').style.display =
+            (list || (done && this.isCollapsed)) ? '' : 'none';
 
         // 아이콘은 "지금 무엇인가"가 아니라 "누르면 무엇이 되는가"를 그린다.
         // 접기 버튼과 같은 규칙이라 둘이 따로 놀지 않는다.
+        const next = VIEW_ORDER[(VIEW_ORDER.indexOf(this.viewMode) + 1) % VIEW_ORDER.length];
         const button = document.getElementById('viewModeBtn');
         if (button) {
-            button.innerHTML = calendar ? LIST_ICON : CALENDAR_ICON;
-            button.title = this.getLocalizedText(calendar ? 'listView' : 'calendarView');
+            button.innerHTML = { list: LIST_ICON, calendar: CALENDAR_ICON, completed: DONE_ICON }[next];
+            button.title = this.getLocalizedText(
+                { list: 'listView', calendar: 'calendarView', completed: 'completedView' }[next]);
         }
         document.body.classList.toggle('calendar-mode', calendar);
+        document.body.classList.toggle('completed-mode', done);
+    }
+
+    // ---- 완료 화면 ---------------------------------------------------------
+    // 끝낸 일은 활성 목록에서 사라지므로 메모리에는 없다. TSV 로그가 유일한
+    // 기록이고, 일일 카운터와 호버 목록이 이미 그것을 읽는다 - 셋이 같은 파서를
+    // 지나므로 서로 다른 답을 낼 수가 없다.
+    //
+    // 읽기 전용이다. 완료 취소도 메모 수정도 없으므로 append-only 로그로 충분하고,
+    // 그 둘이 필요해지는 날에는 로그가 아니라 저장소가 필요해진다.
+    doneRangeKeys() {
+        const end = this.doneRangeEnd || new Date();
+        const start = new Date(end);
+        start.setDate(start.getDate() - (DONE_WINDOW_DAYS - 1));
+        // 로그 파일 이름은 로컬 날짜다. 카운터가 오늘치를 찾을 때 쓰는 것과 같은
+        // 변환을 쓴다 - 둘이 다른 날을 가리키면 개수와 목록이 어긋난다.
+        return {
+            from: formatWithPattern(start, 'YYYY-MM-DD'),
+            to: formatWithPattern(end, 'YYYY-MM-DD')
+        };
+    }
+
+    moveDoneRange(days) {
+        const at = new Date(this.doneRangeEnd || new Date());
+        at.setDate(at.getDate() + days);
+        // 앞으로는 오늘까지만. 로그에 내일은 없다.
+        const today = new Date();
+        this.doneRangeEnd = at > today ? today : at;
+        this.renderCompletedView();
+    }
+
+    async renderCompletedView() {
+        const body = document.getElementById('doneBody');
+        if (!body) return;
+
+        const { from, to } = this.doneRangeKeys();
+        const label = document.getElementById('doneLabel');
+        if (label) label.textContent = `${from} ~ ${to}`;
+
+        let rows = [];
+        if (this.isElectron && window.electronAPI.getCompletedRange) {
+            rows = await window.electronAPI.getCompletedRange(from, to) || [];
+        }
+        // 보이는 것이 완료 시각이므로 그것으로 줄을 세운다. TIMESTAMP 순으로
+        // 두면 소급해 체크한 줄이 엉뚱한 자리에 앉는데, 화면에는 완료 시각이
+        // 적혀 있어 정렬이 깨진 것처럼 보인다. 완료 시각이 비어 있던 옛 줄은
+        // TIMESTAMP 로 대신한다.
+        const when = (row) => row.completedAt || row.timestamp;
+        rows.sort((a, b) => when(b).localeCompare(when(a)));
+
+        // 검색은 여기서도 든다. 아무 일도 하지 않는 입력칸을 띄워 두는 것은
+        // 감추는 것보다 나쁘다.
+        const query = (this.searchQuery || '').trim().toLowerCase();
+        if (query) {
+            rows = rows.filter(row => [row.content, row.tags, row.note]
+                .some(field => (field || '').toLowerCase().includes(query)));
+        }
+
+        const count = document.getElementById('doneCount');
+        if (count) count.textContent = `${rows.length}` + ' ' + this.getLocalizedText('doneCountSuffix');
+
+        if (rows.length === 0) {
+            body.innerHTML = `<tr><td colspan="5" class="empty-message">${this.escapeHtml(this.getLocalizedText('nothingCompletedInRange'))}</td></tr>`;
+            return;
+        }
+
+        body.innerHTML = rows.map(row => `
+                <tr>
+                    <td>${this.escapeHtml(row.completedAt
+                        || this.formatDateTime(row.day + ' 00:00'))}</td>
+                    <td>${this.escapeHtml(row.targetTime
+                        ? this.formatDateTime(row.targetTime) : '')}</td>
+                    <td class="task-tags">${this.renderTagChips(row.tags)}</td>
+                    <td class="task-content">${this.escapeHtml(row.content)}</td>
+                    <td class="done-note">${this.escapeHtml(row.note || '')}</td>
+                </tr>`).join('');
     }
 
     // ---- 오늘 완료 목록 -----------------------------------------------------
@@ -2851,6 +2971,8 @@ ${link.dataset.path}`
         if (this.isCollapsed) {
             if (this.viewMode === 'calendar') this.renderCollapsedCalendar();
             else this.renderMiniCollapsedTasks();
+        } else if (this.viewMode === 'completed') {
+            this.renderCompletedView();
         } else if (this.viewMode === 'calendar') {
             this.renderCalendar();
             this.renderQuickFilters();
@@ -3046,10 +3168,7 @@ ${link.dataset.path}`
             
             const plainContent = task.content;
             
-            const displayTags = task.tags ? task.tags.split(/\s+/).filter(tag => tag.startsWith('#')).map(tag => {
-                const parsed = this.parseTagWithColor(tag);
-                return `<span class="tag" title="${parsed.content}" style="background-color: ${parsed.color.bg}; border-color: ${parsed.color.border}; color: ${parsed.color.text}">${parsed.content}</span>`;
-            }).join(' ') : '';
+            const displayTags = this.renderTagChips(task.tags);
             
             // 이름이 전부 선다. 클립 하나로는 무엇이 붙어 있는지 알 수 없어, 알려면
             // 매번 눌러 봐야 했다 - 이름이야말로 링크가 끊긴 뒤에도 남기려던 것이다.
@@ -4698,6 +4817,18 @@ ${link.dataset.path}`
             'GRAY': { bg: '#f6f8fa', border: '#6a737d', text: '#6a737d' },
             'PINK': { bg: '#fce8f3', border: '#e83e8c', text: '#e83e8c' }
         };
+    }
+
+    // 표와 완료 화면이 같은 칩을 그린다. 두 벌을 두면 한쪽만 바뀐다.
+    renderTagChips(tags) {
+        if (!tags) return '';
+        return tags.split(/\s+/).filter(tag => tag.startsWith('#')).map(tag => {
+            const parsed = this.parseTagWithColor(tag);
+            return `<span class="tag" title="${this.escapeHtml(parsed.content)}" ` +
+                `style="background-color: ${parsed.color.bg}; ` +
+                `border-color: ${parsed.color.border}; color: ${parsed.color.text}">` +
+                `${this.escapeHtml(parsed.content)}</span>`;
+        }).join(' ');
     }
 
     parseTagWithColor(tag) {

@@ -57,6 +57,7 @@ and that one works from anywhere - you do not have to click Tasktory first.
 - **List** — the table. Everything you can do to a task happens here
 - **Calendar** — a month grid; a task sits on its target day. Double-click one
   to edit it
+- **Completed** — what you finished, read from the logs, thirty days at a time
 - **Side strip** — 150px, read-only, for when you want it out of the way
 
 ### Finding things
@@ -196,6 +197,17 @@ Set a repeat in the task's edit form. The row then *is* the rule:
 - A task with no target time cannot repeat
 - **Until**: set an end date to stop the repeat there. Leave it empty and it
   carries on indefinitely. The last occurrence completes like any other task
+
+### Completed
+
+The third view, after list and calendar — press the view button twice. It shows
+what you finished, thirty days at a time, newest first, with the completion time
+and any note you left when ticking it off. The arrows step a period back and
+forward; **Recent** returns to today.
+
+It reads the log files, not the task list, because a finished task leaves the
+list. That also means it can show history from long before this feature existed.
+The search box filters it. It is read-only: there is no un-complete.
 
 ### Calendar view
 
