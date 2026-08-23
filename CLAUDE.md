@@ -444,6 +444,7 @@ This is a complete Electron application with the following structure:
   - **The period row is one family of controls.** Arrows, both date fields, the picker buttons, the presets and the close button are all `--control-height` with the same border and the same background. The presets were `.quick-chip` at first, which is a different height and shape, and the date field looked like a hole because the input must stay transparent for the overlay behind it — the **wrapper** carries the background instead. `check:ui` measures height and background across all five and fails if any diverge.
   - **Picking a date applies it.** `setDateValue` fires no event by design, so a value chosen in the picker never reached the listener and had to be confirmed with Enter afterwards. `applyDateTimePicker` dispatches `change`, and the fields apply on blur as well — Enter-only is discoverable to whoever wrote it and to nobody else.
   - **The tag chips are filled, exactly as the table fills its tags.** An outlined version was tried and reads as a different kind of thing; the same tag has to look the same everywhere.
+  - **The view toggle and collapse are hidden here, not disabled.** Neither has anything to do in the completed view — the 150px strip answers "what is next", which finished work is not. A button that will not press invites the question of why; a button that is not there asks nothing. The collapse *shortcut* still works and leaves the view first, so the key never goes dead.
   - **The lit counter is the only marker and the only exit.** Swapping the content alone leaves no way to know whether the list is filtered or this is different data. A heading and a close button were tried and both are redundant: the counter already reads `Completed`, so a heading repeats it, and a control whose whole job is "undo the last press" is the last press. The counter stays lit while the view is open, which says both *where you are* and *what closes it*.
   - **A change invalidates the copy; it never writes to both.** Two copies that are both written can disagree, and a discarded one cannot - the cost of being wrong is a re-read, which is bounded and known. Every writer still writes only to the log. Three places drop it: completing something, changing the period, and **importing a backup** - that last one is easy to miss because import rewrites whole log files, so the history changes without a single completion happening. It was missed here and the view kept showing the pre-import list.
   - **The range is read once and kept.** Filtering and sorting work on what was read; only changing the period goes back to disk, and completing something drops it. Re-reading on every draw meant a keystroke in the search box re-parsed the whole log — measured at 160–185ms per character over three years, against 10ms once the rows are in hand. This is also why "you cannot search across all history" is *not* a reason to reach for SQLite: you can, today, by widening the period. The reason is cost, and the cost is one read per period, not per keystroke.
@@ -667,6 +668,39 @@ page, and both are fixed in place:
 
 Measured before: page 1 `[33,41,124,124,107,297,99]` at 825px wide, page 2
 `[34,42,126,126,109,303,101]` at 842px. Both are identical now.
+
+### Columns you can drag
+
+The `th` percentages are the default and stay in the stylesheet; a width the
+user drags is written inline on top, so someone who never touches a grip sees
+exactly what they saw before.
+
+- **A drag takes from the next column and gives to it.** Simply growing a column
+  makes the table wider than the window, and this table is built on fitting:
+  widths sum to 100%, `scrollbar-gutter` holds the scrollbar's place, and the
+  columns must not move when you page. Two columns trading keeps the sum fixed
+  and no horizontal scrollbar ever appears. Minimum 44px, or a column collapses
+  to nothing and cannot be grabbed again.
+- **Widths are remembered per column *set*, keyed on the table's id and its
+  class list.** The attachment column appears and disappears, and that is the
+  only thing that changes how many columns there are — `has-attachments` in the
+  key separates the two. One shared set would overflow 100% the moment the
+  attachment column arrived. Deriving the set from computed `display` was tried
+  and is wrong: jsdom has no stylesheet, so both sets look identical there.
+- **The whole row is written, not just the two columns that moved.** Leaving the
+  rest on their stylesheet values means the next drag computes against a
+  different total.
+- **`setText` destroys grips**, because it assigns `textContent`. This is the
+  same trap the sort triangles hit: any header whose text is set by code needs
+  its label in a child `<span>`, and the `th` left alone. Six headers were
+  moved for this. If you add a header and its grip keeps vanishing, that is why.
+- The grip stops `click` as well as `mousedown` — stopping only the latter still
+  let the sort fire when the drag ended on a sortable header. Double-clicking a
+  grip drops the whole row back to the defaults.
+- **`td` clips.** A status badge is `white-space: nowrap`, so narrowing that
+  column pushed it 28px past the table's right edge. `overflow: hidden` cuts it
+  at the cell instead; the user chose the width, and a clipped badge shows that
+  choice better than one bleeding across the window.
 
 ### Visual weight
 

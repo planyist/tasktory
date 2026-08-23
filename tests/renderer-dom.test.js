@@ -1819,6 +1819,109 @@ describe('unfocused opacity', () => {
 // 끝낸 일은 활성 목록에서 사라지므로 메모리에는 없다. TSV 로그가 유일한 기록이고,
 // 일일 카운터와 호버 목록이 이미 그것을 읽는다 - 셋이 같은 파서를 지나므로 서로
 // 다른 답을 낼 수가 없다. 읽기 전용이다: 완료 취소도 메모 수정도 없다.
+// jsdom 에는 레이아웃이 없어 getBoundingClientRect 가 늘 0 이다. 그래서 여기서는
+// "무엇을 기억하고 무엇을 되돌리는가"만 본다 - 끌었을 때 실제로 몇 px 이 되는지는
+// scripts/check-ui.js 가 진짜 Chromium 에서 잰다.
+describe('column widths the user set', () => {
+    const table = () => document.getElementById('tasksTable')
+    const th = (id) => document.getElementById(id)
+
+    beforeEach(() => localStorage.removeItem('columnWidths'))
+
+    test('every column but the last gets something to drag', async () => {
+        await boot([task('a')])
+
+        const headers = [...table().tHead.rows[0].cells]
+        expect(headers.slice(0, -1).every((one) => one.querySelector('.col-grip'))).toBe(true)
+        // 마지막 칸에는 없다 - 가져올 다음 칸이 없다.
+        expect(headers[headers.length - 1].querySelector('.col-grip')).toBeNull()
+    })
+
+    test('nothing is written until someone drags', async () => {
+        await boot([task('a')])
+
+        expect(localStorage.getItem('columnWidths')).toBeNull()
+        expect(th('thStartTime').style.width).toBe('')
+    })
+
+    test('a saved width is put back on the next render', async () => {
+        const manager = await boot([task('a')])
+        const key = manager.columnLayoutKey(table())
+        localStorage.setItem('columnWidths', JSON.stringify({
+            [key]: { thStartTime: '22.000%', thTargetTime: '8.000%' }
+        }))
+
+        manager.renderTasks()
+
+        expect(th('thStartTime').style.width).toBe('22%')
+        expect(th('thTargetTime').style.width).toBe('8%')
+    })
+
+    // 첨부 컬럼이 나왔다 들어갔다 하므로 칸 구성이 두 가지다. 한 벌로 기억하면
+    // 첨부가 나타나는 순간 합이 100%를 넘는다.
+    test('the two column sets are remembered apart', async () => {
+        const manager = await boot([task('a')])
+        const plain = manager.columnLayoutKey(table())
+
+        manager.tasks = [task('a', { attachments: [{ name: 'x', path: '/x' }] })]
+        manager.renderTasks()
+        const withFiles = manager.columnLayoutKey(table())
+
+        expect(withFiles).not.toBe(plain)
+        expect(withFiles).toContain('has-attachments')
+    })
+
+    // 끌어 둔 폭이 첨부가 왔다 간 뒤에도 남아야 한다.
+    test('a width survives the attachment column coming and going', async () => {
+        const manager = await boot([task('a')])
+        const key = manager.columnLayoutKey(table())
+        localStorage.setItem('columnWidths', JSON.stringify({ [key]: { thStartTime: '22.000%' } }))
+
+        manager.tasks = [task('a', { attachments: [{ name: 'x', path: '/x' }] })]
+        manager.renderTasks()
+        expect(th('thStartTime').style.width).toBe('')
+
+        manager.tasks = [task('a')]
+        manager.renderTasks()
+        expect(th('thStartTime').style.width).toBe('22%')
+    })
+
+    test('double clicking a grip puts the whole row back to the defaults', async () => {
+        const manager = await boot([task('a')])
+        const key = manager.columnLayoutKey(table())
+        localStorage.setItem('columnWidths', JSON.stringify({ [key]: { thStartTime: '22.000%' } }))
+        manager.renderTasks()
+
+        th('thStartTime').querySelector('.col-grip')
+            .dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+
+        expect(th('thStartTime').style.width).toBe('')
+        expect(JSON.parse(localStorage.getItem('columnWidths'))[key]).toBeUndefined()
+    })
+
+    // 손잡이는 정렬 헤더 위에 얹혀 있다. 끄는 것과 누르는 것은 다른 일이다.
+    test('using a grip does not also sort the column', async () => {
+        const manager = await boot([task('a')])
+
+        const grip = th('thStartTime').querySelector('.col-grip')
+        grip.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 100 }))
+        document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: 130 }))
+        grip.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+
+        expect(manager.sortBy).toBeNull()
+    })
+
+    test('the completed table gets grips of its own', async () => {
+        const manager = await boot([])
+        document.getElementById('completionCounter').click()
+        await settle()
+
+        expect(document.querySelector('#doneTable .col-grip')).not.toBeNull()
+        expect(manager.columnLayoutKey(document.getElementById('doneTable')))
+            .toContain('doneTable')
+    })
+})
+
 describe('the completed view', () => {
     const done = (day, content, extra = {}) => ({
         day,
@@ -1900,15 +2003,34 @@ describe('the completed view', () => {
         expect(again.viewMode).toBe('list')
     })
 
-    // 완료 화면에서는 목록·달력 어느 쪽으로도 갈 수 없다. 나가는 문은 하나여야
-    // 헷갈리지 않는다.
-    test('the view toggle is out of reach while completed is open', async () => {
-        await boot([])
+    // 완료 화면에서는 보기 전환도 접기도 할 일이 없다. 꺼진 채로 두는 대신
+    // 감춘다 - 눌리지 않는 버튼은 왜 안 눌리는지 물어보게 만들지만, 없는 버튼은
+    // 아무것도 묻지 않는다.
+    test('the view toggle and collapse are not on screen while it is open', async () => {
+        const manager = await boot([])
 
         document.getElementById('completionCounter').click()
         await settle()
+        expect(document.getElementById('viewModeBtn').style.display).toBe('none')
+        expect(document.getElementById('collapseBtn').style.display).toBe('none')
 
-        expect(document.getElementById('viewModeBtn').disabled).toBe(true)
+        document.getElementById('completionCounter').click()
+        await settle()
+        expect(document.getElementById('viewModeBtn').style.display).not.toBe('none')
+        expect(document.getElementById('collapseBtn').style.display).not.toBe('none')
+    })
+
+    // 버튼은 감췄지만 전역 단축키는 살아 있다. 죽은 키로 두느니 나갔다가 접는다.
+    test('the collapse shortcut leaves first, then collapses', async () => {
+        const manager = await boot([])
+        document.getElementById('completionCounter').click()
+        await settle()
+
+        manager.toggleCollapse()
+        await settle()
+
+        expect(manager.isCollapsed).toBe(true)
+        expect(manager.viewMode).toBe('list')
     })
 
     test('reads the log, not the task list', async () => {

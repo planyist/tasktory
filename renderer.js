@@ -535,17 +535,17 @@ class TaskManager {
         this.setPlaceholder('searchInput', 'search');
         
         // Table headers
-        this.setText('thNumber', 'number');
+        this.setText('thNumberLabel', 'number');
         // 라벨만 바꾼다. th 전체에 넣으면 정렬 세모가 지워진다.
         this.setText('thStartTimeLabel', 'startTime');
         this.setText('thTargetTimeLabel', 'targetTime');
-        this.setText('thAttachments', 'attachmentsColumn');
+        this.setText('thAttachmentsLabel', 'attachmentsColumn');
         this.setText('thDoneAtLabel', 'doneAt');
         this.setText('thDoneStartLabel', 'startTime');
         this.setText('thDoneTargetLabel', 'targetTime');
-        this.setText('thDoneFiles', 'attachmentsColumn');
-        this.setText('thDoneTags', 'tags');
-        this.setText('thDoneContent', 'taskContent');
+        this.setText('thDoneFilesLabel', 'attachmentsColumn');
+        this.setText('thDoneTagsLabel', 'tags');
+        this.setText('thDoneContentLabel', 'taskContent');
         for (const [days, key] of [[7, 'doneLast7'], [30, 'doneLast30'], [90, 'doneLast90']]) {
             const chip = document.querySelector(`#donePresets [data-done-days="${days}"]`);
             if (chip) chip.textContent = this.getLocalizedText(key);
@@ -553,9 +553,9 @@ class TaskManager {
         this.setTitle('completionCounter', 'openCompletedView');
         this.setTitle('thStartTime', 'sortHint');
         this.setTitle('thTargetTime', 'sortHint');
-        this.setText('thTags', 'tags');
-        this.setText('thTaskContent', 'taskContent');
-        this.setText('thStatus', 'status');
+        this.setText('thTagsLabel', 'tags');
+        this.setText('thTaskContentLabel', 'taskContent');
+        this.setText('thStatusLabel', 'status');
         
         // Modal form labels
         this.setText('labelStartTime', 'startTime');
@@ -2695,13 +2695,18 @@ ${filePath}`);
 
         // 아이콘은 "지금 무엇인가"가 아니라 "누르면 무엇이 되는가"를 그린다.
         // 접기 버튼과 같은 규칙이라 둘이 따로 놀지 않는다.
+        // 완료 화면에서는 보기 전환도 접기도 할 일이 없다. 접힌 스트립은 "다음에
+        // 뭘 하지"에 답하는 자리이고 끝낸 일은 그 물음과 상관이 없다.
+        //
+        // 꺼진 채로 두는 대신 감춘다. 눌리지 않는 버튼은 왜 안 눌리는지 물어보게
+        // 만들지만, 없는 버튼은 아무것도 묻지 않는다.
+        show('viewModeBtn', !done);
+        show('collapseBtn', !done);
+
         const button = document.getElementById('viewModeBtn');
         if (button) {
             button.innerHTML = calendar ? LIST_ICON : CALENDAR_ICON;
             button.title = this.getLocalizedText(calendar ? 'listView' : 'calendarView');
-            // 완료 화면에서는 목록·달력 어느 쪽으로도 갈 수 없다. 나가는 문은
-            // 하나여야 헷갈리지 않는다.
-            button.disabled = done;
         }
         document.body.classList.toggle('calendar-mode', calendar);
         document.body.classList.toggle('completed-mode', done);
@@ -2730,6 +2735,127 @@ ${filePath}`);
         this.viewMode = this.viewBeforeCompleted || 'list';
         this.applyViewMode();
         this.renderTasks();
+    }
+
+    // ---- 컬럼 폭 조절 -------------------------------------------------------
+    // 기본값은 스타일시트가 정하고, 사용자가 끌어 정한 값만 인라인으로 덮는다.
+    // 그래서 한 번도 안 건드린 사람에게는 아무것도 달라지지 않는다.
+    //
+    // **옆 칸에서 가져오고 옆 칸에 준다.** 폭을 그냥 늘리면 표가 창보다 넓어져
+    // 가로 스크롤이 생기는데, 이 표는 "창에 들어맞는다"를 전제로 만들어져 있다
+    // (컬럼 합이 100%, scrollbar-gutter, 페이지를 넘겨도 안 흔들림). 두 칸이
+    // 주고받으면 합은 언제나 그대로다.
+    setupColumnResize(table) {
+        const headers = [...table.tHead.rows[0].cells];
+        headers.forEach((th, index) => {
+            // 마지막 칸에는 손잡이가 없다. 가져올 다음 칸이 없다.
+            if (index === headers.length - 1) return;
+            if (th.querySelector('.col-grip')) return;
+
+            const grip = document.createElement('span');
+            grip.className = 'col-grip';
+            grip.addEventListener('mousedown', (e) => this.startColumnDrag(e, table, th));
+            // mousedown 을 멈춰도 click 은 따로 온다. 그대로 두면 손잡이를 끈
+            // 뒤에 헤더의 정렬까지 한 번 돈다.
+            grip.addEventListener('click', (e) => e.stopPropagation());
+            // 두 번 누르면 이 칸만 기본값으로 되돌린다. 되돌릴 길이 없으면
+            // 한 번 잘못 끈 폭을 손으로 맞춰 놓아야 한다.
+            grip.addEventListener('dblclick', (e) => {
+                e.stopPropagation();
+                this.resetColumnWidths(table);
+            });
+            th.appendChild(grip);
+        });
+        this.applyColumnWidths(table);
+    }
+
+    // 첨부 컬럼이 나왔다 들어갔다 하므로 칸 구성이 두 가지다. 구성마다 따로
+    // 기억한다 - 한 벌로 두면 첨부가 나타나는 순간 합이 100%를 넘는다.
+    columnLayoutKey(table) {
+        // 칸 구성을 가르는 것은 표에 붙은 클래스다 - has-attachments 하나뿐이고,
+        // 그것이 붙고 떨어질 때만 칸 수가 달라진다. 계산된 display 로 가리면
+        // 스타일시트가 없는 곳(jsdom)에서는 두 구성이 같은 것으로 보인다.
+        return `${table.id}:${table.className}`;
+    }
+
+    loadColumnWidths(table) {
+        try {
+            const all = JSON.parse(localStorage.getItem('columnWidths') || '{}');
+            return all[this.columnLayoutKey(table)] || null;
+        } catch (error) {
+            return null;
+        }
+    }
+
+    saveColumnWidths(table, widths) {
+        let all = {};
+        try {
+            all = JSON.parse(localStorage.getItem('columnWidths') || '{}');
+        } catch (error) {
+            all = {};
+        }
+        if (widths) all[this.columnLayoutKey(table)] = widths;
+        else delete all[this.columnLayoutKey(table)];
+        localStorage.setItem('columnWidths', JSON.stringify(all));
+    }
+
+    applyColumnWidths(table) {
+        const saved = this.loadColumnWidths(table);
+        for (const th of table.tHead.rows[0].cells) {
+            th.style.width = saved && saved[th.id] ? saved[th.id] : '';
+        }
+    }
+
+    resetColumnWidths(table) {
+        this.saveColumnWidths(table, null);
+        this.applyColumnWidths(table);
+    }
+
+    startColumnDrag(event, table, th) {
+        // 헤더를 누르면 정렬이 도는 자리가 있다. 손잡이를 끄는 것은 그것과
+        // 다른 일이므로 여기서 멈춘다.
+        event.preventDefault();
+        event.stopPropagation();
+
+        const headers = [...table.tHead.rows[0].cells]
+            .filter(one => getComputedStyle(one).display !== 'none');
+        const at = headers.indexOf(th);
+        const next = headers[at + 1];
+        if (!next) return;
+
+        const total = table.getBoundingClientRect().width;
+        const startX = event.clientX;
+        const startLeft = th.getBoundingClientRect().width;
+        const startRight = next.getBoundingClientRect().width;
+        const MIN = 44;
+
+        document.body.classList.add('is-resizing-column');
+
+        const onMove = (move) => {
+            let delta = move.clientX - startX;
+            // 둘 다 최소 폭 아래로는 못 간다. 0이 되면 다시 잡을 수가 없다.
+            delta = Math.max(delta, MIN - startLeft);
+            delta = Math.min(delta, startRight - MIN);
+            th.style.width = `${((startLeft + delta) / total * 100).toFixed(3)}%`;
+            next.style.width = `${((startRight - delta) / total * 100).toFixed(3)}%`;
+        };
+
+        const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            document.body.classList.remove('is-resizing-column');
+
+            // 끌지 않은 칸까지 함께 적어 둔다. 둘만 적으면 나머지는 스타일시트
+            // 값으로 남아, 다음에 다른 자리를 끌 때 합이 어긋난다.
+            const widths = {};
+            for (const one of headers) {
+                widths[one.id] = `${(one.getBoundingClientRect().width / total * 100).toFixed(3)}%`;
+            }
+            this.saveColumnWidths(table, widths);
+        };
+
+        document.addEventListener('mousemove', onMove);
+        document.addEventListener('mouseup', onUp);
     }
 
     // ---- 완료 화면 ---------------------------------------------------------
@@ -2930,6 +3056,7 @@ ${filePath}`);
                 .some(field => (field || '').toLowerCase().includes(query)));
         }
 
+        this.setupColumnResize(document.getElementById('doneTable'));
         this.updateDoneSortIndicators();
 
         // 목록과 같은 페이저를 쓴다. 몇 건인지도 거기 적히므로 따로 세지 않는다.
@@ -3470,6 +3597,7 @@ ${link.dataset.path}`
             tbody.appendChild(row);
         });
 
+        this.setupColumnResize(document.getElementById('tasksTable'));
         this.updateSelectionUI();
         this.renderPagination(totalPages);
         this.markMissingAttachments();
@@ -3640,6 +3768,10 @@ ${link.dataset.path}`
     }
 
     toggleCollapse() {
+        // 완료 화면에서는 접기 버튼을 감췄지만 전역 단축키는 살아 있다. 죽은
+        // 키로 두느니 나갔다가 접는다 - 그래야 접었다 폈을 때 목록으로 돌아온다.
+        if (this.viewMode === 'completed') this.closeCompletedView();
+
         // 창이 옮겨가면서 포인터가 어디에 얹힐지 알 수 없다. 열려 있었다면 닫는다.
         this.hideCompletedList();
         this.isCollapsed = !this.isCollapsed;

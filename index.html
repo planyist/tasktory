@@ -114,14 +114,14 @@
                 <table id="tasksTable">
                     <thead>
                         <tr>
-                            <th class="select-col"><input type="checkbox" id="selectAllTasks"></th>
-                            <th id="thNumber">#</th>
+                            <th id="thSelect" class="select-col"><input type="checkbox" id="selectAllTasks"></th>
+                            <th id="thNumber"><span id="thNumberLabel">#</span></th>
                             <th id="thStartTime" class="sortable" data-sort="start"><span id="thStartTimeLabel">Start Time</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
                             <th id="thTargetTime" class="sortable" data-sort="target"><span id="thTargetTimeLabel">Target Time</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
-                            <th id="thTags">Tags</th>
-                            <th id="thTaskContent">Task Content</th>
-                            <th id="thAttachments" class="attach-col">Files</th>
-                            <th id="thStatus">Status</th>
+                            <th id="thTags"><span id="thTagsLabel">Tags</span></th>
+                            <th id="thTaskContent"><span id="thTaskContentLabel">Task Content</span></th>
+                            <th id="thAttachments" class="attach-col"><span id="thAttachmentsLabel">Files</span></th>
+                            <th id="thStatus"><span id="thStatusLabel">Status</span></th>
                         </tr>
                     </thead>
                     <tbody id="tasksBody">
@@ -187,9 +187,9 @@
                                 <th id="thDoneAt" class="sortable" data-done-sort="completedAt"><span id="thDoneAtLabel">Completed</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
                                 <th id="thDoneStart" class="sortable" data-done-sort="startTime"><span id="thDoneStartLabel">Start Time</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
                                 <th id="thDoneTarget" class="sortable" data-done-sort="targetTime"><span id="thDoneTargetLabel">Target Time</span><span class="sort-arrows" aria-hidden="true"><i class="sort-up"></i><i class="sort-down"></i></span></th>
-                                <th id="thDoneTags">Tags</th>
-                                <th id="thDoneContent">Task Content</th>
-                                <th id="thDoneFiles">Files</th>
+                                <th id="thDoneTags"><span id="thDoneTagsLabel">Tags</span></th>
+                                <th id="thDoneContent"><span id="thDoneContentLabel">Task Content</span></th>
+                                <th id="thDoneFiles"><span id="thDoneFilesLabel">Files</span></th>
                             </tr>
                         </thead>
                         <tbody id="doneBody"></tbody>

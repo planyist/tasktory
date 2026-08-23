@@ -1404,7 +1404,32 @@ thead {
    컬럼별 예외를 두지 않는다. */
 /* 머리는 표의 일부지 제목 띠가 아니다. 진한 남색 판(#2c3e50)은 시선을 먼저
    가져가는데, 정작 읽어야 할 것은 그 아래 내용이다. 얇은 밑줄만 남긴다. */
+/* 칸 사이를 잡아 끄는 자리. 8px 이면 노려서 잡을 수 있으면서 글자를 가리지
+   않는다. 마지막 칸에는 없다 - 가져올 다음 칸이 없다. */
+.col-grip {
+    position: absolute;
+    top: 0;
+    right: -4px;
+    width: 8px;
+    height: 100%;
+    cursor: col-resize;
+    /* 정렬 삼각형 위로 올라오면 안 된다. 손잡이는 칸 경계에만 있다. */
+    z-index: 1;
+}
+
+.col-grip:hover {
+    background-color: rgba(52, 152, 219, 0.35);
+}
+
+/* 끄는 동안 글자가 잡히면 파란 선택 영역이 표를 가로지른다. */
+body.is-resizing-column {
+    cursor: col-resize;
+    user-select: none;
+}
+
 th {
+    /* 손잡이의 기준점 */
+    position: relative;
     padding: 9px 8px;
     text-align: center;
     font-weight: 600;
@@ -1535,6 +1560,10 @@ td {
     /* table-layout: fixed 에서는 칸이 내용에 맞춰 넓어지지 않는다. 긴 태그처럼
        끊을 곳 없는 문자열은 칸 밖으로 삐져나가므로 강제로 접는다. */
     overflow-wrap: break-word;
+    /* 접히지 않는 것도 있다. 상태 배지는 white-space: nowrap 이라, 사용자가 그
+       칸을 좁히면 표 바깥까지 28px 흘러나갔다. 칸 경계에서 자른다 - 좁힌 것은
+       사용자의 선택이고, 잘린 모습이 흘러나간 모습보다 그 선택을 잘 보여준다. */
+    overflow: hidden;
     font-weight: 500;
     text-align: center;
 }
