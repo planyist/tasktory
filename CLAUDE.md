@@ -742,9 +742,14 @@ exactly what they saw before.
   key separates the two. One shared set would overflow 100% the moment the
   attachment column arrived. Deriving the set from computed `display` was tried
   and is wrong: jsdom has no stylesheet, so both sets look identical there.
-- **The whole row is written, not just the two columns that moved.** Leaving the
-  rest on their stylesheet values means the next drag computes against a
-  different total.
+- **Only the two columns that moved are written.** Writing the whole row was
+  tried and it makes every other column creep: the saved value is the *measured*
+  pixel width turned back into a percentage, which is not the declared one — a
+  column widened by its own content reads wider, the rest lose a rounding step,
+  and saving what you just measured compounds it. Observed across three drags in
+  one session: `4.000% → 3.999% → 3.998%` on a column never touched, and
+  `5.000% → 5.332%` on another. Two entries are enough because the drag conserves
+  the pair's total and leaves everyone else on their stylesheet value.
 - **`setText` destroys grips**, because it assigns `textContent`. This is the
   same trap the sort triangles hit: any header whose text is set by code needs
   its label in a child `<span>`, and the `th` left alone. Six headers were

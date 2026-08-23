@@ -1886,6 +1886,66 @@ describe('column widths the user set', () => {
         expect(th('thStartTime').style.width).toBe('22%')
     })
 
+    // jsdom 에는 레이아웃이 없으므로 폭을 손으로 물려준다. 여기서 보려는 것은
+    // 픽셀이 아니라 "무엇이 기록되는가" 다.
+    const fakeLayout = (table, pixels) => {
+        table.getBoundingClientRect = () => ({ width: 800 })
+        const cells = [...table.tHead.rows[0].cells]
+        cells.forEach((cell, at) => {
+            cell.getBoundingClientRect = () => ({ width: pixels[at] })
+        })
+    }
+    const dragBy = (th, dx) => {
+        th.querySelector('.col-grip')
+            .dispatchEvent(new MouseEvent('mousedown', { bubbles: true, clientX: 0 }))
+        document.dispatchEvent(new MouseEvent('mousemove', { bubbles: true, clientX: dx }))
+        document.dispatchEvent(new MouseEvent('mouseup', { bubbles: true, clientX: dx }))
+    }
+
+    // 전부 적어 두던 때는 끌지도 않은 칸이 끌 때마다 밀렸다. 측정한 픽셀을
+    // 퍼센트로 되돌려 적는데 그 값이 선언한 값과 미세하게 다르고, 저장한 것을
+    // 다시 재서 저장하니 오차가 쌓였다 - 4.000 → 3.999 → 3.998 로 흘렀다.
+    test('a drag writes down only the two columns that moved', async () => {
+        const manager = await boot([task('a')])
+        fakeLayout(table(), [32, 40, 120, 120, 104, 288, 0, 96])
+
+        dragBy(th('thStartTime'), 40)
+
+        const saved = JSON.parse(localStorage.getItem('columnWidths'))
+        const one = saved[manager.columnLayoutKey(table())]
+        expect(Object.keys(one).sort()).toEqual(['thStartTime', 'thTargetTime'])
+    })
+
+    test('and leaves the others with no width of their own', async () => {
+        await boot([task('a')])
+        fakeLayout(table(), [32, 40, 120, 120, 104, 288, 0, 96])
+
+        dragBy(th('thStartTime'), 40)
+
+        expect(th('thSelect').style.width).toBe('')
+        expect(th('thNumber').style.width).toBe('')
+        expect(th('thStatus').style.width).toBe('')
+    })
+
+    // 다른 자리를 끌어도 앞서 끈 것은 남아야 한다.
+    test('a second drag elsewhere keeps the first one', async () => {
+        const manager = await boot([task('a')])
+        fakeLayout(table(), [32, 40, 120, 120, 104, 288, 0, 96])
+
+        dragBy(th('thStartTime'), 40)
+        const first = JSON.parse(localStorage.getItem('columnWidths'))[
+            manager.columnLayoutKey(table())].thStartTime
+
+        fakeLayout(table(), [32, 40, 160, 80, 104, 288, 0, 96])
+        dragBy(th('thTags'), -20)
+
+        const saved = JSON.parse(localStorage.getItem('columnWidths'))[
+            manager.columnLayoutKey(table())]
+        expect(Object.keys(saved).sort())
+            .toEqual(['thStartTime', 'thTags', 'thTargetTime', 'thTaskContent'])
+        expect(saved.thStartTime).toBe(first)
+    })
+
     test('double clicking a grip puts the whole row back to the defaults', async () => {
         const manager = await boot([task('a')])
         const key = manager.columnLayoutKey(table())

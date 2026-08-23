@@ -2937,13 +2937,23 @@ ${filePath}`);
             document.removeEventListener('mouseup', onUp);
             document.body.classList.remove('is-resizing-column');
 
-            // 끌지 않은 칸까지 함께 적어 둔다. 둘만 적으면 나머지는 스타일시트
-            // 값으로 남아, 다음에 다른 자리를 끌 때 합이 어긋난다.
-            const widths = {};
-            for (const one of headers) {
-                widths[one.id] = `${(one.getBoundingClientRect().width / total * 100).toFixed(3)}%`;
-            }
-            this.saveColumnWidths(table, widths);
+            // 움직인 두 칸만 적는다. 나머지는 스타일시트 값으로 두어야 한다.
+            //
+            // 전부 적어 두던 때는 **끌지도 않은 칸이 끌 때마다 밀렸다.** 측정한
+            // 픽셀을 퍼센트로 되돌려 적는데, 그 값은 선언한 값과 미세하게 다르다 -
+            // 내용이 밀어내 넓어진 칸(# 처럼)은 더 넓게 잡히고, 나머지는 반올림
+            // 만큼 흘러내린다. 저장한 값을 다시 재서 저장하는 것이 되풀이되니
+            // 오차가 쌓인다. 실제로 4.000 → 3.999 → 3.998, 5.000 → 5.332 로
+            // 흘렀다.
+            //
+            // 두 칸만 적어도 합은 그대로다. 이 드래그는 한 칸이 내준 만큼 옆 칸이
+            // 가져가므로 둘의 합이 보존되고, 나머지는 손대지 않았으니 원래 값
+            // 그대로다.
+            this.saveColumnWidths(table, {
+                ...(this.loadColumnWidths(table) || {}),
+                [th.id]: th.style.width,
+                [next.id]: next.style.width
+            });
         };
 
         document.addEventListener('mousemove', onMove);
