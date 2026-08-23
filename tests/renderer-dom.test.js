@@ -2020,8 +2020,10 @@ describe('the completed view', () => {
         expect(document.getElementById('collapseBtn').style.display).not.toBe('none')
     })
 
-    // 버튼은 감췄지만 전역 단축키는 살아 있다. 죽은 키로 두느니 나갔다가 접는다.
-    test('the collapse shortcut leaves first, then collapses', async () => {
+    // 버튼을 감춰 놓고 단축키로만 되게 두면 화면에 없는 동작이 키에만 살아
+    // 있는 셈이다. 접힌 스트립은 "다음에 뭘 하지"에 답하는 자리라 끝낸 일과
+    // 상관이 없다.
+    test('the collapse shortcut does nothing while it is open', async () => {
         const manager = await boot([])
         document.getElementById('completionCounter').click()
         await settle()
@@ -2029,8 +2031,22 @@ describe('the completed view', () => {
         manager.toggleCollapse()
         await settle()
 
+        expect(manager.isCollapsed).toBe(false)
+        expect(manager.viewMode).toBe('completed')
+    })
+
+    // 나온 뒤에는 다시 듣는다.
+    test('and works again once you leave', async () => {
+        const manager = await boot([])
+        document.getElementById('completionCounter').click()
+        await settle()
+        document.getElementById('completionCounter').click()
+        await settle()
+
+        manager.toggleCollapse()
+        await settle()
+
         expect(manager.isCollapsed).toBe(true)
-        expect(manager.viewMode).toBe('list')
     })
 
     test('reads the log, not the task list', async () => {

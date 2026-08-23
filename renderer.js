@@ -3768,9 +3768,10 @@ ${link.dataset.path}`
     }
 
     toggleCollapse() {
-        // 완료 화면에서는 접기 버튼을 감췄지만 전역 단축키는 살아 있다. 죽은
-        // 키로 두느니 나갔다가 접는다 - 그래야 접었다 폈을 때 목록으로 돌아온다.
-        if (this.viewMode === 'completed') this.closeCompletedView();
+        // 완료 화면에서는 접지 않는다. 버튼을 감춰 놓고 단축키로만 되게 두면
+        // 화면에 없는 동작이 키에만 살아 있는 셈이고, 접힌 스트립은 "다음에 뭘
+        // 하지"에 답하는 자리라 끝낸 일과는 상관이 없다.
+        if (this.viewMode === 'completed') return;
 
         // 창이 옮겨가면서 포인터가 어디에 얹힐지 알 수 없다. 열려 있었다면 닫는다.
         this.hideCompletedList();

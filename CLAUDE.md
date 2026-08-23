@@ -444,7 +444,7 @@ This is a complete Electron application with the following structure:
   - **The period row is one family of controls.** Arrows, both date fields, the picker buttons, the presets and the close button are all `--control-height` with the same border and the same background. The presets were `.quick-chip` at first, which is a different height and shape, and the date field looked like a hole because the input must stay transparent for the overlay behind it — the **wrapper** carries the background instead. `check:ui` measures height and background across all five and fails if any diverge.
   - **Picking a date applies it.** `setDateValue` fires no event by design, so a value chosen in the picker never reached the listener and had to be confirmed with Enter afterwards. `applyDateTimePicker` dispatches `change`, and the fields apply on blur as well — Enter-only is discoverable to whoever wrote it and to nobody else.
   - **The tag chips are filled, exactly as the table fills its tags.** An outlined version was tried and reads as a different kind of thing; the same tag has to look the same everywhere.
-  - **The view toggle and collapse are hidden here, not disabled.** Neither has anything to do in the completed view — the 150px strip answers "what is next", which finished work is not. A button that will not press invites the question of why; a button that is not there asks nothing. The collapse *shortcut* still works and leaves the view first, so the key never goes dead.
+  - **The view toggle and collapse are hidden here, not disabled.** Neither has anything to do in the completed view — the 150px strip answers "what is next", which finished work is not. A button that will not press invites the question of why; a button that is not there asks nothing. The collapse **shortcut is ignored too**: hiding the button and leaving the key working would put an action in the app that exists nowhere on screen.
   - **The lit counter is the only marker and the only exit.** Swapping the content alone leaves no way to know whether the list is filtered or this is different data. A heading and a close button were tried and both are redundant: the counter already reads `Completed`, so a heading repeats it, and a control whose whole job is "undo the last press" is the last press. The counter stays lit while the view is open, which says both *where you are* and *what closes it*.
   - **A change invalidates the copy; it never writes to both.** Two copies that are both written can disagree, and a discarded one cannot - the cost of being wrong is a re-read, which is bounded and known. Every writer still writes only to the log. Three places drop it: completing something, changing the period, and **importing a backup** - that last one is easy to miss because import rewrites whole log files, so the history changes without a single completion happening. It was missed here and the view kept showing the pre-import list.
   - **The range is read once and kept.** Filtering and sorting work on what was read; only changing the period goes back to disk, and completing something drops it. Re-reading on every draw meant a keystroke in the search box re-parsed the whole log — measured at 160–185ms per character over three years, against 10ms once the rows are in hand. This is also why "you cannot search across all history" is *not* a reason to reach for SQLite: you can, today, by widening the period. The reason is cost, and the cost is one read per period, not per keystroke.
@@ -675,6 +675,14 @@ The `th` percentages are the default and stay in the stylesheet; a width the
 user drags is written inline on top, so someone who never touches a grip sees
 exactly what they saw before.
 
+- **The boundary is drawn, or nobody thinks to pull it.** `col-resize` only
+  appears once the pointer is already there, which is after you had the idea.
+  A short line at rest says the edge is a thing; hovering turns it full-height
+  and blue. Contrast was measured against the header band and raised — 1.39 and
+  1.45 were invisible, 1.78 (light) and 2.49 (dark) read. This does not
+  contradict removing the vertical dividers from the body: those separated
+  content and built a cage, this one marks a handle, and it is in the header row
+  only.
 - **A drag takes from the next column and gives to it.** Simply growing a column
   makes the table wider than the window, and this table is built on fitting:
   widths sum to 100%, `scrollbar-gutter` holds the scrollbar's place, and the

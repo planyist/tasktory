@@ -281,7 +281,7 @@ Colours: `RED`, `GREEN`, `BLUE`, `YELLOW`, `PURPLE`, `ORANGE`, `GRAY`, `PINK`.
 
 ### Column widths
 
-Drag the edge between two column headers to move it. The two columns trade
+Each column header has a line on its right edge — drag it to move the boundary. The two columns trade
 width, so the table always fits the window and never scrolls sideways. Widths
 are remembered; double-click an edge to put the whole row back to the defaults.
 

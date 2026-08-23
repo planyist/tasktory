@@ -1417,8 +1417,33 @@ thead {
     z-index: 1;
 }
 
-.col-grip:hover {
-    background-color: rgba(52, 152, 219, 0.35);
+/* 잡을 수 있다는 것을 선으로 말한다. 커서 모양은 이미 그 자리에 가야 알 수
+   있으니, 가기 전에 알려주는 것이 없으면 끌어볼 생각 자체가 나지 않는다.
+   본문 칸의 세로 구분선은 일부러 없앴지만(줄무늬가 이미 행을 가른다) 머리줄의
+   이 선은 구분이 아니라 손잡이 표시다. */
+.col-grip::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 25%;
+    height: 50%;
+    width: 1px;
+    background-color: #b4bec9;
+}
+
+.col-grip:hover::before {
+    top: 0;
+    height: 100%;
+    width: 2px;
+    background-color: #3498db;
+}
+
+body.dark-mode .col-grip::before {
+    background-color: #6b7480;
+}
+
+body.dark-mode .col-grip:hover::before {
+    background-color: #3498db;
 }
 
 /* 끄는 동안 글자가 잡히면 파란 선택 영역이 표를 가로지른다. */
