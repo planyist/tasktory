@@ -1264,11 +1264,41 @@ class TaskManager {
         });
 
         document.getElementById('outputList').addEventListener('click', (e) => {
-            const remove = e.target.closest('[data-remove-output]');
-            if (!remove) return;
-            this.pendingOutputs = this.pendingOutputs
-                .filter(one => one.path !== remove.dataset.removeOutput);
-            this.renderOutputList();
+            const item = e.target.closest('.attachment-item');
+            if (!item) return;
+            const filePath = item.dataset.path;
+            if (e.target.closest('[data-remove]')) {
+                this.pendingOutputs = this.pendingOutputs.filter(one => one.path !== filePath);
+                this.renderOutputList();
+            } else if (e.target.closest('[data-reveal]')) {
+                window.electronAPI.revealAttachment(filePath);
+            } else if (e.target.closest('[data-open]')) {
+                this.openAttachment(filePath);
+            }
+        });
+
+        // 받는 자리는 확인 창 전체다. 점선 칸은 어디로 가는지 알려주는 표시일
+        // 뿐이고, 거기에만 맞춰 떨어뜨리게 하면 대부분 빗나간다 - 편집 창이
+        // 이미 그렇게 배운 것이다. 문서 전체의 기본 드롭 차단은 그쪽에서 이미
+        // 걸어 두었으므로, 여기서는 받기만 하면 된다.
+        const outputDrop = document.getElementById('outputDrop');
+        const confirmModal = document.getElementById('confirmModal');
+        confirmModal.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            outputDrop.classList.add('over');
+        });
+        confirmModal.addEventListener('dragleave', (e) => {
+            if (!e.relatedTarget || !confirmModal.contains(e.relatedTarget)) {
+                outputDrop.classList.remove('over');
+            }
+        });
+        confirmModal.addEventListener('drop', (e) => {
+            e.preventDefault();
+            outputDrop.classList.remove('over');
+            if (!this.isElectron) return;
+            this.addOutputs([...e.dataTransfer.files]
+                .map(file => ({ name: file.name, path: window.electronAPI.pathForFile(file) }))
+                .filter(item => item.path));
         });
 
         // 첨부: 고르기 / 끌어다 놓기 / 열기·폴더보기·빼기
@@ -2282,12 +2312,17 @@ class TaskManager {
             label.textContent = this.getLocalizedText('outputs') + (count ? ` (${count})` : '');
         }
 
+        // 편집 창의 첨부 줄과 같은 모양이다. 다르게 생기면 같은 것을 다르게
+        // 다뤄야 하는 줄 알게 된다. 끊김 확인만 하지 않는다 - 방금 고른
+        // 파일이라 그 자리에 있는 것이 당연하다.
         list.innerHTML = this.pendingOutputs.map(item => `
-            <li class="attachment-item">
-                <span class="attachment-name" title="${this.escapeHtml(item.path)}"
-                    >${this.escapeHtml(item.name)}</span>
-                <button type="button" class="attachment-remove"
-                    data-remove-output="${this.escapeHtml(item.path)}">&times;</button>
+            <li class="attachment-item" data-path="${this.escapeHtml(item.path)}">
+                <button type="button" class="attachment-open" data-open
+                        title="${this.escapeHtml(item.path)}">${this.escapeHtml(item.name)}</button>
+                <button type="button" class="attachment-reveal" data-reveal
+                        title="${this.getLocalizedText('revealInFolder')}">📂</button>
+                <button type="button" class="attachment-remove" data-remove
+                        title="${this.getLocalizedText('delete')}">×</button>
             </li>`).join('');
     }
 

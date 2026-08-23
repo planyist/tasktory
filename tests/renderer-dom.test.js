@@ -1964,13 +1964,55 @@ describe('what came out, left at the moment of completing', () => {
         document.getElementById('outputPickBtn').click()
         await settle()
 
-        expect([...document.querySelectorAll('#outputList .attachment-name')]
+        expect([...document.querySelectorAll('#outputList .attachment-open')]
             .map((one) => one.textContent)).toEqual(['week34.docx'])
         expect(document.getElementById('labelConfirmOutputs').textContent).toContain('(1)')
 
-        document.querySelector('#outputList [data-remove-output]').click()
+        document.querySelector('#outputList [data-remove]').click()
         await settle()
         expect(document.querySelectorAll('#outputList .attachment-item')).toHaveLength(0)
+    })
+
+    // 편집 창의 첨부와 다르게 생기면 같은 것을 다르게 다뤄야 하는 줄 알게 된다.
+    test('a row looks and behaves like the edit form does', async () => {
+        const manager = await openComplete(['a'])
+        electronAPI.pickAttachments.mockResolvedValue([
+            { name: 'week34.docx', path: '/out/week34.docx' }
+        ])
+        document.getElementById('outputPickBtn').click()
+        await settle()
+
+        const item = document.querySelector('#outputList .attachment-item')
+        expect(item.dataset.path).toBe('/out/week34.docx')
+        expect(item.querySelector('[data-open]')).not.toBeNull()
+        expect(item.querySelector('[data-reveal]')).not.toBeNull()
+        expect(item.querySelector('[data-remove]')).not.toBeNull()
+
+        item.querySelector('[data-open]').click()
+        await settle()
+        expect(electronAPI.openAttachment).toHaveBeenCalledWith('/out/week34.docx')
+
+        item.querySelector('[data-reveal]').click()
+        await settle()
+        expect(electronAPI.revealAttachment).toHaveBeenCalledWith('/out/week34.docx')
+    })
+
+    // 점선 칸에만 맞춰 떨어뜨리게 하면 대부분 빗나간다. 받는 자리는 창 전체다 -
+    // 편집 창이 이미 그렇게 배웠고, 빗나간 드롭은 Chromium 이 그 파일로
+    // 이동해 버려 앱이 통째로 날아간다.
+    test('a file dropped anywhere in the dialog is taken', async () => {
+        await openComplete(['a'])
+        electronAPI.pathForFile.mockReturnValue('/out/dropped.docx')
+
+        const drop = new Event('drop', { bubbles: true, cancelable: true })
+        drop.dataTransfer = { files: [{ name: 'dropped.docx' }] }
+        // 점선 칸이 아니라 창의 다른 구석에 떨어뜨린다
+        document.getElementById('confirmDetails').dispatchEvent(drop)
+        await settle()
+
+        expect([...document.querySelectorAll('#outputList .attachment-open')]
+            .map((one) => one.textContent)).toEqual(['dropped.docx'])
+        expect(drop.defaultPrevented).toBe(true)
     })
 
     test('the same file twice is once', async () => {

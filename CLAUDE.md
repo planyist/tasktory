@@ -372,6 +372,7 @@ if the file is called `report_final.docx` every time. Split, one column answers
   dialog takes an array; with five rows there is nowhere to record whose result
   a file is. Same rule as edit needing exactly one selection. `runBulkAction`
   decides on `ids.length === 1` rather than handing it to the first row.
+- **It is the edit form's attachment box, not a lookalike.** The row carries the same three controls in the same order — open, reveal in folder, remove — and the drop target is the **whole confirm dialog**, not the dashed box, for the same reason the edit form takes drops anywhere: aim at the box alone and most drops miss, and a miss makes Chromium navigate to the file. Shipping it with only a name and an × was a real complaint; a control that looks like another one has to behave like it.
 - **It sits at the bottom of the dialog**, after the note, the way attachments sit after the content in the edit form. The same consequence follows: a newly linked file renders below the fold and pressing *Choose files* looks like it did nothing, so `addOutputs` scrolls the row into view and flashes it, exactly as `addAttachments` does.
 - **`pendingOutputs` is cleared every time the dialog opens**, or the last
   completion's file follows the next one.
