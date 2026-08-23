@@ -254,6 +254,23 @@ app.whenReady().then(async () => {
         `높이 ${heights.join('/')} 배경 ${grounds.join(' / ')}`)
     await run(`taskManager.closeCompletedView(); 'ok'`)
 
+    // 머리는 다 같은 방향을 봐야 한다. 한 칸만 다르면 그 칸이 다른 종류처럼
+    // 읽힌다 - 실제로 .attach-col 을 th 와 td 에 함께 걸어 두는 바람에 첨부
+    // 머리만 혼자 왼쪽으로 나가 있었다. 칸 안의 정렬은 칸마다 달라도 된다.
+    const headAlign = JSON.parse(await run(`(() => {
+        const of = (table) => [...document.querySelectorAll(table + ' thead th')]
+            .filter(th => getComputedStyle(th).display !== 'none')
+            .map(th => getComputedStyle(th).textAlign);
+        taskManager.openCompletedView();
+        const done = of('#doneTable');
+        taskManager.closeCompletedView();
+        return JSON.stringify({ list: of('#tasksTable'), done });
+    })()`))
+    const oneWay = (list) => [...new Set(list)].length === 1
+    check('표 머리는 모든 칸이 같은 방향',
+        oneWay(headAlign.list) && oneWay(headAlign.done),
+        `목록 ${[...new Set(headAlign.list)].join('/')} 완료 ${[...new Set(headAlign.done)].join('/')}`)
+
     // --- 3. 페이저가 생겼다 사라져도 표 높이가 그대로 -----------------------
     await run(seed(5))
     const few = JSON.parse(await run(geometry))

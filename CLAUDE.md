@@ -237,6 +237,12 @@ backup, so a copied 400MB video would be in every backup.
   the shifting the table is built to prevent. Its 4% comes out of task content,
   the widest column and the only one that wraps.
 
+  **A class on the column hits the header too.** `.attach-col` sits on both the
+  `th` and the `td`, so left-aligning the names left-aligned the heading with
+  them and that one column's head faced a different way from the other seven.
+  It is `td.attach-col` now, and `check:ui` compares the alignment of every
+  visible head in both tables.
+
   **`nth-child` counts hidden cells.** Inserting the column pushed content and
   status along one place each while the width rules stayed put, so the two
   swapped widths — status took 36% and content 12%. The percentages still summed
