@@ -117,10 +117,18 @@ app.whenReady().then(async () => {
             if (now !== from && now === previous) return now
             previous = now
         }
-        return previous
+        // 끝내 변하지 않았다. 그것은 색이 틀렸다는 뜻이 아니라 재지 못했다는
+        // 뜻이므로, 색인 척 돌려주지 않는다 - 재지 못한 것을 결함으로 적으면
+        // 검사를 믿을 수 없게 된다.
+        return null
     }
 
     const addHoverBg = async (dark) => {
+        // 창을 앞으로 세운다. show: true 만으로는 모자랐다 - 다른 창이 앞에 있으면
+        // 보내는 마우스 이동이 :hover 를 걸지 못해, 쉬는 색을 호버 색이라고 답한다.
+        // 실제로 그렇게 한 번 실패했고, 그때 두 테마 모두 rgb(40,167,69) 가 나왔다.
+        win.focus()
+        await new Promise((r) => setTimeout(r, 150))
         await run(`taskManager.darkMode = ${dark}; taskManager.applyTheme(); 'ok'`)
         const box = JSON.parse(await run(`(() => {
             const r = document.getElementById('addTaskBtn').getBoundingClientRect();
@@ -140,7 +148,10 @@ app.whenReady().then(async () => {
     }
     const [hoverLight, hoverDark] = [await addHoverBg(false), await addHoverBg(true)]
     dbg.detach()
-    check('추가 버튼이 호버에서도 두 테마 모두 초록',
+    if (hoverLight === null || hoverDark === null) {
+        check('추가 버튼이 호버에서도 두 테마 모두 초록', false,
+            '호버가 걸리지 않아 재지 못했다 (창이 앞에 있는지 확인)')
+    } else check('추가 버튼이 호버에서도 두 테마 모두 초록',
         hoverLight === hoverDark && hoverLight.includes('47, 158, 79'),
         `light=${hoverLight} dark=${hoverDark}`)
 

@@ -832,7 +832,7 @@ the button beside it — for the rest of the session, on a screen the help does
 not own. It looked like a dark-mode bug because that is what the person happened
 to be in at the time.
 
-**`check:ui` needs `show: true`.** A hidden window never applies `:hover`, and
+**`check:ui` needs `show: true` *and* `win.focus()`.** A hidden window never applies `:hover`, and neither does one sitting behind another - with VS Code in front the hover check read the resting green in both themes and reported a colour mismatch that did not exist. It failed three times in three different ways before this: a fixed 400ms wait catching a mid-transition value, then a settle loop that returned the pre-hover colour because it was already stable, then this. `settled()` returns null when the value never moves, and the check says it could not measure rather than naming a colour. A check that fails at random is worse than none, and
 `CSS.forcePseudoState` over CDP did not reach `getComputedStyle` either — both
 were tried, and both silently reported the resting colour, which looks exactly
 like a passing test.
