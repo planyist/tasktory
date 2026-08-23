@@ -98,6 +98,8 @@ body {
    화면에서 가장 눈에 띄는 요소였다. 검색 줄과 같은 키에 맞춰 조용히 둔다. */
 .completion-counter {
     position: relative;
+    /* 눌러서 여는 것이라고 말해 주어야 한다. */
+    cursor: pointer;
     display: flex;
     align-items: center;
     gap: 6px;
@@ -2025,11 +2027,6 @@ body.dark-mode .done-tilde {
     color: #9aa5b1;
 }
 
-/* 눌러서 여는 것이라고 말해 주어야 한다. */
-.completion-counter {
-    cursor: pointer;
-}
-
 /* 완료 화면이 열려 있는 동안 들어온 문도 열린 채로 남는다. 화면만 바뀌면
    목록을 거른 것인지 다른 데이터인지 구분할 수가 없다. */
 .completion-counter.is-open {
@@ -2492,10 +2489,6 @@ th.sortable {
     position: relative;
 }
 
-th.sortable:hover {
-    color: #2c3e50;
-}
-
 /* 정렬이 된다는 사실은 눌러보기 전에 보여야 한다. 흐린 ↕ 를 늘 띄워두고,
    정렬 중일 때만 진한 화살표로 바꾼다. 세 상태의 자리가 같아서 글자가 밀리지
    않는다. 머리글이 작아 크기는 따로 준다 - 물려받으면 눈에 띄지 않는다. */
@@ -2546,6 +2539,7 @@ th.sortable .sort-arrows i {
    훨씬 먼저 눈에 들어온다. */
 th.sortable:hover {
     background-color: rgba(0, 0, 0, 0.05);
+    color: #2c3e50;
 }
 
 th.sortable:hover::after {

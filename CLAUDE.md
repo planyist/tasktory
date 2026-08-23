@@ -372,6 +372,7 @@ if the file is called `report_final.docx` every time. Split, one column answers
   dialog takes an array; with five rows there is nowhere to record whose result
   a file is. Same rule as edit needing exactly one selection. `runBulkAction`
   decides on `ids.length === 1` rather than handing it to the first row.
+- **It sits at the bottom of the dialog**, after the note, the way attachments sit after the content in the edit form. The same consequence follows: a newly linked file renders below the fold and pressing *Choose files* looks like it did nothing, so  scrolls the row into view and flashes it, exactly as  does.
 - **`pendingOutputs` is cleared every time the dialog opens**, or the last
   completion's file follows the next one.
 - In the completed view the outputs come **first and bold**; the attachments are

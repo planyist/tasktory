@@ -2297,6 +2297,14 @@ class TaskManager {
         if (!added.length) return;
         this.pendingOutputs = [...this.pendingOutputs, ...added];
         this.renderOutputList();
+
+        // 상자가 창 맨 아래에 있어, 붙인 줄이 화면 밖에 그려지면 눌렀는데
+        // 아무 일도 안 일어난 것처럼 보인다. 편집 창의 첨부가 겪은 그대로다.
+        const rows = document.querySelectorAll('#outputList .attachment-item');
+        for (const li of [...rows].slice(-added.length)) {
+            li.classList.add('just-added');
+            if (li.scrollIntoView) li.scrollIntoView({ block: 'center' });
+        }
     }
 
     async renderAttachmentList() {
