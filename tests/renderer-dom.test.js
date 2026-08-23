@@ -2123,6 +2123,48 @@ describe('the completed view', () => {
         expect(counter.classList.contains('is-open')).toBe(false)
     })
 
+    // 그리기마다 읽으면 검색어 한 글자에 로그 전체를 다시 훑는다. 3년치에서
+    // 글자당 160~185ms 로 재였고, 읽어 둔 것으로 거르면 10ms 다.
+    test('filtering and sorting do not go back to disk', async () => {
+        const manager = await openDone([
+            done('2026-08-20', '계약서'), done('2026-08-20', '예산안')
+        ])
+        expect(electronAPI.getCompletedRange).toHaveBeenCalledTimes(1)
+
+        manager.searchQuery = '계'
+        await manager.renderCompletedView()
+        manager.searchQuery = '계약'
+        await manager.renderCompletedView()
+        manager.doneSort = { by: 'targetTime', asc: true }
+        await manager.renderCompletedView()
+
+        expect(electronAPI.getCompletedRange).toHaveBeenCalledTimes(1)
+        expect(contents()).toEqual(['계약서'])
+    })
+
+    test('changing the period does go back to disk', async () => {
+        const manager = await openDone([done('2026-08-20', 'a')])
+        expect(electronAPI.getCompletedRange).toHaveBeenCalledTimes(1)
+
+        manager.setDoneWindow(7)
+        await manager.renderCompletedView()
+
+        expect(electronAPI.getCompletedRange).toHaveBeenCalledTimes(2)
+    })
+
+    // 방금 하나 늘었다. 버리지 않으면 옛 목록을 계속 보여준다.
+    test('completing something drops what was read', async () => {
+        const manager = await openDone([done('2026-08-20', 'a')])
+        manager.closeCompletedView()
+
+        expect(manager.doneCache).not.toBeNull()
+        await manager.doCompleteTask('nope', '', '')
+        manager.tasks = [task('t')]
+        await manager.doCompleteTask('t', '', '2026-08-20 10:00')
+
+        expect(manager.doneCache).toBeNull()
+    })
+
     // 스크롤로 몇 백 줄을 훑게 두면 어디까지 봤는지 놓친다. 목록과 같은 페이저다.
     test('pages the same way the list does', async () => {
         const manager = await openDone(Array.from({ length: 25 }, (_, i) =>

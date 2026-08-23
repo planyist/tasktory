@@ -328,6 +328,8 @@ class TaskManager {
         // 완료 화면의 쪽 번호. 목록과 따로 센다 - 한쪽을 넘겼다고 다른 쪽이
         // 움직이면 돌아왔을 때 있던 자리가 아니다.
         this.donePage = 1;
+        // 지금 기간에서 읽어 둔 줄. 기간이 바뀔 때만 다시 읽는다.
+        this.doneCache = null;
         // 완료 화면의 정렬. 기본은 최근에 끝낸 것이 위.
         this.doneSort = { by: 'completedAt', asc: false };
         // 완료 화면에 들어오기 전의 보기. 나갈 때 여기로 돌아간다.
@@ -2897,10 +2899,19 @@ ${filePath}`);
             this.setDateValue(id, parsed ? formatWithPattern(parsed, datePattern) : key);
         }
 
-        let rows = [];
-        if (this.isElectron && window.electronAPI.getCompletedRange) {
-            rows = await window.electronAPI.getCompletedRange(from, to) || [];
+        // 기간이 그대로면 다시 읽지 않는다. 거르기와 정렬은 이미 읽어 둔 것으로
+        // 하면 되는데, 그리기마다 읽으면 검색어 한 글자에 로그 전체를 다시
+        // 훑는다 - 3년치에서 글자당 160~185ms 로 재였다.
+        const key = `${from}~${to}`;
+        if (!this.doneCache || this.doneCache.key !== key) {
+            let fetched = [];
+            if (this.isElectron && window.electronAPI.getCompletedRange) {
+                fetched = await window.electronAPI.getCompletedRange(from, to) || [];
+            }
+            this.doneCache = { key, rows: fetched };
         }
+        let rows = this.doneCache.rows;
+        // sortCompleted 가 사본을 돌려주므로 캐시는 그대로 남는다.
         rows = this.sortCompleted(rows);
 
         // 칩은 거른 뒤가 아니라 거르기 전 목록으로 만든다. 하나를 고른 순간
@@ -4478,6 +4489,9 @@ ${link.dataset.path}`
             if (!this.advanceRecurringTask(task)) {
                 this.tasks.splice(taskIndex, 1);
             }
+
+            // 방금 하나 늘었다. 버리지 않으면 완료 화면이 옛 목록을 계속 보여준다.
+            this.doneCache = null;
 
             await this.saveTasks();
             this.renderTasks();
