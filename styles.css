@@ -881,8 +881,13 @@ body.dark-mode .selection-summary.has-selection {
     border-radius: 2px;
 }
 
+/* 배경을 반드시 다시 비워야 한다. body.dark-mode input[type="text"] 가 불투명한
+   배경을 칠하는데, 이 칸의 글자는 paintGhost 가 투명으로 만들어 두므로 - 아래
+   층이 덮이면 값이 통째로 사라진다. 라이트에서는 그 규칙이 없어 멀쩡하고,
+   그래서 다크에서만 빈 칸으로 보였다. */
 body.dark-mode .datetime-field input[type="text"] {
     caret-color: #e0e0e0;
+    background-color: transparent;
 }
 
 body.dark-mode .dtf-ghost {
