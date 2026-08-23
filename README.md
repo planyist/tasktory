@@ -216,6 +216,12 @@ it to the tags this period actually holds.
 It pages the same way the list does, with the same page-size setting, and keeps
 its own place so paging here does not move the list.
 
+When you tick a task off, the confirmation asks for the file you produced as
+well as a note — often the file *is* the answer to "what did I do". It is kept
+apart from the files that were attached to the task, and shown first and in bold,
+so a weekly task's history reads as one output per week rather than the same
+template repeated.
+
 It reads the log files, not the task list, because a finished task leaves the
 list. That also means it can show history from long before this feature existed.
 It is read-only: there is no un-complete.

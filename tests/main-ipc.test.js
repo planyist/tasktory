@@ -82,7 +82,7 @@ describe('add-log', () => {
 
         const contents = await readLog()
         expect(contents.split('\n')[0]).toBe(
-            'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE'
+            'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE\tOUTPUTS'
         )
     })
 
@@ -136,7 +136,7 @@ describe('add-log', () => {
         const [row] = dataLines(await readLog())
         const columns = row.split('\t')
 
-        expect(columns).toHaveLength(11)
+        expect(columns).toHaveLength(12)
         expect(columns[0]).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}[+-]\d{2}:\d{2}$/)
         expect(columns[1]).toBe('COMPLETE')
         expect(columns[2]).toBe('COMPLETED')
@@ -162,6 +162,40 @@ describe('add-log', () => {
         expect(columns[7]).toBe('write tests')
         expect(columns[9]).toBe('2026-08-04 17:30')
         expect(columns[10]).toBe('검토까지 끝냄')
+    })
+
+    // 작업에 붙어 있던 것과 끝내면서 남긴 것은 다른 칸에 간다. 반복 작업이면
+    // 앞엣것은 회차마다 같고 뒤엣것은 회차마다 다르므로, 한 칸에 담으면 어느
+    // 것이 그 회차에 한 일인지 알 수 없다.
+    test('what was attached and what came out go in different columns', async () => {
+        await electron.__invoke('add-log', {
+            ...makeEntry('COMPLETE', {
+                status: 'completed',
+                attachments: [{ name: 'form.xlsx', path: '/docs/form.xlsx' }]
+            }),
+            outputs: [{ name: 'week32.docx', path: '/out/week32.docx' }]
+        })
+
+        const columns = dataLines(await readLog())[0].split('\t')
+
+        expect(columns[8]).toBe('/docs/form.xlsx')
+        expect(columns[11]).toBe('/out/week32.docx')
+    })
+
+    test('several outputs go in one cell, the way attachments do', async () => {
+        await electron.__invoke('add-log', {
+            ...makeEntry('COMPLETE', { status: 'completed' }),
+            outputs: [{ name: 'a.pdf', path: '/out/a.pdf' },
+                      { name: 'b.pdf', path: '/out/b.pdf' }]
+        })
+
+        expect(dataLines(await readLog())[0].split('\t')[11]).toBe('/out/a.pdf; /out/b.pdf')
+    })
+
+    test('a completion with nothing to show leaves the column empty', async () => {
+        await electron.__invoke('add-log', makeEntry('COMPLETE', { status: 'completed' }))
+
+        expect(dataLines(await readLog())[0].split('\t')[11]).toBe('')
     })
 
     // A log line is a permanent record: without the offset there is no way to
@@ -191,7 +225,7 @@ describe('add-log', () => {
 
         const rows = dataLines(await readLog())
         expect(rows).toHaveLength(1)
-        expect(rows[0].split('\t')).toHaveLength(11)
+        expect(rows[0].split('\t')).toHaveLength(12)
         expect(rows[0].split('\t')[7]).toBe('a b c d')
     })
 

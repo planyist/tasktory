@@ -339,6 +339,45 @@ drop zone must be **scrolled into view first** — the modal scrolls, and a
 coordinate below the fold dispatches the drag at nothing at all, which looks
 exactly like a broken handler.
 
+## What came out of a task
+
+**`OUTPUTS` is a column of its own, and it lives only in the log.** The files
+attached to a task are what you *use*; what you produce exists only once the
+work is done, and until now the only way to record it was to edit the task,
+attach, and then complete — the wrong order for something that does not exist
+until the end.
+
+**The split is not for styling; a repeating task needs it to have a history at
+all.** A repeating row *is* the rule, so its attachments are the same every
+occurrence — the template, the checklist. The output differs each time. Merged
+into one column the log reads:
+
+    08-08  주간 보고서   form.xlsx, week32.docx
+    08-15  주간 보고서   form.xlsx, week33.docx
+
+and you have to pick out which one was that week's work every line — impossible
+if the file is called `report_final.docx` every time. Split, one column answers
+"what did I produce each week".
+
+- **It never touches the task row.** `doCompleteTask` passes the outputs to
+  `addLog` and nowhere else. Put them on the row and this week's report becomes
+  next week's attachment, and the week after's, forever — the row is the rule,
+  not the occurrence. A test holds this with `advanceRecurringTask` forced true.
+- Because it lives in the log, **deleting a repeating row deletes the rule but
+  not what you did.** Stopping a routine and erasing the work are different acts.
+- **The column is appended last**, for the third time and the same reason:
+  readers index by position, so anything inserted earlier shifts every row on
+  disk. Files written before it read back unchanged and simply have no output.
+- **The box appears only when exactly one task is being completed.** The confirm
+  dialog takes an array; with five rows there is nowhere to record whose result
+  a file is. Same rule as edit needing exactly one selection. `runBulkAction`
+  decides on `ids.length === 1` rather than handing it to the first row.
+- **`pendingOutputs` is cleared every time the dialog opens**, or the last
+  completion's file follows the next one.
+- In the completed view the outputs come **first and bold**; the attachments are
+  left exactly as they were. Dimming the inputs was the other option and it
+  would make every row written before this feature look wrong for no reason.
+
 ## Completed tasks
 
 **Completing a one-off removes its row from `tasks.json`.** The row is not kept

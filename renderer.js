@@ -41,7 +41,7 @@ const LIST_ICON = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" s
 const DONE_WINDOW_DAYS = 30;
 
 // main.js가 로그 파일에 쓰는 헤더와 같아야 한다
-const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE';
+const LOG_HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE\tOUTPUTS';
 
 // 토큰 하나당 정규식 조각과 값 추출기. 형식 문자열 하나로 출력과 입력을 모두
 // 만들어내므로 둘이 어긋날 수 없다.
@@ -316,6 +316,9 @@ class TaskManager {
         this.editingTaskId = null;
         // 편집 중인 첨부. 저장을 눌러야 작업에 반영된다.
         this.editingAttachments = [];
+        // 완료하면서 남기는 산출물. 확인을 눌러야 로그에 들어간다. 작업 행에는
+        // 절대 얹지 않는다 - 반복 작업이면 다음 회차까지 딸려 간다.
+        this.pendingOutputs = [];
         this.isElectron = typeof window.electronAPI !== 'undefined';
         // main.js 가 알려 주기 전까지 쓰는 값. 브라우저 모드에서는 이대로 남는다.
         this.collapseAccelerator = 'Ctrl+Alt+Shift+M';
@@ -506,6 +509,9 @@ class TaskManager {
         this.setText('labelTaskLead', 'notifyBefore');
         this.setText('taskLeadHint', 'taskLeadHint');
         this.setText('labelAttachments', 'attachments');
+        this.setText('labelConfirmOutputs', 'outputs');
+        this.setText('outputHint', 'outputHint');
+        this.setText('outputPickBtn', 'chooseFiles');
         this.setText('attachmentHint', 'attachmentHint');
         this.setText('attachmentPickBtn', 'chooseFiles');
         this.updateLeadControls();
@@ -1250,6 +1256,20 @@ class TaskManager {
         // 옮기려면 다른 프로그램으로 나갔다 와야 하므로, 여기가 알아낼 수 있는
         // 유일하면서 충분한 시점이다.
         window.addEventListener('focus', () => this.markMissingAttachments());
+
+        // 산출물: 편집 창의 첨부와 같은 세 가지 길이되, 대상만 다르다.
+        document.getElementById('outputPickBtn').addEventListener('click', async () => {
+            if (!this.isElectron) return;
+            this.addOutputs(await window.electronAPI.pickAttachments());
+        });
+
+        document.getElementById('outputList').addEventListener('click', (e) => {
+            const remove = e.target.closest('[data-remove-output]');
+            if (!remove) return;
+            this.pendingOutputs = this.pendingOutputs
+                .filter(one => one.path !== remove.dataset.removeOutput);
+            this.renderOutputList();
+        });
 
         // 첨부: 고르기 / 끌어다 놓기 / 열기·폴더보기·빼기
         document.getElementById('attachmentPickBtn').addEventListener('click', async () => {
@@ -2250,6 +2270,35 @@ class TaskManager {
         this.setEditingAttachments(this.editingAttachments.filter(a => a.path !== filePath));
     }
 
+    // 편집 창의 첨부 목록과 같은 모양이되, 끊긴 링크는 확인하지 않는다 -
+    // 방금 고른 파일이라 그 자리에 있는 것이 당연하다.
+    renderOutputList() {
+        const list = document.getElementById('outputList');
+        if (!list) return;
+
+        const label = document.getElementById('labelConfirmOutputs');
+        if (label) {
+            const count = this.pendingOutputs.length;
+            label.textContent = this.getLocalizedText('outputs') + (count ? ` (${count})` : '');
+        }
+
+        list.innerHTML = this.pendingOutputs.map(item => `
+            <li class="attachment-item">
+                <span class="attachment-name" title="${this.escapeHtml(item.path)}"
+                    >${this.escapeHtml(item.name)}</span>
+                <button type="button" class="attachment-remove"
+                    data-remove-output="${this.escapeHtml(item.path)}">&times;</button>
+            </li>`).join('');
+    }
+
+    addOutputs(items) {
+        const seen = new Set(this.pendingOutputs.map(one => one.path));
+        const added = (items || []).filter(item => item.path && !seen.has(item.path));
+        if (!added.length) return;
+        this.pendingOutputs = [...this.pendingOutputs, ...added];
+        this.renderOutputList();
+    }
+
     async renderAttachmentList() {
         const list = document.getElementById('attachmentList');
         if (!list) return;
@@ -3008,6 +3057,21 @@ ${filePath}`);
         })).join('');
     }
 
+    // 결과물이 먼저 서고, 작업에 붙어 있던 것이 그 아래에 온다. "무엇을
+    // 했는가"에 답하는 것은 결과물이고, 입력물은 그 일에 쓴 것이다.
+    //
+    // 표시는 새로 생긴 쪽만 갖는다. 입력물을 흐리게 하는 방향도 되지만, 그러면
+    // 결과물이 없는 기존 기록이 이유 없이 흐려진다.
+    doneFileLinks(row) {
+        const link = (file, kind) =>
+            `<a class="attach-link${kind}" data-path="${this.escapeHtml(file.path)}"` +
+            ` title="${this.escapeHtml(file.path)}">${this.escapeHtml(file.name)}</a>`;
+        return [
+            ...(row.outputs || []).map(file => link(file, ' is-output')),
+            ...(row.attachments || []).map(file => link(file, ''))
+        ].join('');
+    }
+
     async renderCompletedView() {
         const body = document.getElementById('doneBody');
         if (!body) return;
@@ -3085,10 +3149,7 @@ ${filePath}`);
                     <td class="task-tags">${this.renderTagChips(row.tags)}</td>
                     <td class="task-content">${this.escapeHtml(row.content)}${
                         row.note ? '<span class="done-note">' + this.escapeHtml(row.note) + '</span>' : ''}</td>
-                    <td class="attach-col">${(row.attachments || []).map(file =>
-                        '<a class="attach-link" data-path="' + this.escapeHtml(file.path) +
-                        '" title="' + this.escapeHtml(file.path) + '">' +
-                        this.escapeHtml(file.name) + '</a>').join('')}</td>
+                    <td class="attach-col">${this.doneFileLinks(row)}</td>
                 </tr>`).join('');
     }
 
@@ -4420,6 +4481,16 @@ ${link.dataset.path}`
 
         // 완료 시각은 지금으로 채워두되 고칠 수 있게 둔다. 어제 끝낸 일을
         // 오늘 체크하는 일이 흔하고, 그때 기록이 오늘로 남으면 이력이 어긋난다.
+        // 산출물은 하나를 완료할 때만 받는다. 여러 건을 한꺼번에 완료하면서
+        // 파일을 붙이면 그것이 어느 것의 결과인지 적을 자리가 없다 - 편집이
+        // "정확히 하나"를 요구하는 것과 같은 이유다.
+        this.pendingOutputs = [];
+        this.renderOutputList();
+        const outputsGroup = document.getElementById('confirmOutputsGroup');
+        if (outputsGroup) {
+            outputsGroup.style.display = (action === 'complete' && count === 1) ? '' : 'none';
+        }
+
         completedGroup.style.display = action === 'complete' ? '' : 'none';
         if (action === 'complete') {
             document.getElementById('confirmCompletedAtLabel').textContent =
@@ -4456,7 +4527,11 @@ ${link.dataset.path}`
                 alert(this.explainDateProblem(typed));
                 return;
             }
-            for (const id of ids) await this.doCompleteTask(id, details, completedAt);
+            // 산출물 칸은 한 건일 때만 나오므로, 여러 건이면 pendingOutputs 는
+            // 비어 있다. 그래도 첫 건에만 넘기는 대신 개수로 판단한다 - 나중에
+            // 칸을 여러 건에도 내면 조용히 첫 건에 붙는 일이 생긴다.
+            const outputs = ids.length === 1 ? this.pendingOutputs : [];
+            for (const id of ids) await this.doCompleteTask(id, details, completedAt, outputs);
         } else if (this.pendingConfirmAction === 'delete') {
             for (const id of ids) await this.doDeleteTask(id, details);
         }
@@ -4601,7 +4676,7 @@ ${link.dataset.path}`
     }
 
     // completedAt은 저장 형식('YYYY-MM-DD HH:mm')이거나 null(=지금)이다
-    async doCompleteTask(taskId, details, completedAt) {
+    async doCompleteTask(taskId, details, completedAt, outputs = []) {
         const taskIndex = this.tasks.findIndex(t => t.id === taskId);
         if (taskIndex !== -1) {
             const task = this.tasks[taskIndex];
@@ -4612,8 +4687,13 @@ ${link.dataset.path}`
             // 없었고, 내용에 '(completed)' 가 들러붙었다.
             // 로그는 완료 상태로 남긴다. 반복이면 태스크 자체는 다음 회차로
             // 넘어가지만, 이번 회차를 해냈다는 기록은 그대로 있어야 한다.
-            await this.addLog('COMPLETE', { ...task, completed: true }, null,
-                { completedAt: completedAt || '', note: details || '' });
+            // 산출물은 로그 줄에만 간다. task 에 얹으면 반복 작업에서 이번
+            // 회차의 결과가 다음 회차의 첨부가 되어 영원히 따라다닌다.
+            await this.addLog('COMPLETE', { ...task, completed: true }, null, {
+                completedAt: completedAt || '',
+                note: details || '',
+                outputs: (outputs || []).map(one => ({ name: one.name, path: one.path }))
+            });
 
             // 반복 작업은 사라지지 않고 다음 회차로 이동한다. 그 행이 곧 규칙이라
             // 없애버리면 반복을 다시 볼 방법이 없어진다.

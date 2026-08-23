@@ -1287,7 +1287,7 @@ describe('muted-notification marker placement', () => {
 
 describe('history export and import', () => {
     // main.js 가 파일에 쓰는 머리와 같아야 한다
-    const HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE'
+    const HEADER = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE\tOUTPUTS'
     const row = (ts, action) => `${ts}\t${action}\tPENDING\ttask-1\t\t\t\tnote`
 
     // The backup JSON stores each log as one escaped string, which is fine for
@@ -1919,6 +1919,154 @@ describe('column widths the user set', () => {
         expect(document.querySelector('#doneTable .col-grip')).not.toBeNull()
         expect(manager.columnLayoutKey(document.getElementById('doneTable')))
             .toContain('doneTable')
+    })
+})
+
+// 결과물은 끝내면서 남기는 것이라 확인창이 그 자리다. 편집을 열어 붙이고 다시
+// 완료를 누르는 것은 순서가 거꾸로다 - 결과물은 시작할 때 존재하지 않는다.
+describe('what came out, left at the moment of completing', () => {
+    const openComplete = async (ids) => {
+        const manager = await boot(ids.map((id) => task(id)))
+        for (const id of ids) manager.toggleTaskSelection(id, true)
+        manager.showConfirmModal('complete', ids)
+        await settle()
+        return manager
+    }
+
+    test('completing one task offers somewhere to put the result', async () => {
+        await openComplete(['a'])
+
+        expect(document.getElementById('confirmOutputsGroup').style.display).not.toBe('none')
+    })
+
+    // 다섯 건을 한꺼번에 완료하면서 파일 하나를 붙이면 그것이 어느 것의
+    // 결과인지 적을 자리가 없다. 편집이 "정확히 하나"를 요구하는 것과 같다.
+    test('completing several does not, because it could not say whose it is', async () => {
+        await openComplete(['a', 'b'])
+
+        expect(document.getElementById('confirmOutputsGroup').style.display).toBe('none')
+    })
+
+    test('deleting never offers it', async () => {
+        const manager = await boot([task('a')])
+        manager.showConfirmModal('delete', ['a'])
+        await settle()
+
+        expect(document.getElementById('confirmOutputsGroup').style.display).toBe('none')
+    })
+
+    test('a chosen file is listed, counted, and can be taken back off', async () => {
+        const manager = await openComplete(['a'])
+        electronAPI.pickAttachments.mockResolvedValue([
+            { name: 'week34.docx', path: '/out/week34.docx' }
+        ])
+
+        document.getElementById('outputPickBtn').click()
+        await settle()
+
+        expect([...document.querySelectorAll('#outputList .attachment-name')]
+            .map((one) => one.textContent)).toEqual(['week34.docx'])
+        expect(document.getElementById('labelConfirmOutputs').textContent).toContain('(1)')
+
+        document.querySelector('#outputList [data-remove-output]').click()
+        await settle()
+        expect(document.querySelectorAll('#outputList .attachment-item')).toHaveLength(0)
+    })
+
+    test('the same file twice is once', async () => {
+        const manager = await openComplete(['a'])
+        electronAPI.pickAttachments.mockResolvedValue([
+            { name: 'a.docx', path: '/out/a.docx' }
+        ])
+
+        document.getElementById('outputPickBtn').click()
+        await settle()
+        document.getElementById('outputPickBtn').click()
+        await settle()
+
+        expect(document.querySelectorAll('#outputList .attachment-item')).toHaveLength(1)
+    })
+
+    // 앞 완료에서 고른 것이 다음 완료에 남아 있으면 안 된다.
+    test('the box starts empty every time it opens', async () => {
+        const manager = await openComplete(['a'])
+        electronAPI.pickAttachments.mockResolvedValue([{ name: 'a.docx', path: '/out/a.docx' }])
+        document.getElementById('outputPickBtn').click()
+        await settle()
+
+        manager.hideConfirmModal()
+        manager.showConfirmModal('complete', ['a'])
+        await settle()
+
+        expect(manager.pendingOutputs).toEqual([])
+        expect(document.querySelectorAll('#outputList .attachment-item')).toHaveLength(0)
+    })
+
+    test('confirming sends it to the log', async () => {
+        const manager = await openComplete(['a'])
+        electronAPI.pickAttachments.mockResolvedValue([
+            { name: 'week34.docx', path: '/out/week34.docx' }
+        ])
+        document.getElementById('outputPickBtn').click()
+        await settle()
+
+        document.getElementById('confirmActionBtn').click()
+        await settle()
+
+        const logged = electronAPI.addLog.mock.calls.map((c) => c[0])
+            .find((entry) => entry.action === 'COMPLETE')
+        expect(logged.outputs).toEqual([{ name: 'week34.docx', path: '/out/week34.docx' }])
+    })
+})
+
+// 결과물이 먼저 서고 입력물이 그 아래에 온다. "무엇을 했는가"에 답하는 것은
+// 결과물이고, 입력물은 그 일에 쓴 것이다.
+describe('telling the result from what went into it', () => {
+    const openDone = async (rows) => {
+        const manager = await boot([])
+        electronAPI.getCompletedRange.mockResolvedValue(rows)
+        manager.viewMode = 'completed'
+        manager.applyViewMode()
+        manager.renderTasks()
+        await settle()
+        return manager
+    }
+    const row = (extra) => ({
+        day: '2026-08-22', timestamp: '2026-08-22T09:00:00+09:00', taskId: 't',
+        startTime: '2026-08-22 08:00', targetTime: '2026-08-22 18:00', tags: '',
+        content: '주간 보고서', attachments: [], completedAt: '2026-08-22 17:00',
+        note: '', outputs: [], ...extra
+    })
+
+    test('the result stands first and stands out', async () => {
+        await openDone([row({
+            attachments: [{ name: 'form.xlsx', path: '/docs/form.xlsx' }],
+            outputs: [{ name: 'week34.docx', path: '/out/week34.docx' }]
+        })])
+
+        const links = [...document.querySelectorAll('#doneBody .attach-link')]
+        expect(links.map((one) => one.textContent)).toEqual(['week34.docx', 'form.xlsx'])
+        expect(links[0].classList.contains('is-output')).toBe(true)
+        expect(links[1].classList.contains('is-output')).toBe(false)
+    })
+
+    // 표시는 새로 생긴 쪽만 갖는다. 그러지 않으면 결과물이 없는 기존 기록이
+    // 이유 없이 달라 보인다.
+    test('a row from before this existed looks exactly as it did', async () => {
+        await openDone([row({ attachments: [{ name: 'old.pdf', path: '/docs/old.pdf' }] })])
+
+        const link = document.querySelector('#doneBody .attach-link')
+        expect(link.textContent).toBe('old.pdf')
+        expect(link.classList.contains('is-output')).toBe(false)
+    })
+
+    test('a result opens like any other file', async () => {
+        await openDone([row({ outputs: [{ name: 'week34.docx', path: '/out/week34.docx' }] })])
+
+        document.querySelector('#doneBody .attach-link').click()
+        await settle()
+
+        expect(electronAPI.openAttachment).toHaveBeenCalledWith('/out/week34.docx')
     })
 })
 
@@ -3427,6 +3575,57 @@ describe('completed tasks leave tasks.json', () => {
         await settle()
 
         expect(manager.tasks.map((t) => t.id)).toEqual(['a'])
+    })
+
+    // 이것이 산출물을 따로 두는 이유다. 행에 얹으면 이번 주에 낸 보고서가
+    // 다음 주에도, 그 다음 주에도 첨부로 딸려 간다 - 그 행은 규칙이지 회차가
+    // 아니기 때문이다.
+    test('what came out of one occurrence does not follow the rule forward', async () => {
+        const manager = await boot([task('a', {
+            attachments: [{ name: 'form.xlsx', path: '/docs/form.xlsx' }]
+        })])
+        jest.spyOn(manager, 'advanceRecurringTask').mockReturnValue(true)
+
+        await manager.doCompleteTask('a', null, '2026-08-22 17:00',
+            [{ name: 'week34.docx', path: '/out/week34.docx' }])
+        await settle()
+
+        // 로그 줄에는 남는다
+        const logged = electronAPI.addLog.mock.calls.map((c) => c[0])
+            .find((entry) => entry.action === 'COMPLETE')
+        expect(logged.outputs).toEqual([{ name: 'week34.docx', path: '/out/week34.docx' }])
+        // 규칙에는 안 남는다
+        const row = manager.tasks.find((t) => t.id === 'a')
+        expect(row.attachments).toEqual([{ name: 'form.xlsx', path: '/docs/form.xlsx' }])
+        expect(JSON.stringify(row)).not.toContain('week34')
+    })
+
+    // 작업에 붙어 있던 것은 그대로 로그에도 남는다. 회차마다 같은 것과 회차마다
+    // 다른 것이 나란히 적혀야 이력이 읽힌다.
+    test('the log line carries both, in their own places', async () => {
+        const manager = await boot([task('a', {
+            attachments: [{ name: 'form.xlsx', path: '/docs/form.xlsx' }]
+        })])
+
+        await manager.doCompleteTask('a', null, '2026-08-22 17:00',
+            [{ name: 'week34.docx', path: '/out/week34.docx' }])
+        await settle()
+
+        const logged = electronAPI.addLog.mock.calls.map((c) => c[0])
+            .find((entry) => entry.action === 'COMPLETE')
+        expect(logged.task.attachments).toEqual([{ name: 'form.xlsx', path: '/docs/form.xlsx' }])
+        expect(logged.outputs).toEqual([{ name: 'week34.docx', path: '/out/week34.docx' }])
+    })
+
+    test('completing with nothing to show sends an empty list', async () => {
+        const manager = await boot([task('a')])
+
+        await manager.doCompleteTask('a', null, '2026-08-22 17:00')
+        await settle()
+
+        const logged = electronAPI.addLog.mock.calls.map((c) => c[0])
+            .find((entry) => entry.action === 'COMPLETE')
+        expect(logged.outputs).toEqual([])
     })
 })
 

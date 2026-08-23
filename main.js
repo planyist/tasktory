@@ -276,7 +276,7 @@ const writeLogEntry = async (logEntry) => {
         }
         
         if (!fileExists) {
-            const header = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE\n';
+            const header = 'TIMESTAMP\tACTION\tSTATUS\tTASK_ID\tSTART_TIME\tTARGET_TIME\tTAGS\tCONTENT\tATTACHMENTS\tCOMPLETED_AT\tNOTE\tOUTPUTS\n';
             await fs.writeFile(todayLogFile, header);
         }
         
@@ -341,6 +341,14 @@ const writeLogEntry = async (logEntry) => {
         const completedAt = logEntry.completedAt || '';
         const note = logEntry.note || '';
 
+        // 끝내면서 남긴 산출물. 작업에 붙어 있던 ATTACHMENTS 와 섞지 않는다 -
+        // 반복 작업이면 앞엣것은 회차마다 같고 뒤엣것은 회차마다 다르므로,
+        // 한 칸에 담으면 어느 것이 그 회차에 한 일인지 알 수 없다.
+        const outputs = (logEntry.outputs || [])
+            .map(item => item.path || item.name || '')
+            .filter(Boolean)
+            .join('; ');
+
         let content = logEntry.details || logEntry.task.content || '';
         
         const escapeTsvValue = (value) => {
@@ -350,7 +358,7 @@ const writeLogEntry = async (logEntry) => {
         };
         
         const logLine = [timestamp, action, status, taskId, startTime, targetTime,
-            tags, content, attachments, completedAt, note]
+            tags, content, attachments, completedAt, note, outputs]
             .map(escapeTsvValue).join('\t') + '\n';
         
         console.log('IPC: Writing log line:', logLine.substring(0, 100) + '...');
@@ -621,7 +629,8 @@ const completedFromTsv = (logData) => {
                 content: legacy.content,
                 attachments: (columns[8] || '').trim(),
                 completedAt: (columns[9] || '').trim() || legacy.completedAt,
-                note: (columns[10] || '').trim() || legacy.note
+                note: (columns[10] || '').trim() || legacy.note,
+                outputs: (columns[11] || '').trim()
             };
         });
 }
@@ -694,7 +703,12 @@ ipcMain.handle('get-completed-range', async (event, fromKey, toKey) => {
 
     const perDay = await Promise.all(days.map(async (key) => {
         const rows = await readCompleted(key)
-        return rows.map(row => ({ ...row, day: key, attachments: namedPaths(row.attachments) }))
+        return rows.map(row => ({
+            ...row,
+            day: key,
+            attachments: namedPaths(row.attachments),
+            outputs: namedPaths(row.outputs)
+        }))
     }))
     return perDay.flat()
 })
