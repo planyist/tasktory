@@ -4676,6 +4676,10 @@ ${link.dataset.path}`
                         if (this.isElectron) {
                                         const success = await window.electronAPI.importData(data);
                             if (success) {
+                                // 가져오기는 로그 파일까지 덮어쓴다. 읽어 둔 것을
+                                // 버리지 않으면 완료 화면이 가져오기 전의 이력을
+                                // 계속 보여준다.
+                                this.doneCache = null;
                                 await this.loadTasks();
                                 await this.loadRules();
                                 this.applyPreferences(data.preferences);

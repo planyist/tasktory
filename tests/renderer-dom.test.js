@@ -2152,6 +2152,30 @@ describe('the completed view', () => {
         expect(electronAPI.getCompletedRange).toHaveBeenCalledTimes(2)
     })
 
+    // 가져오기는 로그 파일까지 덮어쓴다. 이력이 통째로 달라지는 유일한 자리다.
+    test('importing a backup drops what was read', async () => {
+        const manager = await openDone([done('2026-08-20', 'a')])
+        const before = electronAPI.getCompletedRange.mock.calls.length
+
+        // 가져오기는 되돌릴 수 없어 한 번 묻는다. jsdom 에는 그 대화상자가 없다.
+        window.confirm = () => true
+        window.alert = () => {}
+        await manager.importData(new File(
+            [JSON.stringify({ tasks: [], rules: [], logFiles: {} })],
+            'backup.json', { type: 'application/json' }))
+        // FileReader 의 onload 는 마이크로태스크가 아니라 실제 한 박자 뒤다.
+        // settle() 로는 닿지 않는다.
+        for (let i = 0; i < 40 && !electronAPI.importData.mock.calls.length; i++) {
+            await new Promise((r) => setTimeout(r, 10))
+        }
+        await settle()
+
+        expect(electronAPI.importData).toHaveBeenCalled()
+        // 버린 뒤 곧바로 다시 그리므로 캐시는 다시 차 있다. 물어야 할 것은
+        // 그것이 가져오기 뒤에 새로 읽은 것인가다.
+        expect(electronAPI.getCompletedRange.mock.calls.length).toBeGreaterThan(before)
+    })
+
     // 방금 하나 늘었다. 버리지 않으면 옛 목록을 계속 보여준다.
     test('completing something drops what was read', async () => {
         const manager = await openDone([done('2026-08-20', 'a')])
