@@ -337,6 +337,15 @@ class TaskManager {
         this.doneSort = { by: 'completedAt', asc: false };
         // 완료 화면에 들어오기 전의 보기. 나갈 때 여기로 돌아간다.
         this.viewBeforeCompleted = 'list';
+
+        // 0.21.0~0.22.3 은 컬럼을 끌 때마다 모든 칸의 폭을 다시 적었고, 적는 값이
+        // 측정한 픽셀이라 손대지 않은 칸까지 조금씩 밀렸다. 그렇게 쌓인 값은
+        // 사용자가 고른 것이 아니므로 한 번 버린다 - 놔두면 새 버전을 깔아도
+        // 어긋난 폭이 그대로 남는다. 표시를 남겨 다시 버리지 않는다.
+        if (!localStorage.getItem('columnWidthsRebased')) {
+            localStorage.removeItem('columnWidths');
+            localStorage.setItem('columnWidthsRebased', '1');
+        }
         this.locale = this.getSelectedLanguage();
         this.darkMode = localStorage.getItem('darkMode') === 'true';
         this.dateFormat = localStorage.getItem('dateFormat') || DATE_FORMATS[0];
@@ -1441,6 +1450,11 @@ class TaskManager {
         // 열린다. mousemove 는 실제로 움직여야 뜬다.
         const counter = document.getElementById('completionCounter');
         counter.addEventListener('mousemove', () => {
+            // 완료 화면을 보는 중에는 뜨지 않는다. 이미 전체 이력이 펼쳐져 있는데
+            // 그 일부인 오늘치가 위를 덮을 뿐이고, 카운터를 눌러 들어간 직후에는
+            // 포인터가 거기 남아 있어 조금만 움직여도 계속 다시 떴다.
+            if (this.viewMode === 'completed') return;
+
             const box = document.getElementById('completedList');
             if (box.classList.contains('is-open')) return;
             // 좌표를 먼저 잡는다. 내용은 IPC로 읽어오므로 한 박자 늦는데, 그 사이에

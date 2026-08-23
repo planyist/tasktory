@@ -1946,6 +1946,31 @@ describe('column widths the user set', () => {
         expect(saved.thStartTime).toBe(first)
     })
 
+    // 0.21.0~0.22.3 이 남긴 값은 사용자가 고른 것이 아니라 되풀이 저장이 만들어낸
+    // 것이다. 놔두면 새 버전을 깔아도 어긋난 폭이 그대로 남는다.
+    test('widths written by the versions that drifted are dropped once', async () => {
+        localStorage.setItem('columnWidths', JSON.stringify({ 'tasksTable:': { thNumber: '5.332%' } }))
+
+        await boot([task('a')])
+
+        expect(localStorage.getItem('columnWidths')).toBeNull()
+        expect(localStorage.getItem('columnWidthsRebased')).toBe('1')
+    })
+
+    test('and what is set afterwards is kept', async () => {
+        localStorage.setItem('columnWidths', JSON.stringify({ 'tasksTable:': { thNumber: '5.332%' } }))
+        await boot([task('a')])
+
+        const manager = await boot([task('a')])
+        const key = manager.columnLayoutKey(table())
+        localStorage.setItem('columnWidths', JSON.stringify({ [key]: { thStartTime: '22%' } }))
+
+        const again = await boot([task('a')])
+        again.renderTasks()
+
+        expect(th('thStartTime').style.width).toBe('22%')
+    })
+
     test('double clicking a grip puts the whole row back to the defaults', async () => {
         const manager = await boot([task('a')])
         const key = manager.columnLayoutKey(table())
@@ -2297,6 +2322,39 @@ describe('the completed view', () => {
         await settle()
 
         expect(manager.isCollapsed).toBe(true)
+    })
+
+    // 이미 전체 이력이 펼쳐져 있는데 그 일부인 오늘치가 위를 덮을 뿐이다.
+    // 카운터를 눌러 들어간 직후에는 포인터가 거기 남아 있어 계속 다시 떴다.
+    test('hovering the counter does not put today over the whole history', async () => {
+        await boot([])
+        const counter = document.getElementById('completionCounter')
+
+        counter.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }))
+        await settle()
+        expect(document.getElementById('completedList').classList.contains('is-open')).toBe(true)
+
+        counter.click()   // 완료 화면으로
+        await settle()
+        expect(document.getElementById('completedList').classList.contains('is-open')).toBe(false)
+
+        counter.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }))
+        await settle()
+        expect(document.getElementById('completedList').classList.contains('is-open')).toBe(false)
+    })
+
+    test('and hovering works again once you leave', async () => {
+        await boot([])
+        const counter = document.getElementById('completionCounter')
+        counter.click()
+        await settle()
+        counter.click()
+        await settle()
+
+        counter.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }))
+        await settle()
+
+        expect(document.getElementById('completedList').classList.contains('is-open')).toBe(true)
     })
 
     test('reads the log, not the task list', async () => {

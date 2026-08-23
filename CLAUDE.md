@@ -687,6 +687,12 @@ spot made the list impossible to reach and scroll. The open state is the
 `toggleCollapse`, `toggleViewMode`, `window` blur and `visibilitychange` —
 minimising never moves the pointer, so `mouseleave` would not fire on its own.
 
+**It does not open at all while the completed view is up.** That screen already
+shows the whole history; today's slice floating over the top of it is noise, and
+because the counter is how you got in, the pointer is sitting right there — every
+small movement brought it back. Measured: it covered the first row of the very
+list it duplicates.
+
 ### A popover has to leave the table's world
 
 The completed-today list hangs off the counter, which lives inside `main` — and
@@ -742,6 +748,10 @@ exactly what they saw before.
   key separates the two. One shared set would overflow 100% the moment the
   attachment column arrived. Deriving the set from computed `display` was tried
   and is wrong: jsdom has no stylesheet, so both sets look identical there.
+- **Anything those versions saved is dropped once, on next launch.** Values that
+  drifted were not chosen by anyone, and leaving them means installing the fix
+  changes nothing on screen. `columnWidthsRebased` marks it done so it happens
+  once and never eats a width set afterwards.
 - **Only the two columns that moved are written.** Writing the whole row was
   tried and it makes every other column creep: the saved value is the *measured*
   pixel width turned back into a percentage, which is not the declared one — a
