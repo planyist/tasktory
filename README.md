@@ -323,10 +323,12 @@ Completing a task removes it from `tasks.json`. The history lives in the daily
 log, whose `COMPLETE` line already records the id, both times, the tags and the
 content — so keeping a second copy only grew the file and every backup. A
 repeating task is the exception: its row is the rule, so it stays and moves on
-to its next occurrence.
+to its next occurrence — and to the end of the list, because a row due next week
+is no longer one of the things in front of you.
 
 The log columns are `TIMESTAMP ACTION STATUS TASK_ID START_TIME TARGET_TIME
-TAGS CONTENT ATTACHMENTS`. Attachment paths are written in full, so the history
+TAGS CONTENT ATTACHMENTS COMPLETED_AT NOTE OUTPUTS`. New columns are always
+appended, so files written by older versions read back unchanged. Attachment paths are written in full, so the history
 can still lead you to the file after the task itself is gone. `TIMESTAMP` carries the UTC offset, because a log is a permanent
 record and without the offset the zone cannot be recovered later. `START_TIME`
 and `TARGET_TIME` deliberately do not — they express wall-clock intent, not an

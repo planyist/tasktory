@@ -3737,6 +3737,69 @@ describe('completed tasks leave tasks.json', () => {
         expect(manager.tasks.map((t) => t.id)).toEqual(['a'])
     })
 
+    // # 은 눈앞에 있는 일의 차례다. 다음 회차로 간 행은 더 이상 눈앞의 일이
+    // 아니므로, 일회성이 사라져 자리를 비켜 주는 것과 같은 자리에 놓인다.
+    test('an advanced repeat goes to the end of the arrangement', async () => {
+        const manager = await boot([task('a'), task('b'), task('c')])
+        jest.spyOn(manager, 'advanceRecurringTask').mockImplementation((one) => one.id === 'a')
+
+        await manager.doCompleteTask('a', null)
+        await settle()
+
+        expect(manager.tasks.map((t) => t.id)).toEqual(['b', 'c', 'a'])
+    })
+
+    test('and the numbers on screen follow it', async () => {
+        const manager = await boot([task('a'), task('b'), task('c')])
+        jest.spyOn(manager, 'advanceRecurringTask').mockImplementation((one) => one.id === 'a')
+
+        await manager.doCompleteTask('a', null)
+        await settle()
+
+        const numbered = [...document.querySelectorAll('#tasksBody tr')]
+            .map((tr) => tr.cells[1].textContent + ':' + tr.cells[5].textContent.trim())
+        expect(numbered).toEqual(['1:task b', '2:task c', '3:task a'])
+    })
+
+    // 규칙은 그 행이므로 내용도 첨부도 그대로 따라간다. 옮기는 것은 자리뿐이다.
+    test('moving it changes nothing but where it sits', async () => {
+        const manager = await boot([
+            task('a', { attachments: [{ name: 'form.xlsx', path: '/form.xlsx' }] }),
+            task('b')
+        ])
+        jest.spyOn(manager, 'advanceRecurringTask').mockImplementation((one) => one.id === 'a')
+
+        await manager.doCompleteTask('a', null)
+        await settle()
+
+        const moved = manager.tasks[manager.tasks.length - 1]
+        expect(moved.id).toBe('a')
+        expect(moved.content).toBe('task a')
+        expect(moved.attachments).toEqual([{ name: 'form.xlsx', path: '/form.xlsx' }])
+    })
+
+    // 완료한 순서대로 쌓인다. 다음 회차 날짜로 줄 세우는 것은 정렬 헤더의 일이다.
+    test('several repeats pile up in the order they were finished', async () => {
+        const manager = await boot([task('a'), task('b'), task('c')])
+        jest.spyOn(manager, 'advanceRecurringTask').mockReturnValue(true)
+
+        await manager.doCompleteTask('b', null)
+        await manager.doCompleteTask('a', null)
+        await settle()
+
+        expect(manager.tasks.map((t) => t.id)).toEqual(['c', 'b', 'a'])
+    })
+
+    // 일회성은 예전 그대로 사라진다.
+    test('a one-off still just leaves', async () => {
+        const manager = await boot([task('a'), task('b')])
+
+        await manager.doCompleteTask('a', null)
+        await settle()
+
+        expect(manager.tasks.map((t) => t.id)).toEqual(['b'])
+    })
+
     // 이것이 산출물을 따로 두는 이유다. 행에 얹으면 이번 주에 낸 보고서가
     // 다음 주에도, 그 다음 주에도 첨부로 딸려 간다 - 그 행은 규칙이지 회차가
     // 아니기 때문이다.

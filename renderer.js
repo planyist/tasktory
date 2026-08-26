@@ -4766,9 +4766,17 @@ ${link.dataset.path}`
             // 없애버리면 반복을 다시 볼 방법이 없어진다.
             // 일회성 작업은 목록에서 뺀다. completed: true로 표시만 해두던 시절에는
             // 아무도 읽지 않는 행이 tasks.json과 백업에 영원히 쌓였다.
-            if (!this.advanceRecurringTask(task)) {
-                this.tasks.splice(taskIndex, 1);
-            }
+            //
+            // 어느 쪽이든 그 자리에서는 빠진다. 다음 회차로 간 행은 더 이상 눈앞의
+            // 일이 아니고, # 은 눈앞에 있는 일의 차례이기 때문이다. 자리를 지키면
+            // 반복만 비켜 주지 않아 1~3번이 "다음 세 가지"를 말하지 못한다 -
+            // 사용자에게는 일회성이든 반복이든 똑같이 해낸 일이다.
+            const advanced = this.advanceRecurringTask(task);
+            this.tasks.splice(taskIndex, 1);
+            // 맨 뒤로. 완료한 순서대로 쌓인다 - 다음 회차 날짜로 줄 세우는 것은
+            // 정렬 헤더가 이미 하는 일이고, 여기까지 날짜를 섞으면 # 이 손으로
+            // 정한 차례라는 말이 흐려진다.
+            if (advanced) this.tasks.push(task);
 
             // 방금 하나 늘었다. 버리지 않으면 완료 화면이 옛 목록을 계속 보여준다.
             this.doneCache = null;
