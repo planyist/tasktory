@@ -91,3 +91,26 @@ describe('styles.css', () => {
         expect(CSS).toMatch(/\.completed-list\s*\{[^}]*position:\s*fixed/)
     })
 })
+
+// 문서가 코드를 따라오는지 기계로 묻는다. 로그 컬럼은 세 번 늘었고 그때마다
+// README 나 CLAUDE.md 가 뒤처졌다 - 아홉 칸이라고 적힌 채 세 릴리스가 지나간
+// 적도 있다. 사람이 눈으로 훑는 대신 여기서 걸린다.
+describe('the docs name the log columns the code writes', () => {
+    const at = (name) => fs.readFileSync(path.join(__dirname, '..', name), 'utf8')
+    const HEADER = at('renderer.js').match(/const LOG_HEADER = '([^']+)'/)[1]
+    // 소스에 적힌 헤더는 탭이 아니라 두 글자 '\\t' 다. 진짜 탭으로 쪼개면
+    // 아무것도 나뉘지 않는다.
+    const READABLE = HEADER.split('\\t').join(' ')
+
+    for (const file of ['README.md', 'CLAUDE.md']) {
+        test(file + ' lists every column, in order', () => {
+            expect(at(file).split(/\s+/).join(' ')).toContain(READABLE)
+        })
+    }
+
+    // main.js 가 파일에 쓰는 헤더와 renderer 가 내보내기에 쓰는 것이 같아야 한다.
+    // 한 번 어긋난 적이 있고, 내보내기 테스트가 둘을 견주기 전까지 몰랐다.
+    test('main.js writes the same header the renderer exports', () => {
+        expect(at('main.js').match(/const header = '([^']+)'/)[1]).toBe(HEADER + '\\n')
+    })
+})
