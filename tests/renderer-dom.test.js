@@ -572,6 +572,62 @@ describe('typing into a date field after clearing it', () => {
     })
 })
 
+
+// 보고: 위치를 비우고 저장을 누르면 메시지는 나오는데 그 뒤로 입력이 안 된다.
+// 값의 문제가 아니라 포커스의 문제였다 - 재 보니 저장 전후 모두 saveBtn 이고,
+// alert 를 닫아도 앱은 거절당한 칸으로 돌려보내지 않았다. 그래서 바로 치기
+// 시작하면 버튼에 대고 치는 셈이 된다.
+describe('a refused save sends you to the field it refused', () => {
+    const at = (id) => document.getElementById(id)
+
+    const pressSave = async (manager) => {
+        const save = at('saveBtn')
+            || [...document.querySelectorAll('#taskForm button')].find((b) => b.type === 'submit')
+        save.focus()
+        await manager.saveTask()
+        return save
+    }
+
+    let said
+    beforeEach(() => {
+        said = []
+        window.alert = (message) => said.push(message)
+    })
+
+    test('an out-of-range position lands back in the position field', async () => {
+        const manager = await boot([task('a')])
+        manager.editTask(manager.tasks[0].id)
+        at('taskPosition').value = '99'
+
+        await pressSave(manager)
+
+        expect(document.activeElement.id).toBe('taskPosition')
+    })
+
+    // 같은 규칙이 거절 전체에 걸린다. 위치만 고치면 나머지가 그대로 남는다.
+    test('a missing start time lands back in the start time field', async () => {
+        const manager = await boot([task('a')])
+        manager.editTask(manager.tasks[0].id)
+        manager.setDateValue('startDateTime', '')
+
+        await pressSave(manager)
+
+        expect(document.activeElement.id).toBe('startDateTime')
+    })
+
+    // 숫자가 섞인 문구는 이어붙이면 어순을 담지 못한다. {max} 로 끼워 넣는다.
+    test('the message is the chosen language, with the number in it', async () => {
+        const manager = await boot([task('a')])
+        manager.locale = 'ko-KR'
+        manager.editTask(manager.tasks[0].id)
+        at('taskPosition').value = '99'
+
+        await pressSave(manager)
+
+        expect(said[0]).toBe('위치는 1 부터 1 사이여야 합니다.')
+    })
+})
+
 describe('date/time picker', () => {
     const at = (id) => document.getElementById(id)
     const open = (target = 'startDateTime') =>

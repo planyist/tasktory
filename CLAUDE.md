@@ -576,6 +576,12 @@ This is a complete Electron application with the following structure:
   **The icon never changes** — that breaks the "show what you get" rule collapse and the view toggle follow, and breaks it deliberately: with those two the question is *what will this do*, but with a pin the question is *is it pinned right now*, so the state has to be the visible thing. It says so by standing up and filling in: pinned is upright and solid blue, unpinned is tipped 45° and hollow. A background tint was tried first and does not work — it only reads next to a button in the other state, which is exactly what you never have on screen.
 
   The window is created with it on and the renderer pushes the stored value at start-up, the same shape as unfocused opacity — `main.js` keeps neither across launches
+- **A refusal puts the caret back in the field it refused.** `alert()` is modal, and when it closes focus is still on the Save button that opened it — measured, `saveBtn` before and after. Typing straight away then goes nowhere, which is reported as *the input stops working*, not as *the dialog lost my place*. `refuse(message, fieldId)` is the only way a validation message is shown, and every branch of `saveTask` and the tag presets names the field it is complaining about.
+
+- **A string on screen is never written in the source.** Seven `alert()` calls were English-only — the position range, both tag-preset limits, three export failures and the import failure — and two placeholders carried their text in `index.html`. Each was found separately, months apart, which is the shape of a rule with nothing enforcing it. `styles.test.js` now reads `renderer.js` and `index.html` as text and fails on a quoted string inside `alert(`, on a template literal that carries letters of its own once `${...}` is removed, and on any `placeholder=` with text in it. Markup placeholders are left empty and filled by `updateUIText`, so nothing shows in English for the moment before it runs.
+
+  `getLocalizedText(key, vars)` substitutes `{max}` and friends. Building the sentence by concatenation is what forces English word order onto every language, and the number is usually not at the end.
+
 - **The Backup and History labels carry their extension** — `백업 (.json)`,
   `이력 (.tsv)`. `setText` already takes a suffix, so this needs no translation:
   a file extension reads the same in every language.

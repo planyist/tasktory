@@ -95,6 +95,41 @@ describe('styles.css', () => {
 // 문서가 코드를 따라오는지 기계로 묻는다. 로그 컬럼은 세 번 늘었고 그때마다
 // README 나 CLAUDE.md 가 뒤처졌다 - 아홉 칸이라고 적힌 채 세 릴리스가 지나간
 // 적도 있다. 사람이 눈으로 훑는 대신 여기서 걸린다.
+
+// 화면에 나가는 글은 전부 다섯 언어를 지나야 한다. 이 규칙은 여러 번 샜다:
+// 위치 범위 경고, 태그 프리셋 둘, 내보내기 셋, 가져오기, 브라우저 저장이
+// 영어만 말하고 있었고, 위치 칸의 placeholder 도 마크업에 영어로 박혀 있었다.
+// 하나씩 발견해 고치는 방식으로는 다음에 또 새므로 여기서 막는다.
+describe('nothing shown to the user is written in one language', () => {
+    const RENDERER = fs.readFileSync(path.join(__dirname, '..', 'renderer.js'), 'utf8')
+    const HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')
+
+    // alert('Tag already exists') 같은 것. 따옴표가 곧 하드코딩이다.
+    test('no alert is handed a quoted string', () => {
+        const quoted = [...RENDERER.matchAll(/alert\(\s*(['"])/g)].map((m) => m[0])
+
+        expect(quoted).toEqual([])
+    })
+
+    // 백틱은 값을 끼워 넣으려고 쓴다. ${...} 를 걷어내고도 글자가 남으면
+    // 그 글자는 번역을 지나지 않은 것이다.
+    test('and no template literal in an alert carries words of its own', () => {
+        const carried = [...RENDERER.matchAll(/alert\(\s*`([^`]*)`/g)]
+            .map((m) => m[1].replace(/\$\{[^}]*\}/g, ''))
+            .filter((rest) => /[A-Za-z]/.test(rest))
+
+        expect(carried).toEqual([])
+    })
+
+    // placeholder 는 updateUIText 가 채운다. 마크업에 글자를 두면 그 글자가
+    // 번역되지 않을 뿐 아니라, 채워지기 전 한순간 영어가 보인다.
+    test('no placeholder carries its text in the markup', () => {
+        const written = [...HTML.matchAll(/placeholder="([^"]+)"/g)].map((m) => m[1])
+
+        expect(written).toEqual([])
+    })
+})
+
 describe('the docs name the log columns the code writes', () => {
     const at = (name) => fs.readFileSync(path.join(__dirname, '..', name), 'utf8')
     const HEADER = at('renderer.js').match(/const LOG_HEADER = '([^']+)'/)[1]

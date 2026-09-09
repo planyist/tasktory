@@ -598,6 +598,8 @@ class TaskManager {
         this.setText('labelPosition', 'position');
         
         // Modal form placeholders
+        this.setPlaceholder('taskPosition', 'positionPlaceholder');
+        this.setPlaceholder('newTagPreset', 'tagPresetPlaceholder');
         this.setPlaceholder('taskTags', 'tagsPlaceholder');
         this.setPlaceholder('taskContent', 'taskContentPlaceholder');
         
@@ -1688,7 +1690,7 @@ class TaskManager {
         } catch (error) {
             console.error('Failed to save tasks:', error);
             if (!this.isElectron) {
-                alert('Failed to save data. Please check your browser storage.');
+                alert(this.getLocalizedText('localSaveFailed'));
             }
             return false;
         }
@@ -1865,14 +1867,29 @@ class TaskManager {
         return (el && el.dataset.dateFormat) || this.dateFormat;
     }
 
-    getLocalizedText(key) {
+    getLocalizedText(key, vars = null) {
         const lang = languageOf(this.locale);
-        const text = TRANSLATIONS[lang][key] || TRANSLATIONS.en[key] || key;
+        const raw = TRANSLATIONS[lang][key] || TRANSLATIONS.en[key] || key;
         // 접기 단축키는 main.js 가 정하고 여러 문구가 그것을 말한다. 문구마다
         // 적어 두면 조합을 바꾼 날 화면 어딘가가 옛 키를 계속 안내한다.
-        return text.includes('{key}')
-            ? text.replace('{key}', this.collapseAccelerator)
-            : text;
+        let text = raw.includes('{key}')
+            ? raw.replace('{key}', this.collapseAccelerator)
+            : raw;
+        // 숫자가 섞이는 문구는 이어붙이면 어순이 언어마다 다른 것을 못 담는다.
+        for (const [name, value] of Object.entries(vars || {})) {
+            text = text.split('{' + name + '}').join(value);
+        }
+        return text;
+    }
+
+    // 거절할 때는 거절당한 칸으로 포커스를 돌려준다. alert 를 닫아도 포커스는
+    // 눌렀던 저장 버튼에 그대로 남아 있어서, 바로 치기 시작하면 아무것도 들어
+    // 가지 않는다 - 재 보니 저장 전후 모두 saveBtn 이었다. 이것이 "입력이 안
+    // 된다"로 보고됐다.
+    refuse(message, fieldId) {
+        alert(message);
+        const field = document.getElementById(fieldId);
+        if (field) field.focus();
     }
 
     updateTagsHelpText() {
@@ -3390,6 +3407,7 @@ ${link.dataset.path}`
     // 내보낸다 - 하나도 없는 조건을 눌러 빈 표를 보는 건 의미가 없다.
     // 상태는 많아야 다섯 가지라 전부 내보내고, 태그는 남는 자리를 많이 쓰인
     // 순서로 채운다. 열다섯이면 검색창 폭에서 두 줄쯤이라 표를 크게 밀지 않는다.
+    static get TAG_PRESET_LIMIT() { return 10; }
     static get QUICK_FILTER_LIMIT() { return 15; }
 
     static get PAGE_SIZES() { return [10, 20, 50, 100]; }
@@ -4656,7 +4674,7 @@ ${link.dataset.path}`
             const typed = document.getElementById('confirmCompletedAt').value.trim();
             const completedAt = typed ? this.parseInputDateTime(typed) : null;
             if (typed && !completedAt) {
-                alert(this.explainDateProblem(typed));
+                this.refuse(this.explainDateProblem(typed), 'confirmCompletedAt');
                 return;
             }
             // 산출물 칸은 한 건일 때만 나오므로, 여러 건이면 pendingOutputs 는
@@ -4682,7 +4700,8 @@ ${link.dataset.path}`
 
         // 목표 시각은 선택 항목이다. 비우면 마감 없는 상시 업무가 된다.
         if (!startDateTime || !content) {
-            alert(this.getLocalizedText('fillAllFields'));
+            this.refuse(this.getLocalizedText('fillAllFields'),
+                startDateTime ? 'taskContent' : 'startDateTime');
             return;
         }
 
@@ -4692,12 +4711,13 @@ ${link.dataset.path}`
         const storedTarget = targetDateTime ? this.parseInputDateTime(targetDateTime) : '';
 
         if (!storedStart || (targetDateTime && !storedTarget)) {
-            alert(this.explainDateProblem(storedStart ? targetDateTime : startDateTime));
+            const bad = storedStart ? 'targetDateTime' : 'startDateTime';
+            this.refuse(this.explainDateProblem(storedStart ? targetDateTime : startDateTime), bad);
             return;
         }
 
         if (storedTarget && new Date(storedStart) >= new Date(storedTarget)) {
-            alert(this.getLocalizedText('targetAfterStart'));
+            this.refuse(this.getLocalizedText('targetAfterStart'), 'targetDateTime');
             return;
         }
 
@@ -4706,7 +4726,8 @@ ${link.dataset.path}`
         const maxPosition = this.editingTaskId ? activeTasks.length : activeTasks.length + 1;
         
         if (position < 1 || position > maxPosition || isNaN(position)) {
-            alert(`Position must be between 1 and ${maxPosition}`);
+            this.refuse(this.getLocalizedText('positionRange', { max: maxPosition }),
+                'taskPosition');
             return;
         }
 
@@ -4959,7 +4980,7 @@ ${link.dataset.path}`
                 // Electron mode: get data from IPC
                 data = await window.electronAPI.exportData();
                 if (!data) {
-                    alert('Failed to export data.');
+                    alert(this.getLocalizedText('exportFailed'));
                     return;
                 }
             } else {
@@ -4986,7 +5007,7 @@ ${link.dataset.path}`
 
         } catch (error) {
             console.error('Export error:', error);
-            alert('Failed to export data.');
+            alert(this.getLocalizedText('exportFailed'));
         }
     }
 
@@ -5007,7 +5028,7 @@ ${link.dataset.path}`
                 'text/tab-separated-values');
         } catch (error) {
             console.error('History export error:', error);
-            alert('Failed to export data.');
+            alert(this.getLocalizedText('exportFailed'));
         }
     }
 
@@ -5039,7 +5060,7 @@ ${link.dataset.path}`
                                 this.renderTasks();
                                 alert(this.getLocalizedText('dataImportSuccess'));
                             } else {
-                                alert('Failed to import data.');
+                                alert(this.getLocalizedText('importFailed'));
                             }
                         } else {
                             // Browser mode: use local storage
@@ -5283,13 +5304,15 @@ ${link.dataset.path}`
         
         // Check if already exists
         if (this.tagPresets.includes(value)) {
-            alert('Tag already exists');
+            this.refuse(this.getLocalizedText('tagPresetExists'), 'newTagPreset');
             return;
         }
         
         // Check limit (10 tags)
-        if (this.tagPresets.length >= 10) {
-            alert('Maximum 10 tag presets allowed');
+        if (this.tagPresets.length >= TaskManager.TAG_PRESET_LIMIT) {
+            this.refuse(
+                this.getLocalizedText('tagPresetLimit', { max: TaskManager.TAG_PRESET_LIMIT }),
+                'newTagPreset');
             return;
         }
         
