@@ -330,6 +330,35 @@ app.whenReady().then(async () => {
         calendar.head.join(',') === calendar.first.join(','),
         `${calendar.head.join(',')} vs ${calendar.first.join(',')}`)
 
+    // --- 6. 편집 팝업이 기본 창 하나에 들어간다 -----------------------------
+    // 이 창은 900x500 으로 열리므로 앱의 기본 높이로 맞춘 뒤에 잰다.
+    // 재 보기 전에는 39px 넘쳤고, 그래서 저장 버튼이 스크롤 아래에 있었다.
+    // 시작 시간과 목표 시간을 한 줄에 두어 59px 을 줄인 것이 이 확인의 내용이다.
+    win.setSize(900, 900)
+    await new Promise((r) => setTimeout(r, 500))
+    const editor = JSON.parse(await run(`
+        taskManager.viewMode = 'list'; taskManager.applyViewMode();
+        taskManager.tasks = [{ id: 'fit', content: '견적서 정리', tags: '#[BLUE]업무',
+            startDateTime: '2026-09-09 09:00', targetDateTime: '2026-09-19 18:00' }];
+        taskManager.renderTasks();
+        taskManager.editTask('fit');
+        (() => {
+            const box = document.querySelector('#taskModal .modal-content');
+            const start = document.getElementById('startDateTime').getBoundingClientRect();
+            const target = document.getElementById('targetDateTime').getBoundingClientRect();
+            return JSON.stringify({
+                overflow: box.scrollHeight - Math.round(box.getBoundingClientRect().height),
+                sameRow: Math.round(start.top) === Math.round(target.top),
+                widths: [Math.round(start.width), Math.round(target.width)],
+                scrolls: getComputedStyle(box).overflowY
+            });
+        })()`))
+    check('편집 팝업이 기본 창에서 스크롤 없이 들어간다', editor.overflow <= 1,
+        `${editor.overflow}px 넘침`)
+    check('시작 시간과 목표 시간이 같은 줄, 같은 폭',
+        editor.sameRow && editor.widths[0] === editor.widths[1], editor.widths.join(' vs '))
+    check('그래도 넘칠 때를 위한 스크롤은 남아 있다', editor.scrolls === 'auto', editor.scrolls)
+
     const failed = results.filter((r) => !r.pass)
     console.log(`\n${results.length}건 중 ${failed.length}건 실패\n`)
     win.destroy()
