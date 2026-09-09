@@ -1882,14 +1882,39 @@ class TaskManager {
         return text;
     }
 
-    // 거절할 때는 거절당한 칸으로 포커스를 돌려준다. alert 를 닫아도 포커스는
-    // 눌렀던 저장 버튼에 그대로 남아 있어서, 바로 치기 시작하면 아무것도 들어
-    // 가지 않는다 - 재 보니 저장 전후 모두 saveBtn 이었다. 이것이 "입력이 안
-    // 된다"로 보고됐다.
+    // 거절 메시지는 화면 안에, 거절당한 칸 바로 아래에 붙는다.
+    //
+    // OS 경고창을 쓰지 않는 이유는 그것이 닫힐 때 커서를 돌려주지 않기
+    // 때문이다. 확인을 누르고 바로 치면 아무것도 들어가지 않고, 다른 프로그램
+    // 으로 갔다 돌아와야 그제서야 입력이 됐다. 닫은 뒤 칸에 focus() 를 부르는
+    // 것으로는 고쳐지지 않았다 - activeElement 는 옳은데 입력이 안 갔다.
+    // 상자를 띄우지 않으면 뺏길 포커스가 없다.
+    //
+    // 덤으로 메시지가 문제가 된 칸 옆에 선다. 화면 한가운데 뜬 상자는 닫고
+    // 나면 어느 칸 이야기였는지 다시 찾아야 했다.
     refuse(message, fieldId) {
-        alert(message);
         const field = document.getElementById(fieldId);
-        if (field) field.focus();
+        if (!field) return;
+
+        // 대부분의 칸은 .form-group 안에 있다. 태그 프리셋만 그 밖이라 그
+        // 줄 뒤에 붙인다.
+        const group = field.closest('.form-group');
+        const holder = group || field.parentElement.parentElement;
+        let note = holder.querySelector(':scope > .field-error');
+        if (!note) {
+            note = document.createElement('p');
+            note.className = 'field-error';
+            note.setAttribute('role', 'alert');
+            if (group) group.appendChild(note);
+            else field.parentElement.insertAdjacentElement('afterend', note);
+        }
+        note.textContent = message;
+        field.focus();
+    }
+
+    // 다시 눌렀을 때 지난 거절이 남아 있으면 무엇이 지금 문제인지 알 수 없다.
+    clearRefusals() {
+        for (const note of document.querySelectorAll('.field-error')) note.remove();
     }
 
     updateTagsHelpText() {
@@ -4344,6 +4369,7 @@ ${link.dataset.path}`
         // Show/hide tags help text based on preset availability
         this.updateTagsHelpText();
         
+        this.clearRefusals();
         // 값을 코드가 넣었으므로 이벤트가 나지 않는다. 흐림은 여기서 입힌다.
         this.refreshDateGhosts();
         modal.style.display = 'block';
@@ -4649,6 +4675,7 @@ ${link.dataset.path}`
         }
 
         detailsTextarea.value = '';
+        this.clearRefusals();
         // 값을 코드가 넣었으므로 이벤트가 나지 않는다. 흐림은 여기서 입힌다.
         this.refreshDateGhosts();
         modal.style.display = 'block';
@@ -4667,6 +4694,7 @@ ${link.dataset.path}`
     }
 
     async handleConfirmAction() {
+        this.clearRefusals();
         const details = document.getElementById('confirmDetails').value.trim();
         const ids = this.pendingConfirmTaskIds || [];
 
@@ -4692,6 +4720,7 @@ ${link.dataset.path}`
     }
 
     async saveTask() {
+        this.clearRefusals();
         const startDateTime = document.getElementById('startDateTime').value;
         const targetDateTime = document.getElementById('targetDateTime').value;
         const content = document.getElementById('taskContent').value.trim();

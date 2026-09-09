@@ -2895,6 +2895,20 @@ body.dark-mode .settings-hint {
     font-size: 16px;
 }
 
+/* 거절 메시지. 문제가 된 칸 바로 아래에 선다.
+   OS 경고창을 쓰지 않는 이유는 그것이 닫힐 때 커서를 돌려주지 않기 때문이다 -
+   확인을 누르고 바로 치면 아무것도 들어가지 않았다. */
+.field-error {
+    margin: 4px 0 0;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #c0392b;
+}
+
+body.dark-mode .field-error {
+    color: #ff8a80;
+}
+
 /* 짝이 되는 칸을 한 줄에 둔다. 시작 시간과 목표 시간이 그렇다 - 나란히 두면
    서로를 견주어 읽게 되고, 팝업도 그만큼 짧아져 기본 창에서 스크롤 없이 들어온다.
    min-width: 0 이 없으면 flex 항목이 내용 최소 폭 아래로 줄지 않아 두 칸이

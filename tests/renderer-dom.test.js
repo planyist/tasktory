@@ -459,7 +459,9 @@ describe('date format setting', () => {
         await settle()
 
         expect(stored).toEqual([])
-        expect(window.alert).toHaveBeenCalledWith(expect.stringContaining('YYYY-MM-DD HH:mm'))
+        // 메시지는 OS 경고창이 아니라 거절당한 칸 아래에 선다
+        expect(at('startDateTime').closest('.form-group').querySelector('.field-error').textContent)
+            .toEqual(expect.stringContaining('YYYY-MM-DD HH:mm'))
     })
 
     test('rejects a date that does not exist', async () => {
@@ -588,12 +590,6 @@ describe('a refused save sends you to the field it refused', () => {
         return save
     }
 
-    let said
-    beforeEach(() => {
-        said = []
-        window.alert = (message) => said.push(message)
-    })
-
     test('an out-of-range position lands back in the position field', async () => {
         const manager = await boot([task('a')])
         manager.editTask(manager.tasks[0].id)
@@ -624,7 +620,8 @@ describe('a refused save sends you to the field it refused', () => {
 
         await pressSave(manager)
 
-        expect(said[0]).toBe('위치는 1 부터 1 사이여야 합니다.')
+        expect(at('taskPosition').closest('.form-group').querySelector('.field-error').textContent)
+            .toBe('위치는 1 부터 1 사이여야 합니다.')
     })
 })
 
