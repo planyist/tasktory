@@ -114,8 +114,17 @@ const keepWindowWhereItWasPut = () => {
         }
     }
 
-    mainWindow.on('moved', remember)
-    mainWindow.on('resized', remember)
+    // 'moved'/'resized' 만으로는 모자라다. 이 창은 .drag-bar 의
+    // -webkit-app-region: drag 로 끌리는데, 그렇게 옮기면 'move' 만 뜨고
+    // 'moved' 는 끝내 오지 않는다 (재보니 여섯 번 대 영 번). 그래서 스트립을
+    // 끌어 옮겨도 앱은 그것을 보지 못했고, 폈다 접으면 늘 처음 자리로 갔다.
+    //
+    // 진행 중 이벤트라 드래그 한 번에 여러 번 불리지만, 마지막 값이 남으므로
+    // 결과는 같다. OS 가 옮기는 경우는 disrupted 가, 우리가 놓는 경우는
+    // placingCollapsed 가 걸러낸다.
+    for (const event of ['move', 'moved', 'resize', 'resized']) {
+        mainWindow.on(event, remember)
+    }
     remember()
 
     const disrupt = () => {
