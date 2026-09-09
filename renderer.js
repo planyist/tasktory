@@ -3953,6 +3953,36 @@ ${link.dataset.path}`
         return Math.max(2, this.collapsedCalendarDay().tasks.length) + 7;
     }
 
+    // 스트립 안의 내용이 실제로 몇 px 인가. 늘어나는 상자가 아니라 내용을 재야
+    // 한다.
+    //
+    // 예전에는 collapsedMiniLayout.scrollHeight 를 썼는데, 그 상자는
+    // height: 100% 라 언제나 창만큼 크다. 그래서 "잰 값"이 사실은 창 높이였고,
+    // 다시 그릴 때마다 창이 29px 씩 줄어들었다 - 항목 3개짜리 스트립이 837px 로
+    // 시작해 한 번 그릴 때마다 조금씩 내려앉았다. 내용은 내내 131px 이었다.
+    collapsedContentHeight() {
+        const layout = document.getElementById('collapsedMiniLayout');
+        if (!layout) return 0;
+
+        // 늘어나지 않게 잠깐 풀어 두고 통째로 잰다.
+        //
+        // 조각을 더하는 방법은 틀린다: offsetHeight 는 마진을 세지 않아, 확장
+        // 버튼의 6px 과 항목마다 붙는 1px 이 전부 빠진다. 셋을 따로 더하다 보면
+        // 그런 것을 하나씩 발견하게 되고, 하나 놓칠 때마다 스트립이 그만큼
+        // 짧아져 마지막 줄이 잘린다.
+        const list = layout.querySelector('.collapsed-task-list');
+        const heldHeight = layout.style.height;
+        const heldFlex = list ? list.style.flex : '';
+        layout.style.height = 'auto';
+        if (list) list.style.flex = '0 0 auto';
+
+        const measured = layout.scrollHeight;
+
+        layout.style.height = heldHeight;
+        if (list) list.style.flex = heldFlex;
+        return measured;
+    }
+
     resizeCollapsedWindow() {
         if (!this.isElectron || !window.electronAPI) return;
 
@@ -3960,10 +3990,18 @@ ${link.dataset.path}`
         // 때마다 계수를 다시 맞춰야 했고, 달력 격자가 들어오자 곧바로 어긋나
         // 목록이 창 밖으로 밀렸다. (jsdom에는 레이아웃이 없어 0이 나오므로
         // 그때만 줄 수 추정으로 되돌아간다.)
-        const layout = document.getElementById('collapsedMiniLayout');
-        const measured = layout ? layout.scrollHeight : 0;
+        const measured = this.collapsedContentHeight();
         const estimated = 80 + this.collapsedRowCount() * 22;
-        const height = Math.max(150, (measured || estimated) + 30);
+
+        // 레이아웃 바깥에도 크롬이 있다. 그것까지 재서 더한다 - 어림수 30 을
+        // 쓰던 때는 모자라서, 항목이 셋뿐인데도 목록이 잘려 하나만 보였다.
+        //
+        // 창틀은 여기서 세지 않는다. window.outerHeight 는 접기 전 값(900)을
+        // 그대로 들고 있어 창틀을 728px 로 답한다. 창틀 두께는 창만 아는 값이라
+        // main.js 가 더한다. 여기서 보내는 것은 **콘텐츠 영역** 높이다.
+        const layout = document.getElementById('collapsedMiniLayout');
+        const inside = layout ? Math.max(0, window.innerHeight - layout.clientHeight) : 0;
+        const height = (measured || estimated) + inside;
 
         this.resizeAndPositionWindow(COLLAPSED_WIDTH, height, 'top-right-150');
     }

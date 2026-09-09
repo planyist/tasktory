@@ -368,10 +368,13 @@ body.collapsed-mode-body {
     min-width: 20px;
 }
 
+/* 창이 상한에 걸리면 여기만 스크롤한다. 머리와 미니 달력은 제자리에 있어야
+   어느 날을 보고 있는지 잃지 않는다. */
 .collapsed-task-list {
     flex: 1;
     min-height: 0;
-    overflow: hidden;
+    overflow-y: auto;
+    overflow-x: hidden;
     width: 100%;
 }
 

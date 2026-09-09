@@ -240,6 +240,10 @@ Toggle it with the calendar button at the top right, next to collapse.
   a single click does nothing, and there is no selection here; the list still
   does the rest
 
+The strip sizes itself to what it holds, up to half your screen; past that the
+task list scrolls. Move it or resize it and it returns there each time you
+collapse — until you close the app, which puts it back in the top right corner.
+
 Collapsed, it becomes a mini month grid — 150px is too narrow for task names,
 so each day shows its number and a coloured underline for its most pressing
 status, with that day's items listed underneath. Today is a filled circle. If

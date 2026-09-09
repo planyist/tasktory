@@ -4136,6 +4136,54 @@ describe('notification wording', () => {
 // 내용 끝에 클립을 붙이면 내용 길이가 행마다 달라 매 행 다른 자리에 놓인다.
 // 한 줄로 내려훑으려면 제 컬럼이어야 한다. 다만 대부분의 목록에는 첨부가 없으니
 // 있을 때만 낸다.
+// 접힘 스트립의 높이는 재는 것이지 추정하는 것이 아니다. jsdom 에는 레이아웃이
+// 없어 실제 픽셀은 scripts 쪽 탐침이 확인하고, 여기서는 무엇을 재고 무엇을
+// 보내는지를 본다.
+describe('how tall the collapsed strip asks to be', () => {
+    const stub = (manager, { content, inner, layoutHeight }) => {
+        const layout = document.getElementById('collapsedMiniLayout')
+        jest.spyOn(manager, 'collapsedContentHeight').mockReturnValue(content)
+        Object.defineProperty(layout, 'clientHeight', { value: layoutHeight, configurable: true })
+        Object.defineProperty(window, 'innerHeight', { value: inner, configurable: true })
+    }
+
+    // 레이아웃 바깥에도 크롬이 있다. 어림수를 더하던 때는 모자라서, 항목이
+    // 셋뿐인데도 목록이 잘려 하나만 보였다.
+    test('it sends the content height plus the chrome around it', async () => {
+        const manager = await boot([task('a')])
+        const sent = jest.spyOn(manager, 'resizeAndPositionWindow').mockImplementation(() => {})
+        stub(manager, { content: 118, inner: 172, layoutHeight: 152 })
+
+        manager.resizeCollapsedWindow()
+
+        expect(sent).toHaveBeenCalledWith(expect.any(Number), 118 + 20, 'top-right-150')
+    })
+
+    // 창틀은 여기서 세지 않는다. window.outerHeight 가 접기 전 값을 들고 있어
+    // 창틀을 700px 넘게 답하고, 그 값을 더하면 스트립이 늘 상한까지 커진다.
+    test('it does not try to account for the window frame', async () => {
+        const manager = await boot([task('a')])
+        const sent = jest.spyOn(manager, 'resizeAndPositionWindow').mockImplementation(() => {})
+        stub(manager, { content: 118, inner: 172, layoutHeight: 152 })
+        Object.defineProperty(window, 'outerHeight', { value: 900, configurable: true })
+
+        manager.resizeCollapsedWindow()
+
+        expect(sent.mock.calls[0][1]).toBe(138)
+    })
+
+    // jsdom 에는 레이아웃이 없어 0 이 나온다. 그때만 줄 수 추정으로 되돌아간다.
+    test('falls back to counting rows where nothing can be measured', async () => {
+        const manager = await boot([task('a'), task('b')])
+        const sent = jest.spyOn(manager, 'resizeAndPositionWindow').mockImplementation(() => {})
+        jest.spyOn(manager, 'collapsedContentHeight').mockReturnValue(0)
+
+        manager.resizeCollapsedWindow()
+
+        expect(sent.mock.calls[0][1]).toBeGreaterThan(80)
+    })
+})
+
 describe('collapsing from outside the window', () => {
     const press = (key, mods = {}) => document.dispatchEvent(
         new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...mods }))

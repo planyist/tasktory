@@ -10,6 +10,14 @@ let originalWindowBounds = null
 let wasMaximizedBeforeCollapse = false
 // 사용자가 마지막으로 둔 자리. 화면보호기/잠금 이후 창이 밀려나면 여기로 돌린다.
 let intendedBounds = null
+// 접힌 스트립을 사용자가 옮기거나 늘린 자리. **이번 실행 동안만** 기억한다 -
+// localStorage 에 넣지 않는 것은 일부러다. 스트립이 이상한 곳에 가 있거나
+// 이상한 크기가 됐을 때, 앱을 껐다 켜면 원래 자리로 돌아오는 길이 남아야 한다.
+let collapsedBounds = null
+// 우리가 스트립을 놓는 동안에는 moved/resized 를 사용자의 것으로 세지 않는다.
+// 그러지 않으면 방금 계산한 높이가 곧바로 "사용자가 정한 높이"가 되어,
+// 내용에 맞춰 줄어드는 일이 두 번 다시 일어나지 않는다.
+let placingCollapsed = false
 const NORMAL_MIN_WIDTH = 900 // 접힘 여부 판단 기준 (BrowserWindow의 minWidth와 같다)
 const DEFAULT_HEIGHT = 900
 
@@ -96,8 +104,13 @@ const keepWindowWhereItWasPut = () => {
 
     const remember = () => {
         if (disrupted) return // 지금 움직이는 것은 사용자가 아니다
+        if (placingCollapsed) return // 지금 옮기는 것은 우리다
         if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.isMinimized()) {
             intendedBounds = mainWindow.getBounds()
+            // 접힌 채로 움직였다면 그 자리를 스트립의 자리로도 기억한다.
+            if (mainWindow.getBounds().width < NORMAL_MIN_WIDTH) {
+                collapsedBounds = mainWindow.getBounds()
+            }
         }
     }
 
@@ -133,10 +146,33 @@ const keepWindowWhereItWasPut = () => {
     screen.on('display-removed', restore)
 }
 
+// 접힌 스트립을 어디에 얼마만 하게 놓을지 정한다. 창도 이벤트도 모르는 순수
+// 함수라 Electron 런타임 없이 확인할 수 있다 - boundsToRestore 와 같은 이유다.
+//
+// contentHeight 는 렌더러가 잰 **콘텐츠 영역** 높이다. 창틀 두께는 창만 알고
+// 있으므로 frame 으로 받는다: 렌더러의 window.outerHeight 는 접기 전 크기를
+// 그대로 들고 있어 700px 이 넘는 창틀을 답한다.
+const collapsedStripBounds = ({ contentHeight, width, frame, workArea, remembered }) => {
+    // 상한은 작업 영역의 절반이다. 스티키 노트가 화면 절반을 넘으면 그것은 더
+    // 이상 메모가 아니고, 넘치는 만큼은 목록이 스크롤로 받는다. 예전에는 화면
+    // 높이에서 150 만 뺐는데, 그러면 작업이 많은 사람에게는 스트립이 화면을
+    // 위에서 아래까지 채웠다.
+    const height = Math.max(150,
+        Math.min(contentHeight + frame, Math.round(workArea.height / 2)))
+
+    // 이번 실행에서 옮겨 둔 적이 있으면 그 자리로 간다. 높이도 직접 늘렸다면
+    // 그쪽을 쓴다 - 내용에 맞추는 것은 기본값이지 규칙이 아니고, 얼마나 보고
+    // 싶은지는 쓰는 사람이 안다.
+    if (remembered) {
+        return { x: remembered.x, y: remembered.y, width, height: remembered.height }
+    }
+    return { x: workArea.x + workArea.width - width, y: workArea.y + 150, width, height }
+}
+
 const COLLAPSE_SHORTCUT = 'CommandOrControl+Alt+Shift+M'
 let collapseShortcutRegistered = false
 
-module.exports = { boundsToRestore, registerCollapseShortcut, COLLAPSE_SHORTCUT }
+module.exports = { boundsToRestore, collapsedStripBounds, registerCollapseShortcut, COLLAPSE_SHORTCUT }
 
 // GPU 가속 비활성화 (호환성 문제 해결)
 app.disableHardwareAcceleration()
@@ -730,12 +766,19 @@ ipcMain.handle('resize-and-position-window', async (event, width, height, positi
         // 최대화된 채로는 setBounds 가 통하지 않는다. 풀지 않으면 접기를 눌러도
         // 스트립만 그려지고 창은 화면을 꽉 채운 채 남는다.
         if (mainWindow.isMaximized()) mainWindow.unmaximize()
-        y = workArea.y + 150
-        // 작업이 많으면 계산된 높이가 화면을 넘어가고, 그러면 창 안에 스크롤이 생긴다
-        height = Math.min(height, workArea.height - 150)
         // 최소 크기를 먼저 풀어야 좁은 폭/낮은 높이가 실제로 적용된다
         mainWindow.setMinimumSize(width, 100)
-        x = workArea.x + workArea.width - width
+
+        const strip = collapsedStripBounds({
+            contentHeight: height,
+            width,
+            frame: mainWindow.getBounds().height - mainWindow.getContentSize()[1],
+            workArea,
+            remembered: collapsedBounds
+        })
+        x = strip.x
+        y = strip.y
+        height = strip.height
     } else if (position === 'center') {
         mainWindow.setMinimumSize(NORMAL_MIN_WIDTH, 400)
 
@@ -762,6 +805,10 @@ ipcMain.handle('resize-and-position-window', async (event, width, height, positi
 
     // 크기와 위치를 한 번에 적용한다. setSize와 setPosition을 따로 부르면
     // 중간 상태에서 최소 크기 제약이나 OS 위치 보정에 걸려 어긋난다.
+    // 우리가 놓는 중이라고 알린다. moved/resized 가 곧 뒤따르는데, 그것을
+    // 사용자의 조작으로 세면 계산한 높이가 그대로 "사용자가 정한 높이"가 된다.
+    placingCollapsed = true
     mainWindow.setBounds({ x, y, width, height })
+    setTimeout(() => { placingCollapsed = false }, 250)
     return true
 })

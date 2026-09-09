@@ -740,6 +740,61 @@ describe('reading completions written before the columns existed', () => {
     })
 })
 
+// 접힌 스트립을 어디에 얼마만 하게 놓을지. 판단 부분만 떼어낸 순수 함수라
+// Electron 런타임 없이 확인한다 - boundsToRestore 와 같은 이유다.
+describe('collapsedStripBounds', () => {
+    // beforeEach 가 환경변수를 세운 뒤 main.js 를 다시 읽는다. 그 전에 require
+    // 하면 userData 경로가 undefined 라 모듈 로딩 자체가 터진다.
+    const place = (options) => require('../main.js').collapsedStripBounds({
+        width: 150, frame: 39, workArea: { x: 0, y: 0, width: 1920, height: 1032 },
+        remembered: null, ...options
+    })
+
+    // 넘겨받는 값은 콘텐츠 영역 기준이다. 창틀 두께는 창만 알고 있고, 렌더러의
+    // window.outerHeight 는 접기 전 크기를 그대로 들고 있어 700px 이 넘는
+    // 창틀을 답한다 - 그 값을 더하면 스트립이 늘 상한까지 커진다.
+    test('adds the frame to the content height it is given', () => {
+        expect(place({ contentHeight: 180 }).height).toBe(219)
+    })
+
+    // 스티키 노트가 화면 절반을 넘으면 그것은 더 이상 메모가 아니다. 넘치는
+    // 만큼은 목록이 스크롤로 받는다.
+    test('never grows past half the work area', () => {
+        expect(place({ contentHeight: 2000 }).height).toBe(516)
+    })
+
+    test('and never shrinks below 150', () => {
+        expect(place({ contentHeight: 10 }).height).toBe(150)
+    })
+
+    test('goes to the top right when nothing has been moved', () => {
+        expect(place({ contentHeight: 180 })).toEqual({ x: 1770, y: 150, width: 150, height: 219 })
+    })
+
+    // 이번 실행에서 옮겨 둔 자리가 있으면 그리로 간다. 높이도 직접 늘렸다면
+    // 그쪽을 쓴다 - 내용에 맞추는 것은 기본값이지 규칙이 아니다.
+    test('returns to where it was put, at the height it was given', () => {
+        expect(place({ contentHeight: 180, remembered: { x: 60, y: 400, height: 300 } }))
+            .toEqual({ x: 60, y: 400, width: 150, height: 300 })
+    })
+
+    test('and keeps that height even when the list grows', () => {
+        expect(place({ contentHeight: 2000, remembered: { x: 60, y: 400, height: 300 } }).height)
+            .toBe(300)
+    })
+
+    // 작업 영역이 0,0 에서 시작하지 않는 경우 - 작업표시줄이 위나 왼쪽에 있거나
+    // 모니터가 여러 대일 때.
+    test('respects a work area that does not start at the origin', () => {
+        const strip = place({
+            contentHeight: 180,
+            workArea: { x: -1920, y: 40, width: 1920, height: 1000 }
+        })
+        expect(strip.x).toBe(-150)
+        expect(strip.y).toBe(190)
+    })
+})
+
 describe('boundsToRestore', () => {
     // beforeEach 가 환경변수를 세운 뒤 main.js 를 다시 읽는다. 그 전에 require 하면
     // userData 경로가 undefined 라 모듈 로딩 자체가 터진다.
