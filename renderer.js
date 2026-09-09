@@ -161,10 +161,27 @@ const maskSlots = (pattern) => {
     return slots;
 };
 
+// 칸에 들어갈 때의 커서 자리. 아직 아무 숫자도 치지 않은 빈 틀이면 어디를
+// 눌렀든 첫 칸에서 시작한다. 틀 가운데를 눌러도 커서가 그 자리에 앉던 탓에,
+// 지우고 저장을 눌러 되돌아온 칸에 '202703151030' 을 치면 한 칸씩 밀려
+// 'Y202-70-31 51:03' 이 되었다.
+const maskEntryCaret = (text, pattern, caret) => {
+    const slots = maskSlots(pattern);
+    if (!slots.length) return caret;
+    const { digits, meridiem } = maskRead(text, pattern);
+    return (!digits && !meridiem) ? slots[0].index : caret;
+};
+
 // 커서 자리(또는 그 다음 빈 자리)에 한 글자를 덮어쓴다. 받을 수 없는 글자면 null.
 const maskWrite = (text, pattern, caret, ch) => {
     const slots = maskSlots(pattern);
-    const slot = slots.find(s => s.index >= caret);
+    // 커서가 마지막 칸 뒤에 있으면 마지막 칸에 쓴다. 칸의 오른쪽에는 값보다
+    // 넓은 빈 자리가 남고(재 보니 179px 중 70px), 거기를 누르면 커서가 글자
+    // 끝에 앉는다. 예전에는 그 자리에서 받을 칸을 못 찾아 치는 것을 통째로
+    // 버렸다 - 눌린 티도 나지 않아 "입력이 안 된다"로 보인다. 커서를 마지막
+    // 칸에 붙들어 두는 쪽은 안 된다: 지우기는 커서 앞자리를 지우므로, 그러면
+    // 마지막 칸을 영영 지울 수 없다.
+    const slot = slots.find(s => s.index >= caret) || slots[slots.length - 1];
     if (!slot) return null;
 
     const chars = String(text).split('');
@@ -1052,7 +1069,17 @@ class TaskManager {
 
             // 커서를 옮기는 길은 타이핑 말고도 있다 - 클릭, 화살표, 탭. 칠한 칸이
             // 따라가지 않으면 엉뚱한 자리를 가리킨다.
-            for (const type of ['click', 'keyup', 'select']) {
+            // 누르고 들어올 때만 커서를 첫 칸으로 보낸다. keyup 에서도 그러면
+            // 빈 틀에서 화살표로 자리를 옮길 수 없다.
+            input.addEventListener('click', () => {
+                if (input.selectionStart === input.selectionEnd) {
+                    const wanted = maskEntryCaret(input.value, this.formatFor(input),
+                        input.selectionStart);
+                    if (wanted !== input.selectionStart) input.setSelectionRange(wanted, wanted);
+                }
+                this.paintGhost(input);
+            });
+            for (const type of ['keyup', 'select']) {
                 input.addEventListener(type, () => this.paintGhost(input));
             }
 

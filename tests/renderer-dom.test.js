@@ -503,6 +503,75 @@ describe('date format setting', () => {
     })
 })
 
+
+// 실제로 올라온 보고: 시작 시간을 지우고 저장을 눌렀다가 다시 치면 "입력이
+// 순간적으로 안 된다". 값이 아니라 커서 자리 문제였다 - 되돌아온 칸을 누르면
+// 커서가 누른 자리에 앉고, 빈 틀에서는 거기서부터 채워져 한 칸씩 밀린다.
+describe('typing into a date field after clearing it', () => {
+    const at = (id) => document.getElementById(id)
+
+    const clickAt = (input, caret) => {
+        input.focus()
+        input.setSelectionRange(caret, caret)
+        input.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    }
+    // setSelectionRange 는 select 이벤트를 큐에 넣는다. 그것이 환경이 정리된
+    // 뒤에 터지면 우리 코드가 아니라 jsdom 이 죽어, 실패한 시험의 이유가
+    // 가려진다. 단언 전에 비운다 - 뒤에 두면 실패했을 때 돌지 않는다.
+    const flush = () => new Promise((r) => setTimeout(r, 0))
+
+    const typeDigits = (input, digits) => {
+        for (const ch of digits) {
+            input.dispatchEvent(new KeyboardEvent('keydown', { key: ch, bubbles: true }))
+            input.dispatchEvent(new KeyboardEvent('keyup', { key: ch, bubbles: true }))
+        }
+    }
+
+    // 사람이 하는 순서 그대로: 지우면 틀만 남고, 저장은 막히고, 다시 칸을
+    // 누른다. 누른 자리는 첫 칸이 아니다 - 칸 어디를 눌렀느냐에 달렸다.
+    test('the digits land from the front, wherever the field was clicked', async () => {
+        await boot([])
+        const input = at('startDateTime')
+        input.value = 'YYYY-MM-DD HH:mm'
+
+        clickAt(input, 3)
+        typeDigits(input, '202703151030')
+
+        await flush()
+
+        expect(input.value).toBe('2027-03-15 10:30')
+    })
+
+    // 값이 이미 있으면 누른 자리를 존중해야 한다 - 연도만 고치러 온 경우다.
+    test('but a field with a value still takes the caret where it was clicked', async () => {
+        await boot([])
+        const input = at('startDateTime')
+        input.value = '2026-09-09 09:00'
+
+        clickAt(input, 5)
+        typeDigits(input, '12')
+
+        await flush()
+
+        expect(input.value).toBe('2026-12-09 09:00')
+    })
+
+    // 값 오른쪽 빈 자리를 누른 것은 마지막 칸을 겨눈 것이다. 예전에는 키가
+    // 통째로 사라졌다.
+    test('clicking past the value writes into the last slot instead of nothing', async () => {
+        await boot([])
+        const input = at('startDateTime')
+        input.value = '2026-09-09 09:00'
+
+        clickAt(input, input.value.length)
+        typeDigits(input, '7')
+
+        await flush()
+
+        expect(input.value).toBe('2026-09-09 09:07')
+    })
+})
+
 describe('date/time picker', () => {
     const at = (id) => document.getElementById(id)
     const open = (target = 'startDateTime') =>

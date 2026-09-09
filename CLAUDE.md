@@ -533,6 +533,16 @@ This is a complete Electron application with the following structure:
 
   **Typing writes into the slot under the caret; it does not append.** The first version appended to a digit buffer, so a field already holding a full date had nowhere to put the next digit and the key did nothing at all. Selecting the value on focus hid that in testing and not in use — the browser moves the caret after `focus` fires, so clicking into the field with a mouse undoes any `select()`, which is how everyone actually gets there. `maskWrite` and `maskErase` work on slot positions instead, and Backspace, Delete and a full overwrite all fall out of that.
 
+  **Where the caret is allowed to sit is the whole feature, and two holes in it read as "typing does nothing".** Both were reported together as *the input stops accepting keys for a moment*.
+
+  - **A caret past the last slot used to swallow every key.** `maskWrite` looked for the first slot at or after the caret and returned `null` when there was none. The field is 179px and the value 109px, so **70px — 39% of it — is empty space to the right**, and clicking there is how people aim at a date field. Nothing was written and nothing was drawn, so the key vanished. It now falls back to the last slot: clicking past the value means aiming at the last segment, which is what a native date input does too.
+
+    Clamping the caret to the last slot is the obvious-looking fix and it is wrong. Backspace erases the slot *before* the caret, so a clamped caret can never reach the last slot — measured, erasing a full date left `HH:m0` behind. The caret has to be allowed past the end; it is the write that has to cope.
+
+  - **A click into an untouched template starts at the first slot, wherever it landed.** Otherwise the caret sits where the pointer was and the digits fill from there: typing `202703151030` into a field clicked at position 3 gave `Y202-70-31 51:03`. This is `maskEntryCaret`, and it is bound to `click` only — on `keyup` it would pin the caret to the front and make the arrow keys useless in an empty field. A field that already holds digits keeps the clicked position, because the reason to click the middle of a filled date is to fix the part you clicked.
+
+  The path that surfaced both: clear the start time, press Save, get the validation refusal, click back into the field and retype. `check:ui` cannot see this and jsdom cannot click, so the probe drove real CDP mouse and key events; the permanent test dispatches the same events at the same caret positions.
+
   Every key is taken in `keydown` and cancelled. Left to the browser, a character is *inserted* rather than written and everything after it shifts. The `input` listener stays for paste, where re-deriving from the digits in order is the right answer.
 
   Blur clears a field nobody typed into, because a target time is allowed to be empty and a bare template cannot be told apart from a value.

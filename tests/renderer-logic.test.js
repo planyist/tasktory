@@ -172,12 +172,23 @@ describe('the date field wears its format as a mask', () => {
             expect(write('2026-08-21 HH:mm', 10, '0').caret).toBe(12)
         })
 
-        test('a letter is refused where a digit belongs', () => {
-            expect(write('YYYY-MM-DD HH:mm', 0, 'x')).toBeNull()
+
+        // 칸의 오른쪽에는 값보다 넓은 빈 자리가 남는다 - 재 보니 179px 중 70px,
+        // 칸의 39%. 거기를 누르면 커서가 글자 끝에 앉고, 예전에는 받을 칸을 찾지
+        // 못해 치는 것을 통째로 버렸다. 눌린 티도 나지 않아 "입력이 안 된다"로
+        // 보인다.
+        test('a caret past the last slot writes into the last slot', () => {
+            expect(write('2026-08-21 09:30', 16, '7').text).toBe('2026-08-21 09:37')
         })
 
-        test('and there is nothing past the end', () => {
-            expect(write('2026-08-21 09:30', 16, '1')).toBeNull()
+        // 커서를 마지막 칸에 붙들어 두는 쪽으로는 못 고친다: 지우기는 커서
+        // 앞자리를 지우므로, 붙들면 마지막 칸을 영영 지울 수 없다.
+        test('and the caret can still sit past the end, so Backspace reaches it', () => {
+            expect(maskErase('2026-08-21 09:30', F, 16).text).toBe('2026-08-21 09:3m')
+        })
+
+        test('a letter is refused where a digit belongs', () => {
+            expect(write('YYYY-MM-DD HH:mm', 0, 'x')).toBeNull()
         })
     })
 
