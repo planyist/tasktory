@@ -1910,6 +1910,14 @@ class TaskManager {
         }
         note.textContent = message;
         field.focus();
+
+        // 떠 있는 말풍선이라 아래 칸을 가린다. 고치기 시작하면 물러난다.
+        // 날짜 칸은 keydown 을 가로채 값을 직접 넣으므로 input 이 나지 않아,
+        // 두 이벤트를 모두 듣는다.
+        const dismiss = () => note.remove();
+        for (const event of ['input', 'keydown']) {
+            field.addEventListener(event, dismiss, { once: true });
+        }
     }
 
     // 다시 눌렀을 때 지난 거절이 남아 있으면 무엇이 지금 문제인지 알 수 없다.

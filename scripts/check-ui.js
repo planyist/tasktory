@@ -359,6 +359,38 @@ app.whenReady().then(async () => {
         editor.sameRow && editor.widths[0] === editor.widths[1], editor.widths.join(' vs '))
     check('그래도 넘칠 때를 위한 스크롤은 남아 있다', editor.scrolls === 'auto', editor.scrolls)
 
+    // --- 7. 거절 메시지는 아무것도 밀지 않는다 -----------------------------
+    // 흐름 안에 한 줄로 넣었더니 나타날 때마다 아래 칸이 전부 내려가, 팝업이
+    // 뒤틀리는 것으로 보고됐다. 떠 있는 말풍선이면 밀 것이 없다.
+    const refusal = JSON.parse(await run(`
+        (async () => {
+            const at = (id) => document.getElementById(id).getBoundingClientRect();
+            taskManager.editTask('fit');
+            const before = { 저장: Math.round(at('saveBtn').top),
+                             시작: Math.round(at('startDateTime').top),
+                             내용: Math.round(at('taskContent').top) };
+            document.getElementById('taskPosition').value = '99';
+            await taskManager.saveTask();
+            const note = document.querySelector('.field-error');
+            const pos = at('taskPosition');
+            return JSON.stringify({
+                before,
+                after: { 저장: Math.round(at('saveBtn').top),
+                         시작: Math.round(at('startDateTime').top),
+                         내용: Math.round(at('taskContent').top) },
+                떴나: !!note,
+                흐름밖: note ? getComputedStyle(note).position === 'absolute' : false,
+                칸아래: note ? pos.bottom <= note.getBoundingClientRect().top : false
+            });
+        })()`))
+    const moved = Object.keys(refusal.before)
+        .filter((k) => refusal.before[k] !== refusal.after[k])
+    check('거절 메시지가 나와도 팝업이 밀리지 않는다', refusal.떴나 && moved.length === 0,
+        moved.length ? moved.map((k) => `${k} ${refusal.before[k]}→${refusal.after[k]}`).join(', ')
+                     : '저장/시작/내용 모두 제자리')
+    check('거절 메시지가 흐름 밖에서 칸 아래에 뜬다',
+        refusal.흐름밖 && refusal.칸아래, `position=${refusal.흐름밖}, 칸아래=${refusal.칸아래}`)
+
     const failed = results.filter((r) => !r.pass)
     console.log(`\n${results.length}건 중 ${failed.length}건 실패\n`)
     win.destroy()

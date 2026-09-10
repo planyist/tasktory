@@ -2895,18 +2895,43 @@ body.dark-mode .settings-hint {
     font-size: 16px;
 }
 
-/* 거절 메시지. 문제가 된 칸 바로 아래에 선다.
+/* 거절 메시지. 문제가 된 칸 아래에 떠 있는 말풍선이다.
    OS 경고창을 쓰지 않는 이유는 그것이 닫힐 때 커서를 돌려주지 않기 때문이다 -
-   확인을 누르고 바로 치면 아무것도 들어가지 않았다. */
-.field-error {
-    margin: 4px 0 0;
-    font-size: 12px;
-    line-height: 1.4;
-    color: #c0392b;
+   확인을 누르고 바로 치면 아무것도 들어가지 않았다.
+
+   흐름 안에 한 줄로 넣었더니 나타날 때마다 아래 칸이 전부 밀려 내려가, 팝업이
+   뒤틀리는 것으로 보였다. 흐름에서 빼면 밀 것이 없다. 자기 배경과 흰 글씨를
+   들고 다니므로 두 테마 모두에서 같게 읽히고, 그래서 dark-mode 짝이 없다. */
+.form-group:has(> .field-error) {
+    position: relative;
 }
 
-body.dark-mode .field-error {
-    color: #ff8a80;
+.field-error {
+    position: absolute;
+    top: calc(100% + 6px);
+    left: 0;
+    z-index: 30;
+    margin: 0;
+    width: max-content;
+    max-width: 300px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    background-color: #c0392b;
+    color: #fff;
+    font-size: 12px;
+    line-height: 1.4;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.18);
+}
+
+/* 어느 칸을 가리키는지 꼬리로 말한다 */
+.field-error:after {
+    content: '';
+    position: absolute;
+    top: -5px;
+    left: 12px;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 5px solid #c0392b;
 }
 
 /* 짝이 되는 칸을 한 줄에 둔다. 시작 시간과 목표 시간이 그렇다 - 나란히 두면
