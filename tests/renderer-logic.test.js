@@ -13,10 +13,10 @@ const TaskManager = new Function(`${I18N}\n${SOURCE}\nreturn TaskManager;`)()
 
 // 마스크는 클래스 밖의 순수 함수다. 형식 문자열 하나에서 출력·파싱·틀 셋이
 // 나오므로, 그 셋이 같은 형식을 같게 읽는지는 여기서 확인한다.
-const { maskRender, maskRead, maskWrite, maskErase, describeDateProblem } = new Function(
+const { maskRender, maskRead, maskWrite, maskErase, describeDateProblem, paginationSlots } = new Function(
     `${I18N}
 ${SOURCE}
-return { maskRender, maskRead, maskWrite, maskErase, describeDateProblem };`
+return { maskRender, maskRead, maskWrite, maskErase, describeDateProblem, paginationSlots };`
 )()
 
 // Build an instance without running the constructor, which kicks off async
@@ -108,6 +108,54 @@ describe('getTaskStatus', () => {
 // 형식에서 복사해 와도 들어와야 한다.
 // 형식대로 치려면 구분자를 손으로 넣어야 하고, 다 치기 전에는 무엇을 치는지
 // 화면에 단서가 없다. 틀을 남기고 숫자가 덮어쓰게 하면 둘 다 사라진다.
+
+// 6쪽이 넘으면 `1 2 ... 마지막-1 마지막` 을 고정으로 그렸고, 지금 보고 있는 쪽이
+// 그 다섯 안에 없으면 아무 데도 나오지 않았다. 20쪽 중 5쪽에서 화면에 남은 것은
+// `1 2 ... 19 20` 뿐이고 강조된 숫자는 하나도 없었다.
+describe('what the pager shows', () => {
+    const G = '...'
+
+    test('few enough pages and every one is listed', () => {
+        expect(paginationSlots(1, 1)).toEqual([1])
+        expect(paginationSlots(7, 3)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    })
+
+    // 이것이 보고된 그 자리다.
+    test('the page you are on is always one of the slots', () => {
+        for (let page = 1; page <= 20; page += 1) {
+            expect(paginationSlots(20, page)).toContain(page)
+        }
+    })
+
+    test('it follows you across the middle', () => {
+        expect(paginationSlots(20, 5)).toEqual([1, G, 4, 5, 6, G, 20])
+        expect(paginationSlots(20, 12)).toEqual([1, G, 11, 12, 13, G, 20])
+    })
+
+    // 1 과 2 사이에 줄임표를 넣어 봐야 감출 쪽이 없다. 양끝에서는 그쪽을 채운다.
+    test('near an end it fills that end instead of writing a gap over nothing', () => {
+        expect(paginationSlots(20, 2)).toEqual([1, 2, 3, 4, 5, G, 20])
+        expect(paginationSlots(20, 19)).toEqual([1, G, 16, 17, 18, 19, 20])
+    })
+
+    // 칸 수가 들쭉날쭉하면 가운데 정렬된 페이저가 넘길 때마다 좌우로 흔들린다.
+    test('the row is the same width on every page', () => {
+        const widths = new Set()
+        for (let page = 1; page <= 40; page += 1) widths.add(paginationSlots(40, page).length)
+
+        expect([...widths]).toEqual([7])
+    })
+
+    // 첫 쪽과 끝 쪽은 늘 손에 닿아야 한다.
+    test('the two ends never leave', () => {
+        for (let page = 1; page <= 40; page += 1) {
+            const slots = paginationSlots(40, page)
+            expect(slots[0]).toBe(1)
+            expect(slots[slots.length - 1]).toBe(40)
+        }
+    })
+})
+
 describe('the date field wears its format as a mask', () => {
     const F = 'YYYY-MM-DD HH:mm'
     const render = (digits, meridiem = null) =>

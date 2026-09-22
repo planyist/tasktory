@@ -391,6 +391,36 @@ app.whenReady().then(async () => {
     check('거절 메시지가 흐름 밖에서 칸 아래에 뜬다',
         refusal.흐름밖 && refusal.칸아래, `position=${refusal.흐름밖}, 칸아래=${refusal.칸아래}`)
 
+    // --- 8. 넘김 줄은 쪽을 넘겨도 제자리에 있다 ------------------------------
+    // 칸 수는 일곱으로 묶었지만 한 자리와 두 자리 숫자의 폭이 달라, 가운데
+    // 정렬된 이 줄이 199px 에서 221px 까지 자라며 왼쪽 끝이 11px 씩 밀렸다.
+    // 칸 수는 jsdom 도 셀 수 있으나 픽셀은 여기서만 보인다.
+    const pager = JSON.parse(await run(`
+        (() => {
+            taskManager.tasks = Array.from({ length: 200 }, (_, i) => ({
+                id: 'p' + i, content: '작업 ' + (i + 1), tags: '',
+                startDateTime: '2026-09-09 09:00', targetDateTime: '2026-09-19 18:00' }));
+            const seen = [];
+            for (const page of [1, 2, 5, 10, 15, 19, 20]) {
+                taskManager.currentPage = page;
+                taskManager.renderTasks();
+                const row = document.getElementById('pageNumbers');
+                const lit = row.querySelector('.page-number.active');
+                seen.push({ page,
+                    width: Math.round(row.getBoundingClientRect().width),
+                    left: Math.round(row.getBoundingClientRect().left),
+                    lit: lit ? lit.textContent : null });
+            }
+            return JSON.stringify(seen);
+        })()`))
+    const widths = [...new Set(pager.map((p) => p.width))]
+    const lefts = [...new Set(pager.map((p) => p.left))]
+    const unlit = pager.filter((p) => p.lit !== String(p.page))
+    check('넘김 줄이 쪽을 넘겨도 움직이지 않는다', widths.length === 1 && lefts.length === 1,
+        `폭 ${widths.join('/')}, 왼쪽 ${lefts.join('/')}`)
+    check('지금 보고 있는 쪽이 늘 켜져 있다', unlit.length === 0,
+        unlit.length ? unlit.map((p) => `${p.page}쪽→${p.lit}`).join(', ') : '1~20쪽 전부')
+
     const failed = results.filter((r) => !r.pass)
     console.log(`\n${results.length}건 중 ${failed.length}건 실패\n`)
     win.destroy()

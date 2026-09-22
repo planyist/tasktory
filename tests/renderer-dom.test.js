@@ -193,6 +193,52 @@ describe('pagination', () => {
 
         expect(rows()).toHaveLength(2)
     })
+
+    // 보고된 자리: 쪽이 많을 때 옆으로 넘기면 3, 4 같은 숫자가 나오지 않고
+    // 줄임표만 남았다. 지금 몇 쪽인지 화면에 아무것도 말하지 않았다.
+    describe('with more pages than fit on the row', () => {
+        const slots = () =>
+            Array.from(document.querySelectorAll('#pageNumbers .page-number'))
+                .map((b) => b.textContent)
+        const lit = () =>
+            (document.querySelector('#pageNumbers .page-number.active') || {}).textContent
+
+        const openWithPages = () => boot(Array.from({ length: 200 }, (_, i) => task(`t${i}`)))
+        const next = () => document.getElementById('nextPageBtn').click()
+
+        test('pressing next keeps the page you are on in the row, and lit', async () => {
+            await openWithPages()
+
+            next()
+            next()
+            next()
+            next()
+
+            expect(slots()).toContain('5')
+            expect(lit()).toBe('5')
+        })
+
+        test('the numbers around it come with it', async () => {
+            await openWithPages()
+            for (let i = 0; i < 9; i += 1) next()
+
+            expect(slots()).toEqual(['1', '...', '9', '10', '11', '...', '20'])
+        })
+
+        // 칸 수가 바뀌면 가운데 정렬된 페이저가 넘길 때마다 좌우로 흔들린다.
+        test('the row holds its width while you page through', async () => {
+            await openWithPages()
+            const widths = new Set()
+
+            for (let i = 0; i < 19; i += 1) {
+                widths.add(slots().length)
+                next()
+            }
+            widths.add(slots().length)
+
+            expect([...widths]).toEqual([7])
+        })
+    })
 })
 
 describe('collapsed mini view', () => {

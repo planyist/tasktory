@@ -550,7 +550,11 @@ body.dark-mode .page-size-select {
     color: var(--text-primary);
     cursor: pointer;
     border-radius: 4px;
-    min-width: 26px;
+    /* 두 자리 숫자가 들어갈 만큼. 26px 이면 한 자리와 두 자리의 폭이 달라져,
+       가운데 정렬된 이 줄이 쪽을 넘길 때마다 좌우로 밀렸다 - 20쪽짜리에서
+       199px 에서 221px 까지, 왼쪽 끝이 11px 움직였다. 34px 은 두 자리까지를 담는다 - 100쪽이 넘으면 다시 조금 자란다. 칸 수를 일곱으로 묶어
+       둔 것과 같은 이유다: 페이지를 넘겨도 아무것도 움직이지 않아야 한다. */
+    min-width: 34px;
     text-align: center;
 }
 
@@ -1718,7 +1722,7 @@ body.dark-mode .repeat-until label {
 }
 
 .weekday-btn {
-    min-width: 30px;
+    min-width: 34px;
     padding: 4px 6px;
     font-size: 11px;
     font-weight: 600;

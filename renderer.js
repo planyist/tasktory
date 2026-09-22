@@ -67,6 +67,35 @@ const formatWithPattern = (date, pattern) =>
 
 // 형식을 조각으로 나눈다. 글자 수가 긴 토큰부터 맞춰야 'mm' 이 'm' 둘로
 // 쪼개지지 않는다.
+// 넘김 줄에 무엇을 보여줄지. 숫자와 줄임표만 돌려주므로 DOM 없이 확인할 수 있다.
+//
+// 예전에는 6쪽이 넘으면 `1 2 ... 마지막-1 마지막` 을 통째로 고정해 그렸다. 지금
+// 보고 있는 쪽이 그 다섯 안에 없으면 어디에도 나오지 않고, 강조될 숫자도 없어
+// 20쪽 중 5쪽에서 화면에 `1 2 ... 19 20` 만 남았다. 지금 쪽을 감싸는 창으로
+// 바꾼다.
+//
+// 칸 수는 늘 PAGER_SLOTS 로 고정이다. 개수가 들쭉날쭉하면 가운데 정렬된 페이저가
+// 쪽을 넘길 때마다 좌우로 흔들리는데, 이 표는 페이지를 넘겨도 아무것도 움직이지
+// 않는다는 규칙 위에 서 있다.
+const PAGER_SLOTS = 7;
+const PAGER_GAP = '...';
+
+const paginationSlots = (totalPages, page) => {
+    if (totalPages <= PAGER_SLOTS) {
+        return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    // 앞쪽에 있으면 왼쪽을 채워 보여준다 - 1 과 2 사이에 줄임표를 넣어 봐야
+    // 감출 쪽이 없다.
+    if (page <= 4) {
+        return [1, 2, 3, 4, 5, PAGER_GAP, totalPages];
+    }
+    if (page >= totalPages - 3) {
+        return [1, PAGER_GAP, totalPages - 4, totalPages - 3,
+            totalPages - 2, totalPages - 1, totalPages];
+    }
+    return [1, PAGER_GAP, page - 1, page, page + 1, PAGER_GAP, totalPages];
+};
+
 const maskParts = (pattern) => {
     const names = Object.keys(DATE_TOKENS).sort((a, b) => b.length - a.length);
     const parts = [];
@@ -3932,25 +3961,9 @@ ${link.dataset.path}`
         nextBtn.disabled = page === totalPages;
         nextBtn.onclick = () => { if (page < totalPages) goTo(page + 1); };
 
-        // Smart pagination display logic
-        if (totalPages <= 5) {
-            // Show all pages when 5 or fewer pages
-            for (let i = 1; i <= totalPages; i++) {
-                this.createPageButton(i, pageNumbers, page, goTo);
-            }
-        } else {
-            // Show 1, 2, ..., last-1, last format for 6+ pages
-            this.createPageButton(1, pageNumbers, page, goTo);
-            this.createPageButton(2, pageNumbers, page, goTo);
-            
-            if (totalPages > 4) {
-                this.createEllipsis(pageNumbers);
-            }
-            
-            if (totalPages > 3) {
-                this.createPageButton(totalPages - 1, pageNumbers, page, goTo);
-            }
-            this.createPageButton(totalPages, pageNumbers, page, goTo);
+        for (const slot of paginationSlots(totalPages, page)) {
+            if (slot === PAGER_GAP) this.createEllipsis(pageNumbers);
+            else this.createPageButton(slot, pageNumbers, page, goTo);
         }
     }
 
