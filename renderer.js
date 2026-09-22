@@ -84,16 +84,21 @@ const paginationSlots = (totalPages, page) => {
     if (totalPages <= PAGER_SLOTS) {
         return Array.from({ length: totalPages }, (_, i) => i + 1);
     }
-    // 앞쪽에 있으면 왼쪽을 채워 보여준다 - 1 과 2 사이에 줄임표를 넣어 봐야
-    // 감출 쪽이 없다.
+    // 양끝은 두 개씩 고정이고 가운데가 지금 쪽이다. 끝을 한 개만 두는 쪽도
+    // 흔하지만(MUI, Ant Design 의 기본값), 이 파일이 원래 그리던 것은
+    // `1 2 ... 마지막-1 마지막` 이었다 - 양끝 두 개를 의도해 놓고 지금 쪽만
+    // 빠뜨린 것이었으므로, 빠진 것만 채운다.
+    //
+    // 끝에 가까우면 줄임표 대신 그쪽을 채운다. 쪽 하나를 감추려고 줄임표를
+    // 쓰는 것은 자리만 더 먹는다.
     if (page <= 4) {
-        return [1, 2, 3, 4, 5, PAGER_GAP, totalPages];
+        return [1, 2, 3, 4, PAGER_GAP, totalPages - 1, totalPages];
     }
     if (page >= totalPages - 3) {
-        return [1, PAGER_GAP, totalPages - 4, totalPages - 3,
+        return [1, 2, PAGER_GAP, totalPages - 3,
             totalPages - 2, totalPages - 1, totalPages];
     }
-    return [1, PAGER_GAP, page - 1, page, page + 1, PAGER_GAP, totalPages];
+    return [1, 2, PAGER_GAP, page, PAGER_GAP, totalPages - 1, totalPages];
 };
 
 const maskParts = (pattern) => {

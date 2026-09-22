@@ -222,7 +222,7 @@ describe('pagination', () => {
             await openWithPages()
             for (let i = 0; i < 9; i += 1) next()
 
-            expect(slots()).toEqual(['1', '...', '9', '10', '11', '...', '20'])
+            expect(slots()).toEqual(['1', '2', '...', '10', '...', '19', '20'])
         })
 
         // 칸 수가 바뀌면 가운데 정렬된 페이저가 넘길 때마다 좌우로 흔들린다.

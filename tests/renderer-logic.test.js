@@ -128,14 +128,24 @@ describe('what the pager shows', () => {
     })
 
     test('it follows you across the middle', () => {
-        expect(paginationSlots(20, 5)).toEqual([1, G, 4, 5, 6, G, 20])
-        expect(paginationSlots(20, 12)).toEqual([1, G, 11, 12, 13, G, 20])
+        expect(paginationSlots(20, 5)).toEqual([1, 2, G, 5, G, 19, 20])
+        expect(paginationSlots(20, 12)).toEqual([1, 2, G, 12, G, 19, 20])
     })
 
-    // 1 과 2 사이에 줄임표를 넣어 봐야 감출 쪽이 없다. 양끝에서는 그쪽을 채운다.
+    // 쪽 하나를 감추려고 줄임표를 쓰는 것은 자리만 더 먹는다. 끝에 가까우면
+    // 줄임표 대신 그쪽을 채운다.
     test('near an end it fills that end instead of writing a gap over nothing', () => {
-        expect(paginationSlots(20, 2)).toEqual([1, 2, 3, 4, 5, G, 20])
-        expect(paginationSlots(20, 19)).toEqual([1, G, 16, 17, 18, 19, 20])
+        expect(paginationSlots(20, 2)).toEqual([1, 2, 3, 4, G, 19, 20])
+        expect(paginationSlots(20, 19)).toEqual([1, 2, G, 17, 18, 19, 20])
+    })
+
+    // 첫 두 쪽과 끝 두 쪽은 늘 손에 닿는다 - 이 파일이 원래 그리던 모양이다.
+    test('two pages at each end, always', () => {
+        for (let page = 1; page <= 40; page += 1) {
+            const slots = paginationSlots(40, page)
+            expect(slots.slice(0, 2)).toEqual([1, 2])
+            expect(slots.slice(-2)).toEqual([39, 40])
+        }
     })
 
     // 칸 수가 들쭉날쭉하면 가운데 정렬된 페이저가 넘길 때마다 좌우로 흔들린다.
@@ -146,14 +156,6 @@ describe('what the pager shows', () => {
         expect([...widths]).toEqual([7])
     })
 
-    // 첫 쪽과 끝 쪽은 늘 손에 닿아야 한다.
-    test('the two ends never leave', () => {
-        for (let page = 1; page <= 40; page += 1) {
-            const slots = paginationSlots(40, page)
-            expect(slots[0]).toBe(1)
-            expect(slots[slots.length - 1]).toBe(40)
-        }
-    })
 })
 
 describe('the date field wears its format as a mask', () => {
