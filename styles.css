@@ -128,13 +128,19 @@ body {
     color: #20c997;
 }
 
+/* -100vh 에서 시작해 100vh 까지, 즉 200vh 를 흐른다. 조각이 놓인 자리가
+   이미 화면 위쪽이므로 애니메이션의 앞 절반은 화면 밖에서 지나갔고, 같은
+   시간에 보이는 조각이 절반으로 줄었다. 제자리에서 시작해 화면만 가로지른다. */
 @keyframes confetti-fall {
     0% {
-        transform: translateY(-100vh) rotate(0deg) scale(1);
+        transform: translateY(0) rotate(0deg) scale(1);
+        opacity: 1;
+    }
+    85% {
         opacity: 1;
     }
     100% {
-        transform: translateY(100vh) rotate(720deg) scale(0.5);
+        transform: translateY(105vh) rotate(720deg) scale(0.6);
         opacity: 0;
     }
 }
@@ -180,7 +186,7 @@ body {
 }
 
 .confetti.fall {
-    animation: confetti-fall 3s ease-in forwards;
+    animation: confetti-fall 1.6s linear forwards;
 }
 
 .confetti.burst {
@@ -2897,6 +2903,83 @@ body.dark-mode .settings-hint {
     margin-bottom: 15px;
     color: #2c3e50;
     font-size: 16px;
+}
+
+/* 고른 그림. 어떤 비율이 와도 깨지지 않게 창의 60% 안에 맞춘다. */
+.done-custom {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    max-width: 60vw;
+    max-height: 60vh;
+    transform: translate(-50%, -50%);
+    object-fit: contain;
+    pointer-events: none;
+    z-index: 3000;
+    animation: done-custom-show 1.6s ease-out forwards;
+}
+
+@keyframes done-custom-show {
+    0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+    12% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    80% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+    100% { opacity: 0; transform: translate(-50%, -50%) scale(1); }
+}
+
+.effect-file-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+/* 방금 올라간 숫자가 한 번 크게 뛴다. 종이가 아무리 날려도 그것이 무엇에
+   대한 보상인지 화면 어디에서도 말하지 않으면 그냥 색 조각이 지나간 것이다. */
+.completion-counter.celebrating {
+    animation: counter-pop 700ms cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
+@keyframes counter-pop {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.45); }
+    55% { transform: scale(0.94); }
+    100% { transform: scale(1); }
+}
+
+/* 조용한 완료 효과 둘. 색종이를 뿌리는 대신 한 번 반짝이거나, 끝냈다는
+   표시를 한 번 크게 보여준다. 둘 다 클릭을 막지 않는다. */
+.sparkle {
+    position: fixed;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 3000;
+    animation: sparkle-pop 1s ease-out forwards;
+}
+
+@keyframes sparkle-pop {
+    0% { transform: scale(0) rotate(0deg); opacity: 0; }
+    40% { transform: scale(1.6) rotate(90deg); opacity: 1; }
+    100% { transform: scale(0) rotate(180deg); opacity: 0; }
+}
+
+.done-check {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    margin: -48px 0 0 -48px;
+    color: #28a745;
+    pointer-events: none;
+    z-index: 3000;
+    animation: done-check-pop 1s ease-out forwards;
+}
+
+@keyframes done-check-pop {
+    0% { transform: scale(0.3); opacity: 0; }
+    35% { transform: scale(1.15); opacity: 1; }
+    70% { transform: scale(1); opacity: 1; }
+    100% { transform: scale(1); opacity: 0; }
 }
 
 /* 거절 메시지. 문제가 된 칸 아래에 떠 있는 말풍선이다.

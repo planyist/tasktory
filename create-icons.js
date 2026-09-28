@@ -1,20 +1,13 @@
 const fs = require('fs');
 const path = require('path');
 
-// Simple SVG icon for Tasktory
-const svgIcon = `<svg width="256" height="256" viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
-  <rect width="256" height="256" fill="#2c3e50" rx="32"/>
-  <rect x="64" y="64" width="128" height="16" fill="#ffffff" rx="8"/>
-  <rect x="64" y="96" width="96" height="16" fill="#ffffff" rx="8"/>
-  <rect x="64" y="128" width="112" height="16" fill="#ffffff" rx="8"/>
-  <rect x="64" y="160" width="80" height="16" fill="#ffffff" rx="8"/>
-  <circle cx="48" cy="72" r="6" fill="#27ae60"/>
-  <circle cx="48" cy="104" r="6" fill="#27ae60"/>
-  <circle cx="48" cy="136" r="6" fill="#f39c12"/>
-  <circle cx="48" cy="168" r="6" fill="#e74c3c"/>
-  <rect x="180" y="60" width="32" height="32" fill="#3498db" rx="4"/>
-  <rect x="188" y="68" width="16" height="16" fill="#ffffff" rx="2"/>
-</svg>`;
+// 아이콘 그림은 assets/favicon.svg 하나만 있다. 예전에는 이 파일이 사본을
+// 품고 있어서, 아이콘을 바꿔도 이것을 다시 돌리면 옛 그림으로 돌아갔다.
+//
+// PNG/ICO 로 만드는 것은 Electron 자체가 한다 - 투명 창에 그려 capturePage 로
+// 받아내고, nativeImage.resize 로 줄이고, ICO 는 PNG 를 품는 형식이므로
+// 헤더만 써 붙이면 된다. 이미지 라이브러리를 다는 대신 그 방법을 쓴다.
+const svgIcon = fs.readFileSync(path.join(__dirname, 'assets', 'favicon.svg'), 'utf8');
 
 // Save SVG temporarily
 fs.writeFileSync(path.join(__dirname, 'assets', 'temp-icon.svg'), svgIcon);

@@ -77,6 +77,18 @@ const formatWithPattern = (date, pattern) =>
 // 칸 수는 늘 PAGER_SLOTS 로 고정이다. 개수가 들쭉날쭉하면 가운데 정렬된 페이저가
 // 쪽을 넘길 때마다 좌우로 흔들리는데, 이 표는 페이지를 넘겨도 아무것도 움직이지
 // 않는다는 규칙 위에 서 있다.
+// 한 달을 기간 두 끝으로. 완료 달력에서 기간과 달이 같은 것이어야 하므로
+// 이 변환이 둘 사이의 유일한 다리다.
+const monthRange = (date) => ({
+    from: formatWithPattern(new Date(date.getFullYear(), date.getMonth(), 1), 'YYYY-MM-DD'),
+    to: formatWithPattern(new Date(date.getFullYear(), date.getMonth() + 1, 0), 'YYYY-MM-DD')
+});
+
+// 완료했을 때 무엇을 띄울지. 값과 그리는 법이 한 곳에서 나와야 목록에만 있고
+// 그리지는 않는 항목이 생기지 않는다.
+// 내장 효과. 사용자가 넣은 그림은 'file:<이름>' 으로 이 뒤에 붙는다.
+const COMPLETION_EFFECTS = ['full', 'fireworks', 'confetti', 'burst', 'sparkle', 'check', 'none'];
+
 const PAGER_SLOTS = 7;
 const PAGER_GAP = '...';
 
@@ -386,6 +398,16 @@ class TaskManager {
         this.doneCache = null;
         // 완료 화면의 정렬. 기본은 최근에 끝낸 것이 위.
         this.doneSort = { by: 'completedAt', asc: false };
+        // 완료 효과. 고르지 않았으면 예전과 같은 'full'.
+        this.completionEffect = localStorage.getItem('completionEffect') || 'full';
+        // userData/effects 에 복사된 그림들. 원본을 옮기거나 지워도 남는다.
+        this.effectFiles = [];
+        this.effectUrls = new Map();
+        // 완료 화면 안의 하위 보기. 목록이 무엇을 끝냈는지 답한다면 달력은
+        // 언제 몰렸는지 답한다. 저장하지 않는다 - 완료 화면 자체가 저장되지
+        // 않으므로, 여기만 기억해 두면 다음에 들어왔을 때 왜 달력인지 말해
+        // 줄 것이 화면에 없다.
+        this.doneView = 'list';
         // 완료 화면에 들어오기 전의 보기. 나갈 때 여기로 돌아간다.
         this.viewBeforeCompleted = 'list';
 
@@ -562,7 +584,9 @@ class TaskManager {
         
         // Header buttons tooltips
         this.setTitle('addTaskBtn', 'addTask');
+        this.setTitle('collapsedMinimizeBtn', 'minimize');
         this.updateDateFormatControls();
+        this.updateCompletionEffectControl();
         this.updateSearchColumnControl();
         this.setText('settingsLeadLabel', 'notifyBefore');
         this.setText('settingsLeadHint', 'notifyBeforeHint');
@@ -1060,6 +1084,42 @@ class TaskManager {
             this.changeDateFormat(e.target.value);
         });
 
+        document.getElementById('completionEffectSelect').addEventListener('change', (e) => {
+            this.changeCompletionEffect(e.target.value);
+        });
+
+        document.getElementById('effectAddBtn').addEventListener('click', () => {
+            this.addEffectFiles();
+        });
+        document.getElementById('effectDeleteBtn').addEventListener('click', () => {
+            this.deleteEffectFile();
+        });
+        document.getElementById('effectFolderBtn').addEventListener('click', () => {
+            if (this.isElectron) window.electronAPI.openEffectsFolder();
+        });
+
+        // 설정 창에 끌어다 놓아도 된다. 문서는 모든 드롭을 막고 있으므로
+        // (막지 않으면 Chromium 이 그 파일로 이동해 버린다) 여기서 따로 받는다.
+        const settings = document.getElementById('settingsModal');
+        if (settings) {
+            settings.addEventListener('dragover', (e) => e.preventDefault());
+            settings.addEventListener('drop', (e) => {
+                e.preventDefault();
+                const files = [...(e.dataTransfer ? e.dataTransfer.files : [])];
+                if (!files.length || !window.electronAPI || !window.electronAPI.pathForFile) return;
+                const paths = files.map(file => window.electronAPI.pathForFile(file))
+                    .filter(Boolean);
+                if (paths.length) this.addEffectFiles(paths);
+            });
+        }
+
+        document.getElementById('collapsedMinimizeBtn').addEventListener('click', () => {
+            if (this.isElectron && window.electronAPI.minimizeWindow) {
+                window.electronAPI.minimizeWindow();
+            }
+        });
+
+
     }
 
     // 날짜 칸에 틀을 씌운다. 값을 프로그램이 넣을 때(선택기, 편집 열기)는 이미
@@ -1489,7 +1549,8 @@ class TaskManager {
         document.getElementById('calGrid').addEventListener('click', (e) => {
             if (e.detail < 2) return;
             const chip = e.target.closest('.cal-chip');
-            if (chip) this.editTask(chip.dataset.taskId);
+            // 완료 칩에는 id 가 없다 - 행이 이미 지워졌으므로 열 것이 없다.
+            if (chip && chip.dataset.taskId) this.editTask(chip.dataset.taskId);
         });
 
         this.setupWindowDrag();
@@ -2680,16 +2741,92 @@ ${filePath}`);
             `<span class="cal-chip-text">${text}</span></div>`;
     }
 
+    // 날짜별 묶음을 날짜별 칩 묶음으로 바꾼다. 활성 작업과 완료 기록은 모양이
+    // 달라 칩을 만드는 법이 다르지만, 격자는 둘을 구분할 필요가 없다.
+    chipsByDay(byDay, toChip) {
+        const out = new Map();
+        for (const [key, items] of byDay) out.set(key, items.map(toChip));
+        return out;
+    }
+
+    // 완료 기록을 완료한 날로 묶는다. 어느 날인지는 화면에 적히는 값과 같은
+    // 규칙을 따른다 - completedAt, 없으면 TIMESTAMP. 보이는 값과 놓이는 자리가
+    // 다르면 달력이 틀린 것으로 읽힌다.
+    completedByDay(rows) {
+        const byDay = new Map();
+        for (const row of rows) {
+            const when = this.completedWhen(row);
+            if (!when) continue;
+            const key = when.slice(0, 10);
+            if (!byDay.has(key)) byDay.set(key, []);
+            byDay.get(key).push(row);
+        }
+        for (const items of byDay.values()) {
+            items.sort((a, b) => this.completedWhen(a).localeCompare(this.completedWhen(b)));
+        }
+        return byDay;
+    }
+
+    // 완료 칩에는 열 것이 없다. 단발 작업은 완료하면서 행이 지워지므로
+    // data-task-id 를 달지 않고, 격자의 더블클릭 핸들러도 그래서 지나간다.
+    completedChip(row) {
+        const when = this.completedWhen(row);
+        const title = this.escapeHtml(row.content || '');
+        const text = this.escapeHtml((row.content || '').split('\n')[0]
+            .replace(/^\s*\d+\s*[.)]\s*/, ''));
+        return `<div class="cal-chip completed" title="${title}">` +
+            (when ? `<span class="cal-chip-time">${when.slice(11)}</span>` : '') +
+            `<span class="cal-chip-text">${text}</span></div>`;
+    }
+
+    // 기간이 그대로면 다시 읽지 않는다. 목록과 달력이 같은 캐시를 쓴다.
+    async ensureDoneRows() {
+        const { from, to } = this.doneRangeKeys();
+        const key = `${from}~${to}`;
+        if (!this.doneCache || this.doneCache.key !== key) {
+            let fetched = [];
+            if (this.isElectron && window.electronAPI.getCompletedRange) {
+                fetched = await window.electronAPI.getCompletedRange(from, to) || [];
+            }
+            this.doneCache = { key, rows: fetched };
+        }
+        return this.doneCache.rows;
+    }
+
+    applyDoneTagFilter(rows) {
+        if (!this.doneTagFilter.size) return rows;
+        return rows.filter(row => (row.tags || '').split(/\s+/)
+            .some(tag => this.doneTagFilter.has(tag)));
+    }
+
+    async renderCompletedCalendar() {
+        const all = await this.ensureDoneRows();
+        // 칩은 거르기 전 목록으로 만든다 - 하나를 고른 순간 나머지가 사라지면
+        // 다른 태그로 갈아탈 수가 없다. 목록 쪽과 같은 규칙이다.
+        this.renderDoneTags(all);
+        const rows = this.applyDoneTagFilter(all);
+        this.renderCalendar(this.chipsByDay(this.completedByDay(rows), r => this.completedChip(r)));
+    }
+
     moveCalendarMonth(delta) {
         this.calendarMonth = new Date(
             this.calendarMonth.getFullYear(),
             this.calendarMonth.getMonth() + delta,
             1
         );
+        // 완료 달력에서는 달을 옮기는 것이 곧 기간을 옮기는 것이다. 목록으로
+        // 돌아가면 그 달이 그대로 기간으로 남고, 날짜 칸 두 개에 적혀 있으므로
+        // 무엇이 적용됐는지 숨지 않는다.
+        if (this.viewMode === 'completed') {
+            this.doneRange = monthRange(this.calendarMonth);
+            this.donePage = 1;
+        }
         this.renderTasks();
     }
 
-    renderCalendar() {
+    // byDay 를 받으면 그것을 그린다. 격자도 주 시작도 칩도 출처를 모르므로,
+    // 완료 달력은 이 함수를 그대로 쓰고 지도만 바꿔 넣는다.
+    renderCalendar(byDay = null) {
         const grid = document.getElementById('calGrid');
         const label = document.getElementById('calLabel');
         const weekdays = document.getElementById('calWeekdays');
@@ -2701,7 +2838,8 @@ ${filePath}`);
         const names = this.getLocalizedText('weekdayNames').split(',');
         weekdays.innerHTML = names.map(n => `<div class="cal-weekday">${n}</div>`).join('');
 
-        const byDay = this.tasksByDay(this.filteredActiveTasks());
+        const days = byDay || this.chipsByDay(
+            this.tasksByDay(this.filteredActiveTasks()), t => this.calendarChip(t));
         const todayKey = this.dayKey(new Date());
         const month = this.calendarMonth.getMonth();
 
@@ -2722,7 +2860,7 @@ ${filePath}`);
                 if (outside) classes.push('outside');
                 if (key === todayKey) classes.push('today');
 
-                const chips = (byDay.get(key) || []).map(t => this.calendarChip(t)).join('');
+                const chips = (days.get(key) || []).join('');
                 row.push(
                     `<div class="${classes.join(' ')}">` +
                     `<div class="cal-date">${cursor.getDate()}</div>` +
@@ -2874,6 +3012,27 @@ ${filePath}`);
     // 다른 데이터이므로 이 순환에 끼지 않는다 - 카운터에서 따로 연다.
     toggleViewMode() {
         this.hideCompletedList();
+
+        // 완료 화면 안에서는 이 버튼이 나가는 문이 아니다. 나가는 길은 여전히
+        // 불 켜진 카운터 하나뿐이고, 여기서는 같은 자료를 목록으로 볼지 달력으로
+        // 볼지만 고른다.
+        if (this.viewMode === 'completed') {
+            this.doneView = this.doneView === 'calendar' ? 'list' : 'calendar';
+            // 달력에서는 기간이 곧 그 달이다. 기간 줄과 달력이 서로 다른 기간을
+            // 말하면 어느 쪽이 진짜인지 알 수 없다 - 기간 줄이 라벨 대신 입력칸
+            // 두 개로 되어 있는 것과 같은 이유다.
+            if (this.doneView === 'calendar') {
+                const { to } = this.doneRangeKeys();
+                const end = parseWithPattern(to, 'YYYY-MM-DD') || new Date();
+                this.calendarMonth = new Date(end.getFullYear(), end.getMonth(), 1);
+                this.doneRange = monthRange(this.calendarMonth);
+                this.donePage = 1;
+            }
+            this.applyViewMode();
+            this.renderTasks();
+            return;
+        }
+
         this.viewMode = this.viewMode === 'calendar' ? 'list' : 'calendar';
         localStorage.setItem('viewMode', this.viewMode);
         // 보기를 바꿀 때마다 이번 달로 돌아온다. 지난달을 보다 목록으로 갔다가
@@ -2903,10 +3062,13 @@ ${filePath}`);
             if (el) el.style.display = visible ? '' : 'none';
         };
 
-        show('calendarView', calendar && !this.isCollapsed);
-        show('completedView', done && !this.isCollapsed);
+        const doneCalendar = done && this.doneView === 'calendar' && !this.isCollapsed;
+        const doneList = done && !doneCalendar;
+
+        show('calendarView', (calendar && !this.isCollapsed) || doneCalendar);
+        show('completedView', doneList && !this.isCollapsed);
         show('taskActionBar', list);
-        show('paginationContainer', list || done);
+        show('paginationContainer', list || doneList);
         document.querySelector('.table-container').style.display =
             (list || (done && this.isCollapsed)) ? '' : 'none';
 
@@ -2917,13 +3079,17 @@ ${filePath}`);
         //
         // 꺼진 채로 두는 대신 감춘다. 눌리지 않는 버튼은 왜 안 눌리는지 물어보게
         // 만들지만, 없는 버튼은 아무것도 묻지 않는다.
-        show('viewModeBtn', !done);
+        // 접기는 여전히 완료 화면에 없다 - 150px 스트립은 "다음에 뭘 하지"에
+        // 답하는 자리이고 끝낸 일은 그 물음과 상관이 없다. 보기 전환은 반대로
+        // 여기서도 할 일이 생겼다: 끝낸 일도 언제 몰렸는지 물을 수 있다.
+        show('viewModeBtn', true);
         show('collapseBtn', !done);
 
         const button = document.getElementById('viewModeBtn');
         if (button) {
-            button.innerHTML = calendar ? LIST_ICON : CALENDAR_ICON;
-            button.title = this.getLocalizedText(calendar ? 'listView' : 'calendarView');
+            const showingCalendar = calendar || doneCalendar;
+            button.innerHTML = showingCalendar ? LIST_ICON : CALENDAR_ICON;
+            button.title = this.getLocalizedText(showingCalendar ? 'listView' : 'calendarView');
         }
         document.body.classList.toggle('calendar-mode', calendar);
         document.body.classList.toggle('completed-mode', done);
@@ -2937,6 +3103,9 @@ ${filePath}`);
     // 나오면 왔던 자리를 잃는다.
     openCompletedView() {
         if (this.viewMode === 'completed') return this.closeCompletedView();
+        // 달력을 보다 들어왔으면 완료도 달력으로 연다. 보고 있던 방식이
+        // 문턱에서 바뀌면 같은 자료의 다른 화면이 아니라 다른 곳으로 읽힌다.
+        this.doneView = this.viewMode === 'calendar' ? 'calendar' : 'list';
         this.hideCompletedList();
         this.viewBeforeCompleted = this.viewMode;
         this.viewMode = 'completed';
@@ -3615,7 +3784,8 @@ ${link.dataset.path}`
             if (this.viewMode === 'calendar') this.renderCollapsedCalendar();
             else this.renderMiniCollapsedTasks();
         } else if (this.viewMode === 'completed') {
-            this.renderCompletedView();
+            if (this.doneView === 'calendar') this.renderCompletedCalendar();
+            else this.renderCompletedView();
         } else if (this.viewMode === 'calendar') {
             this.renderCalendar();
             this.renderQuickFilters();
@@ -3991,7 +4161,7 @@ ${link.dataset.path}`
         container.appendChild(ellipsis);
     }
 
-    toggleCollapse() {
+    async toggleCollapse() {
         // 완료 화면에서는 접지 않는다. 버튼을 감춰 놓고 단축키로만 되게 두면
         // 화면에 없는 동작이 키에만 살아 있는 셈이고, 접힌 스트립은 "다음에 뭘
         // 하지"에 답하는 자리라 끝낸 일과는 상관이 없다.
@@ -4017,24 +4187,34 @@ ${link.dataset.path}`
             tableElement.style.display = 'none';
             miniLayout.style.display = 'flex';
         } else {
-            // Exit collapsed mode - return to normal view
+            // 펴는 쪽은 순서가 중요하다. 예전에는 900px 짜리 화면으로 DOM 을
+            // 먼저 바꾸고 표까지 그린 뒤에 창 크기를 부탁했다 - 그래서 표가
+            // 150px 창 안에 한 번 구겨져 그려졌다가, 몇 프레임 뒤 창이 커지며
+            // 통째로 늘어났다. 창틀이 자라는 것처럼 보인 것이 이것이다.
+            //
+            // 창을 먼저 키우면 이번에는 좁은 스트립이 큰 창 안에 한 프레임
+            // 남는다. 어느 쪽도 보이지 않게, 바뀌는 동안만 내용을 비워 둔다.
+            // 감추는 것은 코드가 정하고 되돌리는 것은 스타일시트에 맡긴다.
+            container.style.visibility = 'hidden';
+            if (this.isElectron && window.electronAPI) {
+                await this.resizeAndPositionWindow(900, DEFAULT_EXPANDED_HEIGHT, 'center');
+            }
             container.classList.remove('collapsed-mode');
             collapseBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="14,4 14,10 20,10"/><polyline points="10,20 10,14 4,14"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>';
             collapseBtn.title = this.getLocalizedText('collapseView');
             tableElement.style.display = 'table';
             miniLayout.style.display = 'none';
-            
-            // 크기는 main 이 접기 전 상태에서 되돌린다. 여기 값은 그 기억이
-            // 없을 때(다른 경로로 펼쳐진 경우)만 쓰이는 대비값이다.
-            if (this.isElectron && window.electronAPI) {
-                this.resizeAndPositionWindow(900, DEFAULT_EXPANDED_HEIGHT, 'center');
-            }
         }
 
         this.applyViewMode();
         this.renderTasks();
         // 높이는 그려진 뒤에 잰다. 그리기 전에 재면 이전 내용의 높이가 나온다.
         if (this.isCollapsed) this.resizeCollapsedWindow();
+        // 다 그린 다음 프레임에 되돌린다. 같은 프레임에 되돌리면 아직 그려지지
+        // 않은 상태가 그대로 보인다.
+        if (container.style.visibility === 'hidden') {
+            requestAnimationFrame(() => { container.style.visibility = ''; });
+        }
     }
 
     // 접힘 창 높이는 실제로 그려질 줄 수를 따라간다. 달력 보기는 오늘 하루만
@@ -4102,10 +4282,13 @@ ${link.dataset.path}`
         this.resizeAndPositionWindow(COLLAPSED_WIDTH, height, 'top-right-150');
     }
 
+    // 돌려주는 약속을 그대로 넘긴다. 펴는 쪽은 창이 다 커진 뒤에 그려야
+    // 해서 이것을 기다린다.
     resizeAndPositionWindow(width, height, position) {
         if (this.isElectron && window.electronAPI && window.electronAPI.resizeAndPositionWindow) {
-            window.electronAPI.resizeAndPositionWindow(width, height, position);
+            return window.electronAPI.resizeAndPositionWindow(width, height, position);
         }
+        return Promise.resolve();
     }
 
 
@@ -4421,6 +4604,7 @@ ${link.dataset.path}`
         // 자동 실행 여부는 OS 가 답한다. 열 때마다 다시 물어야, 사용자가 작업
         // 관리자에서 끈 경우에도 화면이 사실을 말한다.
         this.refreshStartupToggle();
+        this.refreshEffectFiles();
 
         // 로그 폴더 열기는 데스크톱에서만 뜻이 있다. 감출 때만 값을 넣고, 보일
         // 때는 빈 문자열로 되돌려 CSS 가 정하게 둔다 - 여기서 display 를 직접
@@ -5187,7 +5371,14 @@ ${link.dataset.path}`
 
             // 배지와 같은 값을 읽는다. 0이면 미리 알리지 않는다.
             const lead = this.leadFor(task);
-            const key = `${task.id}-lead`;
+            // 키에 목표 시각이 들어간다. 예전에는 `${task.id}-lead` 여서, 한 번
+            // 울린 작업은 마감을 미뤄도 그 작업이 살아 있는 한 다시는 울리지
+            // 않았다 - "임박인데 알림이 안 온다"로 신고됐다. 반복 작업도 같은
+            // 구멍에 걸렸다: 날짜만 앞으로 밀릴 뿐 id 는 그대로라 두 번째
+            // 회차부터는 영영 조용했다.
+            //
+            // 구분자가 '|' 인 것은 목표 시각이 '-' 를 품기 때문이다.
+            const key = `${task.id}|lead|${task.targetDateTime}`;
             const fireFrom = new Date(targetDate.getTime() - lead * 60 * 1000);
 
             if (lead > 0 && now >= fireFrom && now < targetDate && !this.notifiedTasks.has(key)) {
@@ -5200,9 +5391,10 @@ ${link.dataset.path}`
             }
 
             // 시간 초과 알림
-            if (now >= targetDate && !this.notifiedTasks.has(task.id + '-overdue')) {
+            const overdueKey = `${task.id}|overdue|${task.targetDateTime}`;
+            if (now >= targetDate && !this.notifiedTasks.has(overdueKey)) {
                 await this.showTaskNotification(task, this.getLocalizedText('overdueNotification'));
-                this.rememberNotified(task.id + '-overdue');
+                this.rememberNotified(overdueKey);
             }
         }
     }
@@ -5223,7 +5415,9 @@ ${link.dataset.path}`
 
         const live = new Set(this.tasks.map(task => task.id));
         for (const entry of [...this.notifiedTasks]) {
-            if (!live.has(entry.slice(0, entry.lastIndexOf('-')))) {
+            // 옛 모양(`id-lead`)은 여기서 걸러진다. 그 기록은 어느 마감에 대한
+            // 것인지 말하지 못하므로 들고 있어 봐야 잘못 침묵시킬 뿐이다.
+            if (!live.has(entry.split('|')[0])) {
                 this.notifiedTasks.delete(entry);
             }
         }
@@ -5610,7 +5804,180 @@ ${link.dataset.path}`
         }
     }
 
+    // 예전에는 네 가지가 한꺼번에 터졌고 그것 말고는 선택지가 없었다. 그
+    // 조합이 'full' 로 남아 기본값이므로, 아무것도 고르지 않은 사람에게는
+    // 달라지는 것이 없다.
     showConfetti() {
+        const effect = this.completionEffect;
+        if (effect === 'none') return;
+        // 무엇에 대한 보상인지 가리킨다. 종이가 아무리 날려도 방금 무엇이
+        // 올라갔는지 화면이 말하지 않으면 색 조각이 지나간 것에 그친다.
+        this.popCompletionCounter();
+        if (effect === 'full') return this.showFullCelebration();
+
+        const colors = ['#ffd700', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4',
+            '#ffeaa7', '#fd79a8', '#fdcb6e', '#6c5ce7', '#a29bfe'];
+        if (effect === 'fireworks') this.createFireworks();
+        if (effect === 'confetti') this.createFallingConfetti(colors);
+        if (effect === 'burst') this.createBurstConfetti(colors);
+        if (effect === 'sparkle') this.createSparkle(colors);
+        if (effect === 'check') this.createCheckMark();
+        if (effect.startsWith('file:')) this.createCustomEffect(effect.slice(5));
+    }
+
+    // 조용한 쪽 둘. 색종이를 뿌리는 대신 한 번 반짝이거나, 끝냈다는 표시를 한 번
+    // 크게 보여준다. 둘 다 스스로 치우고 클릭을 막지 않는다.
+
+    // 고른 그림을 화면 가운데에 띄운다. 어떤 그림이 와도 깨지지 않도록 크기는
+    // 창의 60% 안에 맞추고 비율은 지킨다. GIF 는 무한 반복이므로 시간이 되면
+    // 지운다 - 축하는 끝나야 축하다.
+    async createCustomEffect(name) {
+        if (!name || !this.isElectron || !window.electronAPI.readEffectFile) {
+            return this.showFullCelebration();
+        }
+        if (!this.effectUrls.has(name)) {
+            const read = await window.electronAPI.readEffectFile(name);
+            // 폴더에서 직접 지운 경우다. 아무 일도 일어나지 않는 것보다
+            // 기본 효과가 낫다.
+            if (!read || !read.ok) return this.showFullCelebration();
+            this.effectUrls.set(name, read.url);
+        }
+
+        const image = document.createElement('img');
+        image.className = 'done-custom';
+        image.src = this.effectUrls.get(name);
+        image.alt = '';
+        document.body.appendChild(image);
+        setTimeout(() => image.remove(), 1600);
+    }
+
+    // 폴더를 한 번 읽어 목록을 새로 만든다. 설정을 열 때마다 읽으므로,
+    // 탐색기에서 직접 넣거나 지운 것도 그대로 따라온다.
+    async refreshEffectFiles() {
+        if (!this.isElectron || !window.electronAPI.listEffectFiles) return;
+        this.effectFiles = await window.electronAPI.listEffectFiles() || [];
+        this.updateCompletionEffectControl();
+    }
+
+    async addEffectFiles(paths = null) {
+        if (!this.isElectron) return;
+        const result = await window.electronAPI.addEffectFiles(paths);
+        if (!result) return;                       // 고르다 말았다
+
+        this.effectFiles = result.files || [];
+        const note = document.getElementById('effectFileNote');
+        if (note && result.refused.length) {
+            const tooBig = result.refused.find(r => r.reason === 'size');
+            note.textContent = tooBig
+                ? this.getLocalizedText('effectFileTooBig')
+                : this.getLocalizedText('effectFileMissing');
+        }
+        // 방금 넣은 것으로 갈아탄다. 넣고 나서 목록에서 또 찾아야 하면
+        // 넣은 것이 어느 것인지 알 수 없다.
+        if (result.added.length) {
+            this.changeCompletionEffect('file:' + result.added[result.added.length - 1]);
+        } else {
+            this.updateCompletionEffectControl();
+        }
+    }
+
+    async deleteEffectFile() {
+        const chosen = this.completionEffect;
+        if (!chosen.startsWith('file:') || !this.isElectron) return;
+        const name = chosen.slice(5);
+        this.effectFiles = await window.electronAPI.deleteEffectFile(name) || [];
+        this.effectUrls.delete(name);
+        // 지운 것을 고른 채로 둘 수는 없다.
+        this.changeCompletionEffect('full');
+    }
+
+    popCompletionCounter() {
+        for (const id of ['completionCounter', 'collapsedCompletionCounter']) {
+            const counter = document.getElementById(id);
+            if (!counter) continue;
+            counter.classList.remove('celebrating');
+            // 떼고 곧바로 붙이면 같은 프레임이라 애니메이션이 다시 시작하지
+            // 않는다. 레이아웃을 한 번 읽어 강제로 끊는다.
+            void counter.offsetWidth;
+            counter.classList.add('celebrating');
+            setTimeout(() => counter.classList.remove('celebrating'), 800);
+        }
+    }
+
+    createSparkle(colors) {
+        for (let i = 0; i < 14; i++) {
+            const spark = document.createElement('div');
+            spark.className = 'sparkle';
+            spark.style.left = (30 + Math.random() * 40) + '%';
+            spark.style.top = (25 + Math.random() * 40) + '%';
+            spark.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+            spark.style.animationDelay = (Math.random() * 0.4) + 's';
+            document.body.appendChild(spark);
+            setTimeout(() => spark.remove(), 1400);
+        }
+    }
+
+    createCheckMark() {
+        const mark = document.createElement('div');
+        mark.className = 'done-check';
+        mark.innerHTML = '<svg viewBox="0 0 48 48" width="96" height="96" fill="none"'
+            + ' stroke="currentColor" stroke-width="5" stroke-linecap="round"'
+            + ' stroke-linejoin="round"><path d="M10 25l10 10 18-20"/></svg>';
+        document.body.appendChild(mark);
+        setTimeout(() => mark.remove(), 1100);
+    }
+
+    // 목록은 COMPLETION_EFFECTS 하나에서 나온다.
+    updateCompletionEffectControl() {
+        const label = document.getElementById('settingsEffectLabel');
+        const select = document.getElementById('completionEffectSelect');
+        if (!label || !select) return;
+
+        label.textContent = this.getLocalizedText('settingsEffect');
+        // 내장 효과 뒤에 폴더에 있는 그림들이 붙는다. 목록이 한 곳에서
+        // 나오므로, 화면에만 있고 그리지는 않는 항목이 생기지 않는다.
+        const values = [...COMPLETION_EFFECTS, ...this.effectFiles.map(name => 'file:' + name)];
+        select.innerHTML = '';
+        for (const value of values) {
+            const option = document.createElement('option');
+            option.value = value;
+            option.textContent = value.startsWith('file:')
+                ? value.slice(5)
+                : this.getLocalizedText('effect' + value[0].toUpperCase() + value.slice(1));
+            select.appendChild(option);
+        }
+        select.value = values.includes(this.completionEffect) ? this.completionEffect : 'full';
+
+        const add = document.getElementById('effectAddBtn');
+        const remove = document.getElementById('effectDeleteBtn');
+        const folder = document.getElementById('effectFolderBtn');
+        const note = document.getElementById('effectFileNote');
+        if (add) add.textContent = this.getLocalizedText('addEffectFile');
+        if (folder) folder.textContent = this.getLocalizedText('openEffectsFolder');
+        if (note) note.textContent = this.getLocalizedText('effectFilesHint');
+        // 지울 것이 없을 때 지우기 버튼을 누르게 두면 무엇이 지워지는지 알 수 없다.
+        if (remove) {
+            remove.textContent = this.getLocalizedText('deleteEffectFile');
+            remove.style.display = this.completionEffect.startsWith('file:') ? '' : 'none';
+        }
+    }
+
+    // 고르는 순간 한 번 보여준다. 이름만 읽고 고르라는 것은 고르지 말라는 것에
+    // 가깝다 - 다음에 무엇을 완료할 때까지 무엇을 골랐는지 알 수 없다.
+    changeCompletionEffect(name) {
+        // 폴더에 있는 그림도 고를 수 있는 값이다. 내장 목록만 보면 방금 넣은
+        // 파일이 영영 선택되지 않는다.
+        const known = COMPLETION_EFFECTS.includes(name)
+            || (name.startsWith('file:') && this.effectFiles.includes(name.slice(5)));
+        if (!known) return;
+        this.completionEffect = name;
+        localStorage.setItem('completionEffect', name);
+        // 「직접 고른 파일」을 고르면 그 자리에서 파일 고르기 버튼이 나와야 한다.
+        this.updateCompletionEffectControl();
+        this.showConfetti();
+    }
+
+    showFullCelebration() {
         const colors = ['#ffd700', '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#ffeaa7', '#fd79a8', '#fdcb6e', '#6c5ce7', '#a29bfe'];
         
         // Fireworks explosion effect
@@ -5661,7 +6028,11 @@ ${link.dataset.path}`
     }
 
     createFallingConfetti(colors) {
-        const confettiCount = 40;
+        // 조각 수보다 *동시에 보이는* 조각 수가 전부다. 40 개를 50ms 씩
+        // 벌려 만들면 마지막 조각은 2 초 뒤에 나타나고 앞선 것들은 이미 다
+        // 지나가 있다. 화면을 재 보니 언제 찍어도 열댓 개뿐이라, 축하가
+        // 아니라 먼지처럼 읽혔다. 같은 시간 안에 더 많이, 더 빨리 쏟는다.
+        const confettiCount = 90;
         
         for (let i = 0; i < confettiCount; i++) {
             setTimeout(() => {
@@ -5669,9 +6040,13 @@ ${link.dataset.path}`
                 confetti.className = 'confetti fall';
                 confetti.style.left = Math.random() * window.innerWidth + 'px';
                 confetti.style.top = '-20px';
+                // 크기가 제각각이어야 덩어리로 보인다. 다 같으면 격자로 읽힌다.
+                const side = Math.round(Math.random() * 8 + 8);
+                confetti.style.width = side + 'px';
+                confetti.style.height = side + 'px';
                 confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
-                confetti.style.animationDelay = Math.random() * 0.5 + 's';
-                confetti.style.animationDuration = (Math.random() * 1 + 2) + 's';
+                confetti.style.animationDelay = Math.random() * 0.2 + 's';
+                confetti.style.animationDuration = (Math.random() * 0.8 + 1.2) + 's';
                 
                 // Random horizontal drift
                 const drift = (Math.random() - 0.5) * 200;
@@ -5683,8 +6058,8 @@ ${link.dataset.path}`
                     if (confetti.parentNode) {
                         confetti.parentNode.removeChild(confetti);
                     }
-                }, 3500);
-            }, i * 50);
+                }, 2600);
+            }, i * 12);
         }
     }
 
@@ -5692,13 +6067,16 @@ ${link.dataset.path}`
         const centerX = window.innerWidth / 2;
         const centerY = window.innerHeight / 2;
         
-        for (let i = 0; i < 24; i++) {
+        // 24 개를 30ms 씩 벌리면 720ms 에 걸쳐 하나씩 나타난다 - 터지는 것이
+        // 아니라 새어 나오는 것이다. 한 호흡에 쏟아야 터진 것으로 보인다.
+        const petals = 40;
+        for (let i = 0; i < petals; i++) {
             setTimeout(() => {
                 const confetti = document.createElement('div');
                 confetti.className = 'confetti burst';
                 
-                const angle = (360 / 24) * i;
-                const distance = Math.random() * 150 + 100;
+                const angle = (360 / petals) * i + Math.random() * 6;
+                const distance = Math.random() * 180 + 140;
                 const x = centerX + Math.cos(angle * Math.PI / 180) * distance;
                 const y = centerY + Math.sin(angle * Math.PI / 180) * distance;
                 
@@ -5713,7 +6091,7 @@ ${link.dataset.path}`
                         confetti.parentNode.removeChild(confetti);
                     }
                 }, 1500);
-            }, i * 30);
+            }, i * 5);
         }
     }
 

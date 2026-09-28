@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Tasktory</title>
     <meta name="theme-color" content="#2c3e50">
@@ -235,6 +235,14 @@
                     <!-- 고정 상태는 핀의 기울기가 말한다. 꽂혀 있으면 곧게 서고,
                          풀려 있으면 45도로 눕는다 - 바탕색 농도로는 켜졌는지
                          꺼졌는지 옆에 비교할 것 없이는 읽히지 않는다. -->
+                    <!-- 150px 제목줄에는 아이콘과 버튼 셋이 다 들어가지 못해
+                         윈도우가 최소화 버튼을 그리지 않는다. 그래서 스트립이
+                         자기 것을 갖는다. -->
+                    <button type="button" id="collapsedMinimizeBtn" class="collapsed-expand-btn" title="Minimize">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                    </button>
                     <button type="button" id="alwaysOnTopBtn" class="collapsed-expand-btn pin-btn">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                             <line x1="12" y1="17" x2="12" y2="22"/>
@@ -428,6 +436,18 @@
                 <select id="dateFormatSelect"></select>
                 <div id="dateFormatPreview" class="date-format-preview"></div>
             </div>
+            <div class="settings-group">
+                <label for="completionEffectSelect" id="settingsEffectLabel">Completion effect</label>
+                <select id="completionEffectSelect"></select>
+                <!-- 「직접 고른 파일」일 때만 나온다. 고르지 않은 사람에게
+                     쓸 수 없는 버튼을 보여 줄 이유가 없다. -->
+                <div class="effect-file-row">
+                    <button type="button" id="effectAddBtn" class="backup-btn"></button>
+                    <button type="button" id="effectDeleteBtn" class="backup-btn"></button>
+                    <button type="button" id="effectFolderBtn" class="backup-btn"></button>
+                </div>
+                <small id="effectFileNote" class="settings-hint"></small>
+            </div>
 
             <div class="settings-group">
                 <label id="settingsDefaultNotificationLabel">Default Notification</label>
@@ -483,6 +503,7 @@
                     <button type="button" id="startupOffBtn" class="backup-btn"></button>
                 </div>
                 <small id="settingsStartupHint" class="settings-hint"></small>
+
             </div>
 
             <div class="settings-group">

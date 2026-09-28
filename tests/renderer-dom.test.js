@@ -92,6 +92,12 @@ const boot = async (tasks = []) => {
         moveWindowBy: jest.fn(),
         resizeAndPositionWindow: jest.fn(async () => true),
         getCompletedRange: jest.fn(async () => []),
+        minimizeWindow: jest.fn(async () => true),
+        listEffectFiles: jest.fn(async () => []),
+        addEffectFiles: jest.fn(async () => ({ added: ['party.gif'], refused: [], files: ['party.gif'] })),
+        deleteEffectFile: jest.fn(async () => []),
+        openEffectsFolder: jest.fn(async () => true),
+        readEffectFile: jest.fn(async () => ({ ok: true, url: 'data:image/gif;base64,R0lGOD' })),
         getCollapseShortcut: jest.fn(async () => ({
             accelerator: 'CommandOrControl+Alt+Shift+M', registered: true
         })),
@@ -668,6 +674,307 @@ describe('a refused save sends you to the field it refused', () => {
 
         expect(at('taskPosition').closest('.form-group').querySelector('.field-error').textContent)
             .toBe('위치는 1 부터 1 사이여야 합니다.')
+    })
+})
+
+
+// 목록은 무엇을 끝냈는지 답하고, 달력은 언제 몰렸는지 답한다. 같은 자료를 두
+// 가지로 보는 것이라 완료 안의 하위 보기이지, 나가는 문이 아니다.
+describe('the completed calendar', () => {
+    const open = async () => {
+        document.getElementById('completionCounter').click()
+        await settle()
+    }
+    const toggle = async () => {
+        document.getElementById('viewModeBtn').click()
+        await settle()
+    }
+    const shown = (id) => document.getElementById(id).style.display !== 'none'
+
+    test('the view button swaps list and calendar without leaving completed', async () => {
+        const manager = await boot([])
+        await open()
+        expect(manager.viewMode).toBe('completed')
+        expect(shown('completedView')).toBe(true)
+
+        await toggle()
+
+        expect(manager.viewMode).toBe('completed')
+        expect(shown('calendarView')).toBe(true)
+        expect(shown('completedView')).toBe(false)
+
+        await toggle()
+
+        expect(shown('completedView')).toBe(true)
+        expect(shown('calendarView')).toBe(false)
+    })
+
+    // 나가는 길은 여전히 불 켜진 카운터 하나다. 달력을 보다 나가도 마찬가지다.
+    test('the counter is still the only way out', async () => {
+        const manager = await boot([])
+        await open()
+        await toggle()
+
+        document.getElementById('completionCounter').click()
+        await settle()
+
+        expect(manager.viewMode).not.toBe('completed')
+    })
+
+    // 기간 줄과 달력이 서로 다른 기간을 말하면 어느 쪽이 진짜인지 알 수 없다.
+    // 달력에서는 기간이 곧 그 달이다.
+    test('entering the calendar snaps the period to that whole month', async () => {
+        const manager = await boot([])
+        await open()
+        manager.doneRange = { from: '2026-08-14', to: '2026-09-15' }
+
+        await toggle()
+
+        expect(manager.doneRange).toEqual({ from: '2026-09-01', to: '2026-09-30' })
+    })
+
+    // 달을 옮기는 것이 곧 기간을 옮기는 것이다. 목록으로 돌아가면 그 달이
+    // 그대로 기간으로 남고, 날짜 칸 두 개에 적혀 있으므로 숨는 것이 없다.
+    test('moving a month moves the period, and the list keeps it', async () => {
+        const manager = await boot([])
+        await open()
+        manager.doneRange = { from: '2026-09-01', to: '2026-09-30' }
+        await toggle()
+
+        document.getElementById('calPrev').click()
+        await settle()
+
+        expect(manager.doneRange).toEqual({ from: '2026-08-01', to: '2026-08-31' })
+
+        await toggle()
+
+        expect(manager.doneRange).toEqual({ from: '2026-08-01', to: '2026-08-31' })
+    })
+
+    // 어느 칸에 앉는지는 화면에 적히는 값과 같은 규칙을 따른다. 다르면 달력이
+    // 틀린 것으로 읽힌다.
+    test('a row sits on the day it was completed, falling back to the log time', async () => {
+        const manager = await boot([])
+
+        const byDay = manager.completedByDay([
+            { content: 'a', completedAt: '2026-09-03 18:20' },
+            { content: 'b', timestamp: '2026-09-03T09:05:00+09:00' },
+            { content: 'c', completedAt: '2026-09-05 11:00' }
+        ])
+
+        expect([...byDay.keys()].sort()).toEqual(['2026-09-03', '2026-09-05'])
+        expect(byDay.get('2026-09-03').map((r) => r.content)).toEqual(['b', 'a'])
+    })
+
+    // 단발 작업은 완료하면서 행이 지워진다. 열 것이 없으므로 id 를 달지 않고,
+    // 격자의 더블클릭도 그래서 지나간다.
+    test('a completed chip carries no task id to open', async () => {
+        const manager = await boot([])
+
+        const chip = manager.completedChip({ content: '견적서 정리', completedAt: '2026-09-03 18:20' })
+
+        expect(chip).not.toContain('data-task-id')
+        expect(chip).toContain('18:20')
+        expect(chip).toContain('견적서 정리')
+    })
+})
+
+
+// 완료 효과는 예전에 네 가지가 한꺼번에 터지는 것 하나뿐이었다. 그 조합이
+// 'full' 로 남아 기본값이므로 고르지 않은 사람에게는 달라지는 것이 없다.
+describe('the completion effect you picked', () => {
+    const select = () => document.getElementById('completionEffectSelect')
+    const pick = (value) => {
+        select().value = value
+        select().dispatchEvent(new Event('change', { bubbles: true }))
+    }
+
+    test('the list on screen comes from the one list in the source', async () => {
+        await boot([])
+
+        expect([...select().options].map((o) => o.value))
+            .toEqual(['full', 'fireworks', 'confetti', 'burst', 'sparkle', 'check', 'none'])
+    })
+
+    test('nobody who never opened settings sees a change', async () => {
+        const manager = await boot([])
+
+        expect(manager.completionEffect).toBe('full')
+    })
+
+    test('picking one keeps it across a restart', async () => {
+        await boot([])
+
+        pick('sparkle')
+
+        expect(localStorage.getItem('completionEffect')).toBe('sparkle')
+        expect((await boot([])).completionEffect).toBe('sparkle')
+    })
+
+    // 이름만 읽고 고르라는 것은 고르지 말라는 것에 가깝다 - 다음에 무엇을
+    // 완료할 때까지 무엇을 골랐는지 알 수 없다.
+    test('picking one shows it there and then', async () => {
+        await boot([])
+
+        pick('check')
+
+        expect(document.querySelectorAll('.done-check')).toHaveLength(1)
+    })
+
+    test('none draws nothing at all', async () => {
+        const manager = await boot([])
+        pick('none')
+        document.querySelectorAll('.done-check').forEach((el) => el.remove())
+
+        manager.showConfetti()
+
+        expect(document.querySelectorAll('.done-check, .sparkle, .confetti')).toHaveLength(0)
+    })
+
+    test('each name reaches a drawing, not just a label', async () => {
+        const manager = await boot([])
+        const drew = {}
+        for (const name of ['full', 'fireworks', 'confetti', 'burst', 'sparkle', 'check']) {
+            document.body.querySelectorAll('.done-check, .sparkle').forEach((el) => el.remove())
+            const calls = []
+            for (const method of ['showFullCelebration', 'createFireworks', 'createFallingConfetti',
+                'createBurstConfetti', 'createSparkle', 'createCheckMark']) {
+                jest.spyOn(manager, method).mockImplementation(() => calls.push(method))
+            }
+            manager.completionEffect = name
+            manager.showConfetti()
+            drew[name] = calls.length
+            jest.restoreAllMocks()
+        }
+
+        expect(drew).toEqual({ full: 1, fireworks: 1, confetti: 1, burst: 1, sparkle: 1, check: 1 })
+    })
+    // 첨부는 경로만 가리키지만 효과 그림은 복사한다. 첨부가 그러는 이유는
+    // 단발 작업을 완료하면 행이 사라져 사본이 고아가 되기 때문인데, 효과
+    // 파일에는 그 사정이 맞지 않는다. 반대로 참조만 하면 원본을 옮긴 날 멈춘다.
+    test('added files are copied, and the list comes from the folder', async () => {
+        const manager = await boot([])
+        manager.isElectron = true
+
+        await manager.addEffectFiles(['C:/somewhere/party.gif'])
+
+        expect(window.electronAPI.addEffectFiles).toHaveBeenCalledWith(['C:/somewhere/party.gif'])
+        expect(manager.effectFiles).toEqual(['party.gif'])
+        // 원본 경로는 어디에도 남지 않는다
+        expect(localStorage.getItem('completionEffect')).toBe('file:party.gif')
+        expect(JSON.stringify(manager.effectFiles)).not.toContain('somewhere')
+    })
+
+    // 새로 고를 때마다 이전 것을 덮어쓰면 고를 것이 늘 하나뿐이다.
+    test('the list carries every file, on top of the built-ins', async () => {
+        const manager = await boot([])
+        manager.isElectron = true
+        manager.effectFiles = ['party.gif', 'trophy.png']
+        manager.updateCompletionEffectControl()
+
+        expect([...select().options].map((o) => o.value).slice(-2))
+            .toEqual(['file:party.gif', 'file:trophy.png'])
+    })
+
+    test('removing one drops it and falls back to a built-in', async () => {
+        const manager = await boot([])
+        manager.isElectron = true
+        manager.effectFiles = ['party.gif']
+        manager.completionEffect = 'file:party.gif'
+
+        await manager.deleteEffectFile()
+
+        expect(window.electronAPI.deleteEffectFile).toHaveBeenCalledWith('party.gif')
+        expect(manager.completionEffect).toBe('full')
+    })
+
+    // 지울 것이 없는데 지우기 버튼이 눌리면 무엇이 지워지는지 알 수 없다.
+    test('the remove button only shows for a file', async () => {
+        const manager = await boot([])
+        manager.effectFiles = ['party.gif']
+        const shown = () => document.getElementById('effectDeleteBtn').style.display
+
+        manager.completionEffect = 'file:party.gif'
+        manager.updateCompletionEffectControl()
+        expect(shown()).not.toBe('none')
+
+        manager.completionEffect = 'confetti'
+        manager.updateCompletionEffectControl()
+        expect(shown()).toBe('none')
+    })
+
+    // 폴더에서 직접 지운 경우다. 아무 일도 일어나지 않는 것보다 기본 효과가 낫다.
+    test('a file that is gone falls back rather than doing nothing', async () => {
+        const manager = await boot([])
+        manager.isElectron = true
+        window.electronAPI.readEffectFile.mockResolvedValueOnce({ ok: false, reason: 'missing' })
+        const fell = jest.spyOn(manager, 'showFullCelebration').mockImplementation(() => {})
+
+        await manager.createCustomEffect('party.gif')
+
+        expect(fell).toHaveBeenCalled()
+    })
+})
+
+
+
+
+// 150px 제목줄에는 아이콘과 버튼 셋이 함께 들어가지 못해, 윈도우가 최소화
+// 버튼을 통째로 그리지 않는다 - 화면을 찍어 보니 아이콘 / 최대화 / 닫기까지
+// 였다. 언제나 위에 뜨는 창에서 치울 길이 없어지므로 스트립이 자기 버튼을 갖는다.
+describe('putting the strip aside', () => {
+    test('the strip has its own minimize, and it reaches the window', async () => {
+        const manager = await boot([])
+        manager.isElectron = true
+
+        document.getElementById('collapsedMinimizeBtn').click()
+
+        expect(window.electronAPI.minimizeWindow).toHaveBeenCalled()
+    })
+})
+
+
+// 펴는 순간이 부자연스럽다는 보고. 창틀이 자라는 것처럼 보였는데, 실제로는
+// 900px 짜리 화면을 150px 창 안에 먼저 그려 놓고 그 뒤에 창을 키운 것이었다.
+// 프레임마다 재 보니 창폭 134 에 표폭 720 인 프레임이 실제로 있었다.
+describe('coming back from the strip', () => {
+    test('the window is sized before the wide layout is drawn', async () => {
+        const manager = await boot([task('a')])
+        manager.isElectron = true
+        await manager.toggleCollapse()
+
+        const when = []
+        jest.spyOn(manager, 'resizeAndPositionWindow').mockImplementation((w, h, position) => {
+            // 크기를 부탁하는 시점에 아직 접힌 배치여야 한다. 이미 펼친 배치면
+            // 넓은 화면을 좁은 창에 그린 뒤라는 뜻이다.
+            when.push(position + ':' + document.querySelector('.container')
+                .classList.contains('collapsed-mode'));
+            return Promise.resolve();
+        })
+
+        await manager.toggleCollapse()
+
+        expect(when).toContain('center:true')
+        expect(document.querySelector('.container').classList.contains('collapsed-mode')).toBe(false)
+    })
+
+    // 창이 먼저 커지면 이번에는 좁은 스트립이 큰 창에 한 프레임 남는다.
+    // 그 사이를 비워 두는 것이 이 고침의 나머지 절반이다.
+    test('nothing is on screen while the two sides disagree', async () => {
+        const manager = await boot([task('a')])
+        manager.isElectron = true
+        await manager.toggleCollapse()
+
+        let hiddenWhileResizing = false
+        jest.spyOn(manager, 'resizeAndPositionWindow').mockImplementation(() => {
+            hiddenWhileResizing =
+                document.querySelector('.container').style.visibility === 'hidden';
+            return Promise.resolve();
+        })
+
+        await manager.toggleCollapse()
+
+        expect(hiddenWhileResizing).toBe(true)
     })
 })
 
@@ -1588,11 +1895,50 @@ describe('notification history across restarts', () => {
 
     test('forgets tasks that are no longer in the list', async () => {
         const manager = await boot([task('a')])
-        manager.notifiedTasks = new Set(['task-gone-1hour', 'a-1hour'])
+        manager.notifiedTasks = new Set(['gone|lead|2026-09-30 18:00', 'a|lead|2026-09-30 18:00'])
 
-        manager.rememberNotified('a-15min')
+        manager.rememberNotified('a|overdue|2026-09-30 18:00')
 
-        expect([...manager.notifiedTasks].sort()).toEqual(['a-15min', 'a-1hour'])
+        expect([...manager.notifiedTasks].sort())
+            .toEqual(['a|lead|2026-09-30 18:00', 'a|overdue|2026-09-30 18:00'])
+    })
+
+    // 보고된 자리: 목표 시각을 미뤘는데 임박해도 알림이 오지 않는다. 기록이
+    // `id-lead` 라 어느 마감에 대한 것인지 말하지 못했고, 한 번 울린 작업은 그
+    // 작업이 살아 있는 한 영영 조용했다. 반복 작업은 날짜만 앞으로 밀릴 뿐
+    // id 가 그대로라 두 번째 회차부터 같은 구멍에 빠졌다.
+    test('a deadline that moved is a different thing to be told about', async () => {
+        const manager = await boot([task('a')])
+        const said = []
+        jest.spyOn(manager, 'showTaskNotification').mockImplementation((t) => said.push(t.content))
+        manager.isElectron = true
+
+        const soon = (minutes) =>
+            new Date(Date.now() + minutes * 60 * 1000).toISOString()
+        manager.tasks = [{ id: 'a', content: 'first deadline', notificationEnabled: true,
+            startDateTime: soon(-120), targetDateTime: soon(30) }]
+        await manager.checkUpcomingTasks()
+        await manager.checkUpcomingTasks()
+
+        expect(said).toEqual(['first deadline'])
+
+        // 같은 작업, 미뤄진 마감
+        manager.tasks[0].targetDateTime = soon(45)
+        manager.tasks[0].content = 'pushed back'
+        await manager.checkUpcomingTasks()
+
+        expect(said).toEqual(['first deadline', 'pushed back'])
+    })
+
+    // 옛 모양의 기록은 어느 마감에 대한 것인지 말하지 못하므로, 들고 있어 봐야
+    // 잘못 침묵시킬 뿐이다.
+    test('records written in the old shape are dropped', async () => {
+        const manager = await boot([task('a')])
+        manager.notifiedTasks = new Set(['a-lead', 'a-overdue'])
+
+        manager.rememberNotified('a|lead|2026-09-30 18:00')
+
+        expect([...manager.notifiedTasks]).toEqual(['a|lead|2026-09-30 18:00'])
     })
 
     test('survives a corrupted store', async () => {
@@ -2446,20 +2792,21 @@ describe('the completed view', () => {
         expect(again.viewMode).toBe('list')
     })
 
-    // 완료 화면에서는 보기 전환도 접기도 할 일이 없다. 꺼진 채로 두는 대신
-    // 감춘다 - 눌리지 않는 버튼은 왜 안 눌리는지 물어보게 만들지만, 없는 버튼은
-    // 아무것도 묻지 않는다.
-    test('the view toggle and collapse are not on screen while it is open', async () => {
-        const manager = await boot([])
+    // 접기는 여기서 할 일이 없다 - 150px 스트립은 "다음에 뭘 하지"에 답하는
+    // 자리이고 끝낸 일은 그 물음과 상관이 없다. 꺼진 채로 두는 대신 감춘다:
+    // 눌리지 않는 버튼은 왜 안 눌리는지 물어보게 만들지만, 없는 버튼은 아무것도
+    // 묻지 않는다. 보기 전환은 반대로 여기서도 할 일이 생겼다 - 끝낸 일도
+    // 언제 몰렸는지 물을 수 있다.
+    test('collapse is not on screen while it is open, but the view toggle is', async () => {
+        await boot([])
 
         document.getElementById('completionCounter').click()
         await settle()
-        expect(document.getElementById('viewModeBtn').style.display).toBe('none')
         expect(document.getElementById('collapseBtn').style.display).toBe('none')
+        expect(document.getElementById('viewModeBtn').style.display).not.toBe('none')
 
         document.getElementById('completionCounter').click()
         await settle()
-        expect(document.getElementById('viewModeBtn').style.display).not.toBe('none')
         expect(document.getElementById('collapseBtn').style.display).not.toBe('none')
     })
 
