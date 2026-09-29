@@ -393,6 +393,30 @@ body.collapsed-mode-body {
     width: 100%;
 }
 
+/* 예전에는 컨테이너가 창 밖으로 16px 넘쳐 있어 이 막대가 그 너머에 숨어 있었다.
+   컨테이너를 창에 맞추자 드러났는데, 기본 막대는 170px 중 15px 을 먹고 그만큼
+   시끄럽다. 달력 칸이 쓰는 것과 같은 6px 짜리로 맞춘다 - 넘친다는 사실은 여전히
+   말하되, 스트립에서 가장 눈에 띄는 것이 되지는 않는다. */
+.collapsed-task-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.collapsed-task-list::-webkit-scrollbar-thumb {
+    background-color: #c8cdd5;
+    border-radius: 3px;
+}
+
+.collapsed-task-list::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+/* 옅은 회색 손잡이는 어두운 바탕에서 되레 밝게 튄다. 달력 칸에도 같은 짝이
+   없어 함께 넣는다. */
+body.dark-mode .collapsed-task-list::-webkit-scrollbar-thumb,
+body.dark-mode .cal-day-body::-webkit-scrollbar-thumb {
+    background-color: #4a5058;
+}
+
 .collapsed-task-list ul {
     list-style: none;
     padding: 0;
