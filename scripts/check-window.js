@@ -80,6 +80,31 @@ app.whenReady().then(async () => {
         (win.isMaximized() ? '최대화' : '보통') + ' '
         + win.getBounds().width + 'x' + win.getBounds().height)
 
+    // --- 접힘 안쪽이 창 안쪽과 같은 폭인가 ---------------------------------
+    // setBounds 가 정하는 것은 창틀을 포함한 바깥 크기다. 컨테이너에 같은 값을
+    // px 로 박아 두면 창 170px 에 안쪽 154px, 컨테이너만 16px 넓어 오른쪽으로
+    // 넘친다 - 그 안에서 가운데를 맞추니 모든 것이 8px 씩 밀려 있었다.
+    await collapse()
+    const inside = JSON.parse(await run(`(() => {
+        const c = document.querySelector('.container');
+        const mid = (sel) => { const el = document.querySelector(sel);
+            if (!el) return null; const r = el.getBoundingClientRect();
+            return Math.round(((r.left + r.right) / 2 - window.innerWidth / 2) * 10) / 10; };
+        return JSON.stringify({
+            컨테이너: Math.round(c.getBoundingClientRect().width),
+            창안쪽: window.innerWidth,
+            상단줄: mid('.collapsed-top-row'),
+            카운터: mid('#collapsedCompletionCounter')
+        });
+    })()`))
+    check('접힘 컨테이너가 창 안쪽을 그대로 채운다',
+        inside.컨테이너 === inside.창안쪽,
+        `컨테이너 ${inside.컨테이너} vs 창 안쪽 ${inside.창안쪽}`)
+    check('스트립 안의 것들이 가운데에 선다',
+        Math.abs(inside.상단줄) <= 0.5 && Math.abs(inside.카운터) <= 0.5,
+        `상단줄 ${inside.상단줄}, 카운터 ${inside.카운터}`)
+    await collapse()
+
     // --- 끌어 옮긴 스트립의 자리 -------------------------------------------
     // 여기서 진짜 마우스로 끌어야 하는 이유가 있다. setBounds 로 옮기고
     // win.emit('moved') 를 손으로 내면 이 확인은 통과하는데, 실제로는 통과하지

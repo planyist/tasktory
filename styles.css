@@ -297,10 +297,15 @@ body.collapsed-mode-body {
 }
 
 .container.collapsed-mode {
-    width: 170px !important;
+    /* 창의 안쪽을 그대로 채운다. 예전에는 COLLAPSED_WIDTH 와 같은 값을 px 로
+       박아 뒀는데, setBounds 가 정하는 것은 창틀을 포함한 *바깥* 크기다 -
+       재 보니 창 170px 에 안쪽은 154px 이었고, 컨테이너만 16px 넓어 오른쪽으로
+       넘쳤다. 그 안에서 가운데를 맞추니 펴기 버튼도 완료 개수도 전부 8px 씩
+       오른쪽으로 밀려 있었다. 150px 때도 같은 크기로 밀려 있었다. */
+    width: 100% !important;
     height: 100vh !important;
     padding: 3px !important;
-    max-width: 170px !important;
+    max-width: 100% !important;
     /* 안쪽 요소들이 100vh를 다시 쓰면 padding 만큼 넘쳐 스크롤바가 생긴다 */
     overflow: hidden !important;
 }
