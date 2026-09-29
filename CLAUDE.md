@@ -765,6 +765,32 @@ dark-mode section **without** `body.dark-mode` — the identical mistake as the
 `body.dark-mode .status.standing` holding light colours and immediately
 overridden, and a `li.standing` pair copy-pasted verbatim.
 
+**The audit that guards this had two holes, and both let a real bug through.**
+
+It skipped any rule preceded directly by a comment — the capture ran from the
+`/*` and the whole block was discarded as "not a selector". In a file where the
+well-explained rules are exactly the commented ones, that blinded it to most of
+what mattered. And it compared whole selector strings, so `.table-container` and
+`.table-container, .done-body` counted as different rules; declaring the same
+selector twice was invisible as long as one of them was written as a group.
+
+It now strips comments first, splits groups, and asks a sharper question: **is
+the same property declared twice for the same selector?** Two blocks that share
+a selector but set different properties are fine and should not be flagged —
+what is never fine is one declaration quietly beating another. Turning it on
+found seven live clashes that had been there for months, among them two
+dark-mode input blocks giving `#e0e0e0` and `#f0f0f0` for the same field.
+
+**A refactor has to be shown to change nothing.** Deleting a rule because "the
+later one wins anyway" is a hypothesis. The check is to render both versions and
+diff `getComputedStyle` across every view and theme; when this was finally done
+the only differences left were the five that were intended, which is what made
+it safe to delete the rest. It also would have caught the edit that started this
+— a block inserted by string index landed in the middle of
+`.container.collapsed-mode .table-container`, killing the rule that hides the
+table panel in the strip and leaving a 2px bordered sliver under the drag
+handle.
+
 Duplicate selectors in this file are not stylistic untidiness; every one is a
 rule silently losing to another somewhere else in the file. A second sweep found
 eleven more, and among them the same failure again: `body.dark-mode thead` was

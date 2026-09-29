@@ -319,7 +319,11 @@ body.collapsed-mode-body {
 .container.collapsed-mode #calendarView,
 /* 접힘 상태에서는 미니 목록만 쓴다. 표 패널을 남겨두면 flex 열에서 자리를
    차지해 내용이 넘치고 스크롤바가 생긴다. */
-.container.collapsed-mode /* 목록과 완료가 같은 껍데기를 쓴다. 예전에는 완료 목록만 흰 바탕도 테두리도
+.container.collapsed-mode .table-container {
+    display: none !important;
+}
+
+/* 목록과 완료가 같은 껍데기를 쓴다. 예전에는 완료 목록만 흰 바탕도 테두리도
    그림자도 없이 맨 바닥에 놓여 있어, 화면을 오갈 때마다 표가 종이에서 벗겨졌다
    붙는 것처럼 보였다 - 테두리 1px 탓에 표의 왼쪽 끝도 21px 과 20px 을 오갔다. */
 .table-container,
@@ -570,7 +574,6 @@ body.dark-mode .cal-day-body::-webkit-scrollbar-thumb {
     flex: 0 0 auto;
     width: auto;
     font-size: 11px;
-    color: #7b8794;
     height: 24px;
     padding: 0 4px;
     border: 1px solid #d8dee6;
@@ -605,7 +608,8 @@ body.dark-mode .page-size-select {
     color: var(--text-primary);
     cursor: pointer;
     border-radius: 4px;
-    font-size: 16px;
+    /* 크기는 아래 `.pagination-btn, .page-number` 가 12px 로 정한다. 여기에
+       16px 을 또 적어 두었는데 뒤엣것이 이겨 한 번도 쓰이지 않았다. */
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1456,22 +1460,6 @@ main {
     color: #999;
 }
 
-.table-container {
-    background: white;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
-    overflow-x: hidden;
-    /* 스크롤바 자리를 늘 비워둔다. 마지막 페이지처럼 행이 적어 스크롤바가 사라지면
-       표가 그 두께(19px)만큼 넓어지고 모든 컬럼이 따라 움직였다. */
-    scrollbar-gutter: stable;
-    /* 남은 세로 공간을 flex 로 채운다. 상단 높이를 하드코딩하면 상단 구성이
-       바뀔 때마다 아래에 빈 공간이 남는다. */
-    flex: 1;
-    min-height: 0;
-    position: relative;
-    border: 1px solid #ddd;
-}
 
 table {
     width: 100%;
@@ -2501,14 +2489,11 @@ body.dark-mode .attachment-item.just-added {
     border: none;
     background: none;
     cursor: pointer;
-    font-size: 13px;
+    /* 16px 이다. 예전에는 13px 로 적어 두고 바로 아래에서 다시 16px 로 덮었다. */
+    font-size: 16px;
     color: #868e96;
     padding: 0 4px;
     line-height: 1;
-}
-
-.attachment-remove {
-    font-size: 16px;
 }
 
 .attachment-reveal:hover,
@@ -3455,22 +3440,6 @@ body.dark-mode .close {
 
 body.dark-mode .close:hover {
     color: #fff;
-}
-
-body.dark-mode input[type="datetime-local"],
-body.dark-mode input[type="text"],
-body.dark-mode input[type="number"],
-body.dark-mode textarea {
-    background-color: #3d3d3d;
-    border-color: #555;
-    color: #e0e0e0;
-}
-
-body.dark-mode input[type="datetime-local"]:focus,
-body.dark-mode input[type="text"]:focus,
-body.dark-mode input[type="number"]:focus,
-body.dark-mode textarea:focus {
-    border-color: #007bff;
 }
 
 /* Dark mode modal titles and labels */

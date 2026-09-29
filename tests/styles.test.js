@@ -16,15 +16,36 @@ const path = require('path')
 const CSS = fs.readFileSync(path.join(__dirname, '..', 'styles.css'), 'utf8')
 const BEFORE_MEDIA = CSS.slice(0, CSS.indexOf('@media') === -1 ? CSS.length : CSS.indexOf('@media'))
 
-const selectorsIn = (text) => {
+// 주석을 먼저 걷어낸다. 남겨 두면 규칙 바로 앞의 주석이 선택자에 딸려 들어와
+// `/*` 로 시작하는 문자열이 되고, 그런 규칙은 통째로 건너뛰었다 - 이 파일에서는
+// 잘 적힌 규칙일수록 주석이 붙어 있으므로, 감사가 못 보던 쪽이 오히려 더 많았다.
+const withoutComments = (text) => text.replace(/\/\*[\s\S]*?\*\//g, '')
+
+// 선택자 하나가 어떤 속성을 몇 번 받았는지. 묶음은 쪼개서 센다 - 통째로 견주면
+// `.a` 와 `.a, .b` 가 남남이 되어, 같은 선택자를 두 번 선언해도 한쪽을 묶음에
+// 끼워 넣기만 하면 감사를 지나갔다. 실제로 .table-container 가 그렇게 두 번
+// 선언됐고, 뒤엣것이 이겨 앞의 규칙이 조용히 죽어 있었다.
+const declarationsIn = (source) => {
+    const text = withoutComments(source)
     const found = new Map()
-    const rule = /(^|\n)([^{}\n][^{}]*?)\{([^{}]*)\}/g
+    const rule = /(^|\n)\s*([^{}\n][^{}]*?)\{([^{}]*)\}/g
     let match
     while ((match = rule.exec(text))) {
         const selector = match[2].trim().replace(/\s+/g, ' ')
-        if (selector.startsWith('@') || selector.startsWith('/*')) continue
+        if (selector.startsWith('@')) continue
         if (/^(\d+%|from|to)$/.test(selector)) continue // @keyframes 안의 단계
-        found.set(selector, (found.get(selector) || 0) + 1)
+        const properties = match[3].split(';')
+            .map((line) => line.split(':')[0].trim())
+            .filter(Boolean)
+        for (const one of selector.split(',')) {
+            const name = one.trim()
+            if (!name) continue
+            if (!found.has(name)) found.set(name, new Map())
+            const counts = found.get(name)
+            for (const property of properties) {
+                counts.set(property, (counts.get(property) || 0) + 1)
+            }
+        }
     }
     return found
 }
@@ -34,12 +55,19 @@ describe('styles.css', () => {
     // 있었다: .btn 이 두 번이라 아이콘 버튼이 테두리를 잃었고,
     // body.dark-mode thead 가 두 번이라 밝게 바꾼 표 머리가 다크에 한 번도
     // 적용되지 않았으며, .color-example 색 여덟 개는 통째로 가려져 있었다.
-    test('declares no selector twice', () => {
-        const duplicated = [...selectorsIn(BEFORE_MEDIA)]
-            .filter(([, count]) => count > 1)
-            .map(([selector]) => selector)
+    // 세는 것은 선언 횟수가 아니라 *같은 속성이 같은 선택자에 두 번 오는가* 다.
+    // `.a, .b { height }` 옆에 `.a { border }` 가 있는 것은 아무도 지지 않으므로
+    // 묶어 쓴 죄로 걸리지 않아야 하고, 반대로 두 블록이 같은 속성을 말하면 한쪽은
+    // 반드시 죽는다.
+    test('declares no property twice for the same selector', () => {
+        const clashes = []
+        for (const [selector, counts] of declarationsIn(BEFORE_MEDIA)) {
+            for (const [property, count] of counts) {
+                if (count > 1) clashes.push(`${selector} { ${property} } x${count}`)
+            }
+        }
 
-        expect(duplicated).toEqual([])
+        expect(clashes).toEqual([])
     })
 
     // 어떤 클래스에도 붙지 않는 규칙은 지워진 기능의 잔해다. 행 버튼이 막대로
@@ -73,10 +101,18 @@ describe('styles.css', () => {
         expect([...merged.values()].reduce((a, b) => a + b, 0)).toBe(100)
     })
 
-    // 이 둘이 빠지면 페이지를 넘길 때마다 헤더와 칸이 좌우로 흔들린다.
+    // 이 둘이 빠지면 페이지를 넘길 때마다 헤더와 칸이 좌우로 흔들린다. 두 번째는
+    // *수단*이 아니라 약속을 묻는다: 스크롤바 자리는 늘 잡혀 있어야 한다.
+    // scrollbar-gutter: stable 로도 되고 overflow-y: scroll 로도 되는데, 전자는
+    // 넘치지 않는 목록에서 그 자리가 빈 흰 띠로 남아 줄무늬 행 옆에 흰 세로줄을
+    // 그었다. 어느 쪽을 쓰든 컬럼이 안 움직이면 된다.
     test('keeps the table from resizing as you page', () => {
         expect(CSS).toMatch(/^table\s*\{[^}]*table-layout:\s*fixed/m)
-        expect(CSS).toMatch(/\.table-container\s*\{[^}]*scrollbar-gutter:\s*stable/)
+
+        const shell = withoutComments(BEFORE_MEDIA).split('}').find((block) => block.split('{')[0]
+            .split(',').some((s) => s.trim() === '.table-container'))
+        expect(shell).toBeDefined()
+        expect(shell).toMatch(/scrollbar-gutter:\s*stable|overflow-y:\s*scroll/)
     })
 
 })
