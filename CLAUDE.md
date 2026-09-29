@@ -382,9 +382,12 @@ if the file is called `report_final.docx` every time. Split, one column answers
 - **It sits at the bottom of the dialog**, after the note, the way attachments sit after the content in the edit form. The same consequence follows: a newly linked file renders below the fold and pressing *Choose files* looks like it did nothing, so `addOutputs` scrolls the row into view and flashes it, exactly as `addAttachments` does.
 - **`pendingOutputs` is cleared every time the dialog opens**, or the last
   completion's file follows the next one.
-- In the completed view the outputs come **first and bold**; the attachments are
-  left exactly as they were. Dimming the inputs was the other option and it
-  would make every row written before this feature look wrong for no reason.
+- **The completed table is split by side, not by type.** Its two wide columns used to be *Task content* and *Files*, and each of them mixed the before with the after: the completion note lived inside the content cell, the outputs inside the files cell. The only thing separating them was weight — outputs bold, the note small and grey — and weight is read as *importance*, so an output looked like a more important attachment and the note like a less important description. Reported exactly that way: you cannot tell them apart.
+
+  They are **The task** (content + attachments) and **What came of it** (note + outputs) now. The column count is unchanged; what changed is that no cell holds both sides, and the heading says which is which once instead of every row having to signal it. `.is-output` and the grey note are gone with it — position does the work, so nothing needs to shout.
+
+  An empty result cell is information too: nothing came out of that one.
+
 
 ## Completed tasks
 

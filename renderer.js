@@ -649,9 +649,9 @@ class TaskManager {
         this.setText('thDoneAtLabel', 'doneAt');
         this.setText('thDoneStartLabel', 'startTime');
         this.setText('thDoneTargetLabel', 'targetTime');
-        this.setText('thDoneFilesLabel', 'attachmentsColumn');
+        this.setText('thDoneFilesLabel', 'doneSideResult');
         this.setText('thDoneTagsLabel', 'tags');
-        this.setText('thDoneContentLabel', 'taskContent');
+        this.setText('thDoneContentLabel', 'doneSideTask');
         for (const [days, key] of [[7, 'doneLast7'], [30, 'doneLast30'], [90, 'doneLast90']]) {
             const chip = document.querySelector(`#donePresets [data-done-days="${days}"]`);
             if (chip) chip.textContent = this.getLocalizedText(key);
@@ -3387,14 +3387,14 @@ ${filePath}`);
     //
     // 표시는 새로 생긴 쪽만 갖는다. 입력물을 흐리게 하는 방향도 되지만, 그러면
     // 결과물이 없는 기존 기록이 이유 없이 흐려진다.
-    doneFileLinks(row) {
-        const link = (file, kind) =>
-            `<a class="attach-link${kind}" data-path="${this.escapeHtml(file.path)}"` +
-            ` title="${this.escapeHtml(file.path)}">${this.escapeHtml(file.name)}</a>`;
-        return [
-            ...(row.outputs || []).map(file => link(file, ' is-output')),
-            ...(row.attachments || []).map(file => link(file, ''))
-        ].join('');
+    // 파일은 자기 쪽 칸 안에서만 나온다. 예전에는 산출물과 첨부가 한 칸에
+    // 함께 있었고, 둘을 굵기로만 갈랐다 - 굵기는 눈이 중요도로 읽지 종류로
+    // 읽지 않아서 "구분이 안 된다"는 말이 나왔다. 이제 어느 칸에 있느냐가
+    // 곧 종류이고, 그 이름은 머리글이 한 번만 말한다.
+    doneFileLinks(files) {
+        return (files || []).map(file =>
+            `<a class="attach-link" data-path="${this.escapeHtml(file.path)}"` +
+            ` title="${this.escapeHtml(file.path)}">${this.escapeHtml(file.name)}</a>`).join('');
     }
 
     async renderCompletedView() {
@@ -3472,9 +3472,11 @@ ${filePath}`);
                     <td>${this.escapeHtml(row.targetTime
                         ? this.formatDateTime(row.targetTime) : '')}</td>
                     <td class="task-tags">${this.renderTagChips(row.tags)}</td>
-                    <td class="task-content">${this.escapeHtml(row.content)}${
-                        row.note ? '<span class="done-note">' + this.escapeHtml(row.note) + '</span>' : ''}</td>
-                    <td class="attach-col">${this.doneFileLinks(row)}</td>
+                    <td class="task-content done-side done-task">${this.escapeHtml(row.content)}${
+                        this.doneFileLinks(row.attachments)}</td>
+                    <td class="task-content done-side done-result">${
+                        row.note ? '<span class="done-note">' + this.escapeHtml(row.note) + '</span>' : ''
+                    }${this.doneFileLinks(row.outputs)}</td>
                 </tr>`).join('');
     }
 

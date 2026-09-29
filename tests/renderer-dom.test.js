@@ -2679,16 +2679,22 @@ describe('telling the result from what went into it', () => {
         note: '', outputs: [], ...extra
     })
 
-    test('the result stands first and stands out', async () => {
+    // 예전에는 둘이 한 칸에 함께 있었고 굵기로만 갈렸다. 굵기는 눈이 중요도로
+    // 읽지 종류로 읽지 않아 "구분이 안 된다"는 말이 나왔다. 이제 어느 칸에
+    // 있느냐가 곧 종류이고, 이름은 머리글이 한 번만 말한다.
+    test('what went in and what came out are in different columns', async () => {
         await openDone([row({
             attachments: [{ name: 'form.xlsx', path: '/docs/form.xlsx' }],
             outputs: [{ name: 'week34.docx', path: '/out/week34.docx' }]
         })])
 
-        const links = [...document.querySelectorAll('#doneBody .attach-link')]
-        expect(links.map((one) => one.textContent)).toEqual(['week34.docx', 'form.xlsx'])
-        expect(links[0].classList.contains('is-output')).toBe(true)
-        expect(links[1].classList.contains('is-output')).toBe(false)
+        const inside = (selector) => [...document.querySelectorAll(
+            '#doneBody ' + selector + ' .attach-link')].map((one) => one.textContent)
+
+        expect(inside('.done-task')).toEqual(['form.xlsx'])
+        expect(inside('.done-result')).toEqual(['week34.docx'])
+        // 굵기로 가르던 표시는 필요가 없어졌다
+        expect(document.querySelectorAll('#doneBody .is-output')).toHaveLength(0)
     })
 
     // 표시는 새로 생긴 쪽만 갖는다. 그러지 않으면 결과물이 없는 기존 기록이
@@ -2721,6 +2727,7 @@ describe('the completed view', () => {
         tags: extra.tags || '',
         content,
         attachments: extra.attachments || [],
+        outputs: extra.outputs || [],
         completedAt: extra.completedAt === undefined ? `${day} 17:00` : extra.completedAt,
         note: extra.note || ''
     })
@@ -2736,8 +2743,8 @@ describe('the completed view', () => {
     }
     const cells = () => [...document.querySelectorAll('#doneBody tr')]
         .map((tr) => [...tr.cells].map((td) => td.textContent.trim()))
-    // 메모가 내용 칸 안에 들어 있으므로, 내용만 견줄 때는 첫 줄만 본다.
-    const contents = () => [...document.querySelectorAll('#doneBody .task-content')]
+    // 내용은 작업 쪽 칸의 첫 글자 마디다. 그 뒤에는 첨부 링크가 붙는다.
+    const contents = () => [...document.querySelectorAll('#doneBody .done-task')]
         .map((td) => td.childNodes[0].textContent.trim())
     const header = (key) =>
         document.querySelector(`#doneTable thead [data-done-sort="${key}"]`)
@@ -2888,14 +2895,18 @@ describe('the completed view', () => {
         expect(cells()[0][2]).toContain('2026-08-20 18:00')
     })
 
-    // 메모는 대부분 비어 있고, 있을 때는 그 작업에 딸린 말이다. 칸을 하나 더
-    // 내주는 것보다 내용 밑에 붙는 편이 폭도 덜 들고 읽기에도 자연스럽다.
-    test('the note sits under the content, not in a column of its own', async () => {
-        await openDone([done('2026-08-20', '계약서 확인', { note: '법무팀 전달' })])
+    // 완료 메모는 결과 쪽 칸에 산출물과 함께 선다. 예전에는 작업 내용 칸
+    // 안에 작고 흐리게 붙어 있었는데, 그것은 '덜 중요한 작업 내용'으로 읽혔다 -
+    // 종류가 다른 것이지 덜한 것이 아니다.
+    test('the note stands in the result column, beside what came out', async () => {
+        await openDone([done('2026-08-20', '주간 보고서', { note: '고객 확인까지 받음',
+            outputs: [{ name: 'week34.docx', path: '/out/week34.docx' }] })])
 
-        const content = document.querySelector('#doneBody .task-content')
-        expect(content.querySelector('.done-note').textContent).toBe('법무팀 전달')
-        expect(document.querySelectorAll('#doneBody tr')[0].cells).toHaveLength(6)
+        const result = document.querySelector('#doneBody .done-result')
+        expect(result.querySelector('.done-note').textContent).toBe('고객 확인까지 받음')
+        expect(result.querySelector('.attach-link').textContent).toBe('week34.docx')
+        // 작업 쪽에는 메모가 없다
+        expect(document.querySelector('#doneBody .done-task .done-note')).toBeNull()
     })
 
     test('a row with no note grows nothing extra', async () => {

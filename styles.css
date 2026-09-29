@@ -1544,9 +1544,7 @@ td.attach-col {
 /* 끝내면서 남긴 것. 작업에 붙어 있던 것과 나란히 서지만 무게가 다르다 -
    "무엇을 했는가"에 답하는 쪽이라 굵게 세운다. 표시는 새로 생긴 쪽만 갖는다:
    입력물을 흐리게 하면 결과물이 없는 기존 기록이 이유 없이 흐려진다. */
-.attach-link.is-output {
-    font-weight: 700;
-}
+
 
 /* 파일이 사라졌다. 줄을 지우지 않는 것은 무엇이 붙어 있었는지가 남아야 하기
    때문이다 - 그것이 이름을 경로와 따로 저장하는 이유이기도 하다. */
@@ -2009,8 +2007,10 @@ body.dark-mode .completion-counter.is-open {
 #doneTable th:nth-child(2) { width: 15%; } /* 시작 시간 */
 #doneTable th:nth-child(3) { width: 15%; } /* 목표 시각 */
 #doneTable th:nth-child(4) { width: 12%; } /* 태그 */
-#doneTable th:nth-child(5) { width: 28%; } /* 내용 + 메모 */
-#doneTable th:nth-child(6) { width: 15%; } /* 첨부 */
+/* 열은 타입이 아니라 쪽으로 나뉜다: 작업(내용+첨부) / 결과(메모+산출물).
+   둘이 같은 무게를 가지므로 폭도 같다 - 한쪽이 넓으면 그쪽이 본문처럼 읽힌다. */
+#doneTable th:nth-child(5) { width: 21.5%; } /* 작업: 내용 + 첨부 */
+#doneTable th:nth-child(6) { width: 21.5%; } /* 결과: 메모 + 산출물 */
 
 #doneTable td {
     padding: 6px 8px;
@@ -2021,11 +2021,16 @@ body.dark-mode .completion-counter.is-open {
 
 /* 메모는 대부분 비어 있고, 있을 때는 그 작업에 딸린 말이다. 옆 칸을 하나 더
    내주는 것보다 내용 밑에 붙는 편이 읽기에도 자연스럽고 폭도 덜 든다. */
+/* 완료 메모는 이제 제 칸에 홀로 있다. 작게 흐리게 두던 것은 '덜 중요한 작업
+   내용'으로 읽혔는데, 종류가 다른 것이지 덜한 것이 아니다. 본문과 같은 크기로
+   둔다. */
 .done-note {
     display: block;
-    margin-top: 2px;
-    font-size: 11px;
-    color: #6b7280;
+}
+
+/* 한 칸 안에서 글과 파일이 붙지 않게만 띄운다 */
+.done-side .attach-link:first-of-type {
+    margin-top: 4px;
 }
 
 body.dark-mode .done-note {
