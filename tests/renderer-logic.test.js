@@ -13,10 +13,10 @@ const TaskManager = new Function(`${I18N}\n${SOURCE}\nreturn TaskManager;`)()
 
 // 마스크는 클래스 밖의 순수 함수다. 형식 문자열 하나에서 출력·파싱·틀 셋이
 // 나오므로, 그 셋이 같은 형식을 같게 읽는지는 여기서 확인한다.
-const { maskRender, maskRead, maskWrite, maskErase, describeDateProblem, paginationSlots } = new Function(
+const { maskRender, maskRead, maskWrite, maskErase, describeDateProblem, paginationSlots, axisTicks } = new Function(
     `${I18N}
 ${SOURCE}
-return { maskRender, maskRead, maskWrite, maskErase, describeDateProblem, paginationSlots };`
+return { maskRender, maskRead, maskWrite, maskErase, describeDateProblem, paginationSlots, axisTicks };`
 )()
 
 // Build an instance without running the constructor, which kicks off async
@@ -112,6 +112,48 @@ describe('getTaskStatus', () => {
 // 6쪽이 넘으면 `1 2 ... 마지막-1 마지막` 을 고정으로 그렸고, 지금 보고 있는 쪽이
 // 그 다섯 안에 없으면 아무 데도 나오지 않았다. 20쪽 중 5쪽에서 화면에 남은 것은
 // `1 2 ... 19 20` 뿐이고 강조된 숫자는 하나도 없었다.
+
+// 통계 차트의 세로축. 늘 다섯 칸으로 나누던 때는 값이 작으면 라벨이 겹쳤다 -
+// 최댓값 2 에서 0,0,1,1,2,2 였다. 간격을 먼저 고르면 그런 일이 없다.
+describe('the statistics axis', () => {
+    test('every label is a whole number and none repeats', () => {
+        for (let max = 1; max <= 300; max += 1) {
+            const { values } = axisTicks(max)
+            expect(values.every(Number.isInteger)).toBe(true)
+            expect(new Set(values).size).toBe(values.length)
+        }
+    })
+
+    // 작은 값에서 겹치던 자리가 여기다.
+    test('a quiet month gets one line per completion', () => {
+        expect(axisTicks(1).values).toEqual([0, 1])
+        expect(axisTicks(2).values).toEqual([0, 1, 2])
+        expect(axisTicks(3).values).toEqual([0, 1, 2, 3])
+    })
+
+    test('it steps up in readable jumps as the numbers grow', () => {
+        expect(axisTicks(7).values).toEqual([0, 2, 4, 6, 8])
+        expect(axisTicks(23).values).toEqual([0, 5, 10, 15, 20, 25])
+        expect(axisTicks(48).values).toEqual([0, 10, 20, 30, 40, 50])
+    })
+
+    // 맨 위가 최댓값보다 낮으면 제일 높은 막대가 축을 넘는다.
+    test('the top of the axis always reaches the tallest day', () => {
+        for (let max = 1; max <= 300; max += 1) {
+            const { top, values } = axisTicks(max)
+            expect(top).toBeGreaterThanOrEqual(max)
+            expect(values[values.length - 1]).toBe(top)
+        }
+    })
+
+    // 여섯 줄이 넘으면 좁은 창에서 라벨이 서로 붙는다.
+    test('and it never asks for more than six lines', () => {
+        for (let max = 1; max <= 2000; max += 1) {
+            expect(axisTicks(max).values.length).toBeLessThanOrEqual(6)
+        }
+    })
+})
+
 describe('what the pager shows', () => {
     const G = '...'
 

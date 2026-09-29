@@ -89,6 +89,22 @@ const monthRange = (date) => ({
 // 내장 효과. 사용자가 넣은 그림은 'file:<이름>' 으로 이 뒤에 붙는다.
 const COMPLETION_EFFECTS = ['full', 'fireworks', 'confetti', 'burst', 'sparkle', 'check', 'none'];
 
+// 세로축 눈금. 칸 수를 먼저 정하면 값이 작을 때 라벨이 겹친다 - 늘 다섯 칸으로
+// 나누던 때는 최댓값 2 에서 0,0,1,1,2,2 가 나왔다. 간격을 먼저 고르고 칸 수를
+// 거기서 정하면 그런 일이 없다: 눈금은 언제나 정수이고 서로 다르다.
+//
+// 맨 위는 최댓값 이상인 간격의 배수다. 그래야 제일 높은 막대가 눈금선에 맞고,
+// 완료가 7 건인 날은 8 까지 그은 축 위에 선다.
+const axisTicks = (max) => {
+    const nice = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500, 1000];
+    const step = nice.find(candidate => Math.ceil(max / candidate) <= 5)
+        || Math.ceil(max / 5);
+    const top = Math.max(step, Math.ceil(max / step) * step);
+    const values = [];
+    for (let value = 0; value <= top; value += step) values.push(value);
+    return { step, top, values };
+};
+
 const PAGER_SLOTS = 7;
 const PAGER_GAP = '...';
 
@@ -4611,6 +4627,9 @@ ${link.dataset.path}`
             
             // Find max value for scaling
             const maxValue = Math.max(...statisticsData.map(d => d.completed), 1);
+            // 막대는 축의 꼭대기에 맞춘다. 최댓값에 맞추면 제일 높은 막대가
+            // 눈금선 사이 아무 데나 서서, 옆의 숫자와 견줄 수가 없다.
+            const axis = axisTicks(maxValue);
             
             // Bar width
             const barWidth = chartWidth / statisticsData.length;
@@ -4625,7 +4644,7 @@ ${link.dataset.path}`
             
             // Draw bars
             statisticsData.forEach((data, index) => {
-                const barHeight = (data.completed / maxValue) * chartHeight;
+                const barHeight = (data.completed / axis.top) * chartHeight;
                 const x = padding + index * barWidth;
                 const y = canvas.height - padding - barHeight;
                 
@@ -4671,10 +4690,9 @@ ${link.dataset.path}`
             ctx.stroke();
             
             // Y-axis labels
-            const steps = 5;
-            for (let i = 0; i <= steps; i++) {
-                const value = Math.round((maxValue / steps) * i);
-                const y = canvas.height - padding - (i / steps) * chartHeight;
+            for (const value of axis.values) {
+                const i = value / axis.step;
+                const y = canvas.height - padding - (value / axis.top) * chartHeight;
                 
                 ctx.fillStyle = palette.label;
                 ctx.font = font(12);
