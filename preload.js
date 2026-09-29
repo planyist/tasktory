@@ -24,7 +24,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     deleteEffectFile: (name) => ipcRenderer.invoke('delete-effect-file', name),
     openEffectsFolder: () => ipcRenderer.invoke('open-effects-folder'),
     readEffectFile: (name) => ipcRenderer.invoke('read-effect-file', name),
-    minimizeWindow: () => ipcRenderer.invoke('minimize-window'),
     showNotification: (title, body) => ipcRenderer.invoke('show-notification', title, body),
     getCompletedTasksCount: (dateStr) => ipcRenderer.invoke('get-completed-tasks-count', dateStr),
     getCompletedTasks: (dateStr) => ipcRenderer.invoke('get-completed-tasks', dateStr),

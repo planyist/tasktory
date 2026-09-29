@@ -26,7 +26,7 @@ pending. The row you highlighted stays highlighted.
 
 <img src="docs/screenshots/collapsed.png" alt="Collapsed side strip" align="right" width="150">
 
-Collapsed, it becomes a 150px strip that stays out of the way — today's work in
+Collapsed, it becomes a 170px strip that stays out of the way — today's work in
 time order, with a mini calendar above it. Ctrl+Alt+Shift+M toggles it,
 and that one works from anywhere - you do not have to click Tasktory first.
 
@@ -58,7 +58,7 @@ and that one works from anywhere - you do not have to click Tasktory first.
 - **Calendar** — a month grid; a task sits on its target day. Double-click one
   to edit it
 - **Completed** — what you finished, read from the logs; open it from the counter
-- **Side strip** — 150px, read-only, for when you want it out of the way
+- **Side strip** — 170px, read-only, for when you want it out of the way
 
 ### Finding things
 
@@ -244,7 +244,7 @@ The strip sizes itself to what it holds, up to half your screen; past that the
 task list scrolls. Move it or resize it and it returns there each time you
 collapse — until you close the app, which puts it back in the top right corner.
 
-Collapsed, it becomes a mini month grid — 150px is too narrow for task names,
+Collapsed, it becomes a mini month grid — 170px is too narrow for task names,
 so each day shows its number and a coloured underline for its most pressing
 status, with that day's items listed underneath. Today is a filled circle. If
 today is clear the strip rolls forward to the next day with work, and that day
@@ -310,7 +310,7 @@ nothing and the shortcut simply works inside its own window instead.
 
 ### Moving the window
 
-The title bar is thin, and at 150px there is almost nothing left of it. Use the
+The title bar is thin, and at 170px there is almost nothing left of it. Use the
 grip at the very top of the window instead — it is there in both sizes.
 
 ## Where your data lives

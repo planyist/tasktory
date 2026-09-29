@@ -47,7 +47,7 @@ app.whenReady().then(async () => {
     const before = win.getBounds()
     await collapse()
     const collapsed = win.getBounds()
-    check('접으면 150px 스트립이 된다', collapsed.width === 150,
+    check('접으면 170px 스트립이 된다', collapsed.width === 170,
         collapsed.width + 'x' + collapsed.height)
 
     await collapse()
@@ -71,7 +71,7 @@ app.whenReady().then(async () => {
     await wait(900)
     const maximized = win.getBounds()
     await collapse()
-    check('최대화에서도 접힌다', win.getBounds().width === 150,
+    check('최대화에서도 접힌다', win.getBounds().width === 170,
         win.getBounds().width + 'x' + win.getBounds().height)
 
     await collapse()

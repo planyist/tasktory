@@ -297,10 +297,10 @@ body.collapsed-mode-body {
 }
 
 .container.collapsed-mode {
-    width: 150px !important;
+    width: 170px !important;
     height: 100vh !important;
     padding: 3px !important;
-    max-width: 150px !important;
+    max-width: 170px !important;
     /* 안쪽 요소들이 100vh를 다시 쓰면 padding 만큼 넘쳐 스크롤바가 생긴다 */
     overflow: hidden !important;
 }

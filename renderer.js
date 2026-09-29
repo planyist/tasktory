@@ -1,5 +1,10 @@
 // 접힌 상태의 창 폭. styles.css의 .container.collapsed-mode 와 같은 값이어야 한다.
-const COLLAPSED_WIDTH = 150;
+// 150px 이었다. 그 폭에서는 윈도우가 제목줄에 아이콘과 버튼 셋을 다 넣지
+// 못해 최소화 버튼이 아이콘 뒤에 깔린다 - 화면을 찍어 재 보니 160px 에서
+// 드러나고 170px 에서 아이콘과 떨어진다. 150 은 "한글 네 자가 들어가는 최소"
+// 로 정한 값이지 상한이 아니었으므로, 창틀이 제 버튼을 다 그릴 수 있는 쪽으로
+// 20px 을 내준다.
+const COLLAPSED_WIDTH = 170;
 // main.js 의 DEFAULT_HEIGHT 와 같아야 한다. 접기 전 크기를 기억하지 못한 경우에만
 // 쓰인다 - 보통은 main 이 원래 크기로 되돌린다.
 const DEFAULT_EXPANDED_HEIGHT = 900;
@@ -600,7 +605,6 @@ class TaskManager {
         
         // Header buttons tooltips
         this.setTitle('addTaskBtn', 'addTask');
-        this.setTitle('collapsedMinimizeBtn', 'minimize');
         this.updateDateFormatControls();
         this.updateCompletionEffectControl();
         this.updateSearchColumnControl();
@@ -1128,12 +1132,6 @@ class TaskManager {
                 if (paths.length) this.addEffectFiles(paths);
             });
         }
-
-        document.getElementById('collapsedMinimizeBtn').addEventListener('click', () => {
-            if (this.isElectron && window.electronAPI.minimizeWindow) {
-                window.electronAPI.minimizeWindow();
-            }
-        });
 
 
     }

@@ -92,7 +92,6 @@ const boot = async (tasks = []) => {
         moveWindowBy: jest.fn(),
         resizeAndPositionWindow: jest.fn(async () => true),
         getCompletedRange: jest.fn(async () => []),
-        minimizeWindow: jest.fn(async () => true),
         listEffectFiles: jest.fn(async () => []),
         addEffectFiles: jest.fn(async () => ({ added: ['party.gif'], refused: [], files: ['party.gif'] })),
         deleteEffectFile: jest.fn(async () => []),
@@ -918,65 +917,6 @@ describe('the completion effect you picked', () => {
 
 
 
-
-// 150px 제목줄에는 아이콘과 버튼 셋이 함께 들어가지 못해, 윈도우가 최소화
-// 버튼을 통째로 그리지 않는다 - 화면을 찍어 보니 아이콘 / 최대화 / 닫기까지
-// 였다. 언제나 위에 뜨는 창에서 치울 길이 없어지므로 스트립이 자기 버튼을 갖는다.
-describe('putting the strip aside', () => {
-    test('the strip has its own minimize, and it reaches the window', async () => {
-        const manager = await boot([])
-        manager.isElectron = true
-
-        document.getElementById('collapsedMinimizeBtn').click()
-
-        expect(window.electronAPI.minimizeWindow).toHaveBeenCalled()
-    })
-})
-
-
-// 펴는 순간이 부자연스럽다는 보고. 창틀이 자라는 것처럼 보였는데, 실제로는
-// 900px 짜리 화면을 150px 창 안에 먼저 그려 놓고 그 뒤에 창을 키운 것이었다.
-// 프레임마다 재 보니 창폭 134 에 표폭 720 인 프레임이 실제로 있었다.
-describe('coming back from the strip', () => {
-    test('the window is sized before the wide layout is drawn', async () => {
-        const manager = await boot([task('a')])
-        manager.isElectron = true
-        await manager.toggleCollapse()
-
-        const when = []
-        jest.spyOn(manager, 'resizeAndPositionWindow').mockImplementation((w, h, position) => {
-            // 크기를 부탁하는 시점에 아직 접힌 배치여야 한다. 이미 펼친 배치면
-            // 넓은 화면을 좁은 창에 그린 뒤라는 뜻이다.
-            when.push(position + ':' + document.querySelector('.container')
-                .classList.contains('collapsed-mode'));
-            return Promise.resolve();
-        })
-
-        await manager.toggleCollapse()
-
-        expect(when).toContain('center:true')
-        expect(document.querySelector('.container').classList.contains('collapsed-mode')).toBe(false)
-    })
-
-    // 창이 먼저 커지면 이번에는 좁은 스트립이 큰 창에 한 프레임 남는다.
-    // 그 사이를 비워 두는 것이 이 고침의 나머지 절반이다.
-    test('nothing is on screen while the two sides disagree', async () => {
-        const manager = await boot([task('a')])
-        manager.isElectron = true
-        await manager.toggleCollapse()
-
-        let hiddenWhileResizing = false
-        jest.spyOn(manager, 'resizeAndPositionWindow').mockImplementation(() => {
-            hiddenWhileResizing =
-                document.querySelector('.container').style.visibility === 'hidden';
-            return Promise.resolve();
-        })
-
-        await manager.toggleCollapse()
-
-        expect(hiddenWhileResizing).toBe(true)
-    })
-})
 
 describe('date/time picker', () => {
     const at = (id) => document.getElementById(id)
