@@ -386,6 +386,12 @@ if the file is called `report_final.docx` every time. Split, one column answers
 
   So: collapse is `visibility: hidden` in the completed view, keeping its slot — the opposite of the pager, which uses `display: none` precisely because holding its width pushed the page-size select off the edge. The completed cells inherit the shared `td` rule. And both tables keep their times on one line, which is the same call the status badge already made: clipping a narrowed cell shows the user's choice better than reflowing around it.
 
+  Three more of the same kind followed. The completed list had **no shell at all** — no white ground, no border, no shadow, no rounded corner — so the table looked peeled off the page and back on again, and the missing 1px border moved its left edge between 21px and 20px. `.table-container` and `.done-body` share one rule now.
+
+  And the row-number column was styled as `td:nth-child(2)` with no table named, so in the completed table it hit **Start Time** — which is why a date was suddenly bold with nothing to explain it. It is `#tasksTable td:nth-child(2)` now, dark-mode counterpart included. This is the third time an unqualified `nth-child` has reached a column it was never meant for; qualify the table.
+
+  What is left is 4px of vertical offset, and that one is structural: the completed view carries a period row the list does not have. Horizontally the two tables now match exactly — left 21px, width 825px, same border, same shadow.
+
   `check:ui` reads the search width, the cell padding and the font size on both sides of a switch and fails if any of them moves.
 
 - **The completed table is split by side, not by type.** Its two wide columns used to be *Task content* and *Files*, and each of them mixed the before with the after: the completion note lived inside the content cell, the outputs inside the files cell. The only thing separating them was weight — outputs bold, the note small and grey — and weight is read as *importance*, so an output looked like a more important attachment and the note like a less important description. Reported exactly that way: you cannot tell them apart.
