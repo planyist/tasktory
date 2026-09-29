@@ -3060,7 +3060,13 @@ ${filePath}`);
         // 답하는 자리이고 끝낸 일은 그 물음과 상관이 없다. 보기 전환은 반대로
         // 여기서도 할 일이 생겼다: 끝낸 일도 언제 몰렸는지 물을 수 있다.
         show('viewModeBtn', true);
-        show('collapseBtn', !done);
+        // 접기는 완료 화면에서 할 일이 없지만, 치워 버리면 그만큼 검색 상자가
+        // 넓어진다 - 재 보니 416px 에서 455px 로 벌어졌다. 화면을 바꾸는 것이지
+        // 도구 막대를 바꾸는 것이 아니므로 자리는 그대로 두고 눈에서만 뺀다.
+        // (페이저는 반대로 display 로 감춘다. 거기서는 자리를 잡고 있으면 쪽당
+        //  개수 선택 상자가 가장자리에서 밀려났다 - 목적이 서로 반대다.)
+        const collapseBtn = document.getElementById('collapseBtn');
+        if (collapseBtn) collapseBtn.style.visibility = done ? 'hidden' : '';
 
         const button = document.getElementById('viewModeBtn');
         if (button) {

@@ -2041,11 +2041,27 @@ body.dark-mode .completion-counter.is-open {
 #doneTable th:nth-child(5) { width: 21.5%; } /* 작업: 내용 + 첨부 */
 #doneTable th:nth-child(6) { width: 21.5%; } /* 결과: 메모 + 산출물 */
 
+/* 날짜와 시각은 한 줄에 둔다. 사이의 공백에서 접히면 한 행만 두 줄이 되어,
+   같은 자료를 보는데도 표마다 행 높이가 달라진다 - 완료 표의 글자 크기를
+   목록과 맞추자 124px 칸에서 바로 접혀 행이 50px 에서 66px 이 됐다.
+   좁혀서 잘리는 편이 낫다는 것은 이 파일이 상태 배지에서 이미 정한 것이다.
+
+   nth-child 는 숨은 칸도 센다. 두 시간 칸은 첨부 칸보다 앞에 있어 첨부가
+   생기고 사라져도 자리가 밀리지 않는다. */
+#tasksTable td:nth-child(3),
+#tasksTable td:nth-child(4),
+#doneTable td:nth-child(1),
+#doneTable td:nth-child(2),
+#doneTable td:nth-child(3) {
+    white-space: nowrap;
+}
+
+/* 칸의 여백과 글자 크기는 공통 td 를 그대로 쓴다. 예전에는 6px/12px 로 따로
+   두어, 목록과 완료를 오갈 때마다 행 높이가 49.5px 에서 41.5px 로 바뀌고 글자
+   크기도 달라졌다 - 화면을 바꾸는 것이지 표를 바꾸는 것이 아닌데 표가 흔들렸다.
+   더 많이 담으려면 쪽당 개수를 올리면 된다. */
 #doneTable td {
-    padding: 6px 8px;
-    font-size: 12px;
     border-bottom: 1px solid var(--border-color);
-    overflow-wrap: break-word;
 }
 
 /* 메모는 대부분 비어 있고, 있을 때는 그 작업에 딸린 말이다. 옆 칸을 하나 더

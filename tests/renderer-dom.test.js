@@ -2744,17 +2744,23 @@ describe('the completed view', () => {
     // 눌리지 않는 버튼은 왜 안 눌리는지 물어보게 만들지만, 없는 버튼은 아무것도
     // 묻지 않는다. 보기 전환은 반대로 여기서도 할 일이 생겼다 - 끝낸 일도
     // 언제 몰렸는지 물을 수 있다.
-    test('collapse is not on screen while it is open, but the view toggle is', async () => {
+    // 접기는 완료 화면에서 할 일이 없지만 자리는 비워 둔다. 치워 버리면 그만큼
+    // 검색 상자가 넓어져(재 보니 416px → 455px) 화면을 오갈 때마다 도구 막대가
+    // 흔들린다. 화면을 바꾸는 것이지 도구 막대를 바꾸는 것이 아니다.
+    test('collapse leaves the screen but keeps its place', async () => {
         await boot([])
+        const collapse = document.getElementById('collapseBtn')
 
         document.getElementById('completionCounter').click()
         await settle()
-        expect(document.getElementById('collapseBtn').style.display).toBe('none')
+        expect(collapse.style.visibility).toBe('hidden')
+        // 자리는 그대로여야 하므로 display 로 치우지 않는다
+        expect(collapse.style.display).not.toBe('none')
         expect(document.getElementById('viewModeBtn').style.display).not.toBe('none')
 
         document.getElementById('completionCounter').click()
         await settle()
-        expect(document.getElementById('collapseBtn').style.display).not.toBe('none')
+        expect(collapse.style.visibility).not.toBe('hidden')
     })
 
     // 버튼을 감춰 놓고 단축키로만 되게 두면 화면에 없는 동작이 키에만 살아

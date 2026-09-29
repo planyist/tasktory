@@ -396,6 +396,45 @@ app.whenReady().then(async () => {
     check('지금 보고 있는 쪽이 늘 켜져 있다', unlit.length === 0,
         unlit.length ? unlit.map((p) => `${p.page}쪽→${p.lit}`).join(', ') : '1~20쪽 전부')
 
+    // --- 9. 화면을 바꿔도 도구 막대와 표가 흔들리지 않는다 ------------------
+    // 완료로 갔다 오면 검색 상자가 416px 에서 455px 로 벌어지고, 칸 여백과 글자
+    // 크기가 달라 행 높이가 50px 에서 66px 로 뛰었다. 화면을 바꾸는 것이지
+    // 표를 바꾸는 것이 아니다.
+    const steady = JSON.parse(await run(`
+        (async () => {
+            const read = (table) => {
+                const box = document.querySelector('.search-input').getBoundingClientRect();
+                const cell = document.querySelector(table + ' tbody td');
+                const cs = cell ? getComputedStyle(cell) : {};
+                const row = cell ? cell.parentElement.getBoundingClientRect().height : 0;
+                return { 검색: Math.round(box.width), 여백: cs.padding, 글자: cs.fontSize,
+                    행: Math.round(row) };
+            };
+            taskManager.viewMode = 'list'; taskManager.applyViewMode();
+            taskManager.tasks = [{ id: 'j', content: '작업', tags: '#[BLUE]업무',
+                startDateTime: '2026-09-29 09:00', targetDateTime: '2026-09-30 18:00' }];
+            taskManager.renderTasks();
+            const list = read('#tasksTable');
+            taskManager.openCompletedView();
+            await new Promise((r) => setTimeout(r, 400));
+            // 이 창에는 preload 가 없어 로그를 읽지 못한다. 빈 상태 칸을 재면
+            // 여백이 40px 로 나와 표 규칙이 아니라 안내 문구를 재는 셈이 된다.
+            document.getElementById('doneBody').innerHTML =
+                '<tr><td>2026-09-29 10:00</td><td>2026-09-29 09:00</td>'
+                + '<td>2026-09-30 18:00</td><td class="task-tags"></td>'
+                + '<td class="task-content done-side done-task">작업</td>'
+                + '<td class="task-content done-side done-result"></td></tr>';
+            const done = read('#doneTable');
+            taskManager.closeCompletedView();
+            return JSON.stringify({ list, done });
+        })()`))
+    const differs = Object.keys(steady.list)
+        .filter((k) => k !== '행' && String(steady.list[k]) !== String(steady.done[k]))
+    check('화면을 바꿔도 검색 상자와 칸 모양이 그대로',
+        differs.length === 0,
+        differs.length ? differs.map((k) => `${k} ${steady.list[k]}→${steady.done[k]}`).join(', ')
+                       : `검색 ${steady.list.검색}px, 여백 ${steady.list.여백}, 글자 ${steady.list.글자}`)
+
     const failed = results.filter((r) => !r.pass)
     console.log(`\n${results.length}건 중 ${failed.length}건 실패\n`)
     win.destroy()
