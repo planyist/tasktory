@@ -100,6 +100,22 @@ describe('styles.css', () => {
 // 위치 범위 경고, 태그 프리셋 둘, 내보내기 셋, 가져오기, 브라우저 저장이
 // 영어만 말하고 있었고, 위치 칸의 placeholder 도 마크업에 영어로 박혀 있었다.
 // 하나씩 발견해 고치는 방식으로는 다음에 또 새므로 여기서 막는다.
+// 접힘과 펴기에서 .container 의 폭과 여백이 바뀐다. 거기에 전환이 걸려 있으면
+// 창은 이미 제 크기로 떠 있는데 안쪽만 0.3 초에 걸쳐 벌어진다 - 재 보니 150px
+// 에서 884px 까지 43 가지 폭을 42 프레임에 지나갔고, "내용이 퍼지듯 나온다"로
+// 신고됐다. 크기는 창이 정하고, 창은 한 번에 정해진다.
+describe('the container does not animate its own size', () => {
+    test('.container declares no transition', () => {
+        const block = CSS.split('}').find((part) => part.split('{')[0].trim() === '.container')
+        // 주석에는 이 규칙이 왜 있는지가 적혀 있고 거기에도 그 단어가 나온다.
+        // 선언만 본다.
+        const declarations = block.split('{')[1].replace(/\/\*[\s\S]*?\*\//g, '')
+
+        expect(block).toBeDefined()
+        expect(declarations).not.toMatch(/transition\s*:/)
+    })
+})
+
 describe('nothing shown to the user is written in one language', () => {
     const RENDERER = fs.readFileSync(path.join(__dirname, '..', 'renderer.js'), 'utf8')
     const HTML = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8')

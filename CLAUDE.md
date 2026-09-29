@@ -525,6 +525,8 @@ This is a complete Electron application with the following structure:
 
   Asking for the bounds first only moves the problem: then the 150px strip sits in a 900px window for a frame. So the container is hidden for the swap and revealed on the next frame, and neither mismatch is ever on screen. Measured the same way afterwards: no such frame at all.
 
+  **And the container must not animate its own size.** `.container` carried `transition: all 0.3s ease`, so once the window snapped to its final bounds the layout inside still eased open — measured at 43 distinct widths across 42 frames, 150px to 884px. The frame was right and the contents spread into it, which reads as clumsier than the original problem. Size here belongs to the window, and the window changes in one step; `styles.test.js` fails if a transition is declared on `.container` again.
+
   Collapsing cannot be reordered the same way — main needs the strip's measured height, which means rendering it first. That direction keeps its original order.
 
 - **The strip goes back where you put it, until you restart.** Moving or resizing it while collapsed is remembered in a plain variable, never in `localStorage`. That is deliberate: if the strip ends up somewhere wrong or some size you did not intend, closing and reopening the app has to bring it back to the corner. A stored value would carry the problem across restarts, and the app has no screen for editing it.
