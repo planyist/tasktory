@@ -402,19 +402,24 @@ app.whenReady().then(async () => {
     // 표를 바꾸는 것이 아니다.
     const steady = JSON.parse(await run(`
         (async () => {
-            const read = (table) => {
+            const read = (table, wrap) => {
                 const box = document.querySelector('.search-input').getBoundingClientRect();
                 const cell = document.querySelector(table + ' tbody td');
                 const cs = cell ? getComputedStyle(cell) : {};
-                const row = cell ? cell.parentElement.getBoundingClientRect().height : 0;
+                const t = document.querySelector(table).getBoundingClientRect();
+                const w = document.querySelector(wrap);
+                const head = document.querySelector(table + ' thead tr').getBoundingClientRect();
                 return { 검색: Math.round(box.width), 여백: cs.padding, 글자: cs.fontSize,
-                    행: Math.round(row) };
+                    표왼쪽: Math.round(t.left), 표위: Math.round(t.top),
+                    표폭: Math.round(t.width), 머리: Math.round(head.height),
+                    스크롤자리: Math.round(w.getBoundingClientRect().width) - w.clientWidth - 2,
+                    테두리: getComputedStyle(w).border, 그림자: getComputedStyle(w).boxShadow };
             };
             taskManager.viewMode = 'list'; taskManager.applyViewMode();
             taskManager.tasks = [{ id: 'j', content: '작업', tags: '#[BLUE]업무',
                 startDateTime: '2026-09-29 09:00', targetDateTime: '2026-09-30 18:00' }];
             taskManager.renderTasks();
-            const list = read('#tasksTable');
+            const list = read('#tasksTable', '.table-container');
             taskManager.openCompletedView();
             await new Promise((r) => setTimeout(r, 400));
             // 이 창에는 preload 가 없어 로그를 읽지 못한다. 빈 상태 칸을 재면
@@ -424,16 +429,17 @@ app.whenReady().then(async () => {
                 + '<td>2026-09-30 18:00</td><td class="task-tags"></td>'
                 + '<td class="task-content done-side done-task">작업</td>'
                 + '<td class="task-content done-side done-result"></td></tr>';
-            const done = read('#doneTable');
+            const done = read('#doneTable', '.done-body');
             taskManager.closeCompletedView();
             return JSON.stringify({ list, done });
         })()`))
     const differs = Object.keys(steady.list)
-        .filter((k) => k !== '행' && String(steady.list[k]) !== String(steady.done[k]))
-    check('화면을 바꿔도 검색 상자와 칸 모양이 그대로',
+        .filter((k) => String(steady.list[k]) !== String(steady.done[k]))
+    check('화면을 바꿔도 표와 도구 막대가 제자리',
         differs.length === 0,
         differs.length ? differs.map((k) => `${k} ${steady.list[k]}→${steady.done[k]}`).join(', ')
-                       : `검색 ${steady.list.검색}px, 여백 ${steady.list.여백}, 글자 ${steady.list.글자}`)
+                       : `검색 ${steady.list.검색}px, 표 ${steady.list.표왼쪽},${steady.list.표위}`
+                         + ` 폭 ${steady.list.표폭}, 스크롤자리 ${steady.list.스크롤자리}px`)
 
     const failed = results.filter((r) => !r.pass)
     console.log(`\n${results.length}건 중 ${failed.length}건 실패\n`)

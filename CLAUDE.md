@@ -390,7 +390,9 @@ if the file is called `report_final.docx` every time. Split, one column answers
 
   And the row-number column was styled as `td:nth-child(2)` with no table named, so in the completed table it hit **Start Time** — which is why a date was suddenly bold with nothing to explain it. It is `#tasksTable td:nth-child(2)` now, dark-mode counterpart included. This is the third time an unqualified `nth-child` has reached a column it was never meant for; qualify the table.
 
-  What is left is 4px of vertical offset, and that one is structural: the completed view carries a period row the list does not have. Horizontally the two tables now match exactly — left 21px, width 825px, same border, same shadow.
+  The last 4px was not structural after all. The list's action bar is 38px with a 4px margin below — 42px — while the period row came to 46px, so the table sat 4px lower on one screen than the other. The period row's bottom padding is 4px now and all three views start their content at the same y.
+
+  **And the reserved scrollbar was showing as a white stripe.** `scrollbar-gutter: stable` keeps the columns from moving between a full page and the last one, but when nothing overflows those 17px are just the container's white background, sitting beside striped rows — a white vertical line down the right edge, which is what it was reported as. `overflow-y: scroll` keeps the same guarantee and always draws something there; styled to the 6px the strip and calendar cells already use, it reads as a handle rather than a gap, and the table gains 11px. Horizontally the two tables now match exactly — left 21px, width 825px, same border, same shadow.
 
   `check:ui` reads the search width, the cell padding and the font size on both sides of a switch and fails if any of them moves.
 

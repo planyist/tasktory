@@ -328,17 +328,42 @@ body.collapsed-mode-body {
     border: 1px solid #ddd;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-    overflow-y: auto;
+    /* 스크롤바를 늘 띄운다. 자리만 비워 두면 넘치지 않는 목록에서 그 자리가
+       빈 흰 띠로 남고, 줄무늬 행 옆이라 오른쪽 끝에 흰 세로줄이 그어진 것처럼
+       보였다. 늘 그려 두면 빈 종이가 아니라 손잡이가 되고, 컬럼이 페이지마다
+       움직이지 않는다는 원래 목적도 그대로다. */
+    overflow-y: scroll;
     overflow-x: hidden;
-    /* 스크롤바 자리를 늘 비워둔다. 마지막 페이지처럼 행이 적어 스크롤바가 사라지면
-       표가 그 두께(19px)만큼 넓어지고 모든 컬럼이 따라 움직였다. */
-    scrollbar-gutter: stable;
     /* 남은 세로 공간을 flex 로 채운다. 상단 높이를 하드코딩하면 상단 구성이
        바뀔 때마다 아래에 빈 공간이 남는다. */
     flex: 1;
     min-height: 0;
     position: relative;
 }
+/* 표의 스크롤바도 스트립과 달력이 쓰는 것과 같은 6px 로 맞춘다. 기본 막대는
+   17px 이라, 늘 띄우면 그만큼이 늘 눈에 든다. */
+.table-container::-webkit-scrollbar,
+.done-body::-webkit-scrollbar {
+    width: 6px;
+}
+
+.table-container::-webkit-scrollbar-thumb,
+.done-body::-webkit-scrollbar-thumb {
+    background-color: #c8cdd5;
+    border-radius: 3px;
+}
+
+.table-container::-webkit-scrollbar-track,
+.done-body::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+body.dark-mode .table-container::-webkit-scrollbar-thumb,
+body.dark-mode .done-body::-webkit-scrollbar-thumb {
+    background-color: #4a5058;
+}
+
+
 
 /* 100vh를 다시 쓰지 않는다. 부모가 이미 100vh - padding 이므로
    여기서 100vh를 주면 딱 padding 만큼 넘쳐서 스크롤바가 나타난다. */
@@ -2110,7 +2135,10 @@ body.dark-mode .done-note {
     display: flex;
     align-items: center;
     gap: 6px;
-    padding: 4px 2px 8px;
+    /* 아래 여백은 목록의 작업 막대와 맞춘다. 막대는 38px 에 아래 여백 4px 이라
+       42px 을 차지하는데, 이 줄이 46px 이면 화면을 바꿀 때마다 표가 4px 씩
+       오르내린다. */
+    padding: 4px 2px 4px;
 }
 
 .calendar-label {
