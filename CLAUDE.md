@@ -137,7 +137,6 @@ of Jest was green:
 | header colour differs by theme | `body.dark-mode thead` declared twice, so the light band never applied in dark |
 | column widths equal across pages | `table-layout: auto` recomputing per page |
 | table height with and without the pager | pager at 34px stealing 10px from the table |
-| panel above the sticky header, not clipped | `z-index: 60` under `thead`'s 1000, inside `overflow: hidden` |
 | weekday header aligned to the grid | the grid's 1px border offsetting its columns |
 
 Run it after any visual change. It found the last of those on its first run.
@@ -769,41 +768,35 @@ Beware false positives when writing these: classes built by template string
 ids that only appear as bare object keys in the `aboutText` maps all look dead
 to a naive grep.
 
-### The completed-today panel opens on movement, not on arrival
+### The counter opens the completed view, and nothing else
 
-Hovering is what was asked for and hovering is what it does — but it waits for a
-`mousemove` inside the counter, not merely a `mouseenter`.
+Hovering it used to slide out today's completions. That is gone. The completed
+view answers the same question and more, the counter's click is the way in, and
+the panel was duplicating a screen that did not exist when it was built.
 
-That one distinction is the whole bug. Leaving the strip recentres the window and
-restoring un-minimises it, both while the pointer sits still; the counter slides
-under the cursor and the browser raises `mouseenter`. `mousemove` needs actual
-movement, so it separates "I pointed at this" from "it slid under my hand". The
-panel used to open by itself in both cases, and since `mouseenter` had fired
-without a fresh fetch it showed the previous contents.
+It is worth remembering what it cost, because the same shapes will come back in
+another feature:
 
-Closing waits ~220ms after `mouseleave`, cancelled by a re-entry: the panel sits
-6px below the counter and that gap belongs to neither element, so closing on the
-spot made the list impossible to reach and scroll. The open state is the
-`.is-open` class; the stylesheet only reacts to it. It also closes on
-`toggleCollapse`, `toggleViewMode`, `window` blur and `visibilitychange` —
-minimising never moves the pointer, so `mouseleave` would not fire on its own.
+- **It opened on `mousemove`, not `mouseenter`.** Expanding from the strip and
+  restoring from minimise both slide the window under a still pointer, and
+  `mouseenter` fires for that — so the list opened by itself, showing stale
+  contents because no fetch had run. Movement is what separates "I pointed at
+  this" from "it arrived under my hand".
+- **Closing waited ~220ms after `mouseleave`**, cancelled by re-entry: the panel
+  sat 6px below the counter and that gap belonged to neither element, so closing
+  on the spot made it impossible to reach.
+- **It had to leave the table's world.** The counter lives inside `main`, which
+  is `overflow: hidden` so the table can scroll; an absolutely positioned
+  popover there is clipped at the table's edge, and the sticky `thead` carries
+  `z-index: 1000` so even the unclipped part painted underneath. It ended up
+  `position: fixed` at `z-index: 1200` with coordinates set from the counter's
+  rect *before* the async fill, so it never flashed at the previous position.
+- **It also had to refuse to open over the completed view**, because that screen
+  already shows the whole history and the pointer is sitting on the counter you
+  just pressed.
 
-**It does not open at all while the completed view is up.** That screen already
-shows the whole history; today's slice floating over the top of it is noise, and
-because the counter is how you got in, the pointer is sitting right there — every
-small movement brought it back. Measured: it covered the first row of the very
-list it duplicates.
-
-### A popover has to leave the table's world
-
-The completed-today list hangs off the counter, which lives inside `main` — and
-`main` is `overflow: hidden` so the table can scroll inside it. An absolutely
-positioned popover there is clipped at the table's edge, and the table's sticky
-`thead` carries `z-index: 1000`, so even the unclipped part paints underneath.
-
-It is `position: fixed` with `z-index: 1200`, and `placeCompletedList()` sets its
-coordinates from the counter's rect when the pointer arrives — before the async
-fill, so it never flashes at the previous position.
+Four rules for a hover panel, every one of them written after a report. That is
+the price of putting a second surface on a control that already has a click.
 
 ### The table must not resize as you page
 

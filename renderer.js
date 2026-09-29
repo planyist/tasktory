@@ -1567,46 +1567,10 @@ class TaskManager {
             this.resizeCollapsedWindow();
         });
 
-        // 완료 목록은 열 때마다 읽는다. 미리 채워두면 다른 창에서 완료한 것이나
-        // 자정을 넘긴 뒤의 목록이 낡은 채로 뜬다.
-        // mouseenter 가 아니라 mousemove 여야 한다. 창이 포인터 밑으로 옮겨와도
-        // mouseenter 는 뜨므로(펼치기·최소화 복귀), 손을 대지 않았는데 목록이
-        // 열린다. mousemove 는 실제로 움직여야 뜬다.
+        // 카운터는 이미 "오늘 몇 건"을 말하고 있으니, 그 다음 물음인
+        // "무엇을, 언제?"가 여기서 이어진다.
         const counter = document.getElementById('completionCounter');
-        counter.addEventListener('mousemove', () => {
-            // 완료 화면을 보는 중에는 뜨지 않는다. 이미 전체 이력이 펼쳐져 있는데
-            // 그 일부인 오늘치가 위를 덮을 뿐이고, 카운터를 눌러 들어간 직후에는
-            // 포인터가 거기 남아 있어 조금만 움직여도 계속 다시 떴다.
-            if (this.viewMode === 'completed') return;
-
-            const box = document.getElementById('completedList');
-            if (box.classList.contains('is-open')) return;
-            // 좌표를 먼저 잡는다. 내용은 IPC로 읽어오므로 한 박자 늦는데, 그 사이에
-            // 지난번 자리에 잠깐 뜨는 것을 막는다.
-            this.placeCompletedList();
-            this.renderCompletedList();
-            box.classList.add('is-open');
-        });
-
-        // 올리면 오늘, 누르면 전체. 카운터는 이미 "오늘 몇 건"을 말하고 있으니
-        // 그 다음 물음인 "지난주는?"이 여기서 이어지는 것이 자연스럽다.
         counter.addEventListener('click', () => this.openCompletedView());
-
-        // 목록은 카운터의 자식이라, 목록 위로 옮겨가도 여기서는 벗어난 것이 아니다.
-        // 다만 둘 사이 6px 틈을 지날 때 잠깐 벗어나므로 조금 기다렸다 닫는다.
-        let closing = null;
-        counter.addEventListener('mouseleave', () => {
-            closing = setTimeout(() => this.hideCompletedList(), 220);
-        });
-        counter.addEventListener('mouseenter', () => {
-            if (closing) { clearTimeout(closing); closing = null; }
-        });
-
-        // 창이 사라지면 닫는다. 열린 채로 최소화되면 다시 나타날 때 그대로 남는다.
-        window.addEventListener('blur', () => this.hideCompletedList());
-        document.addEventListener('visibilitychange', () => {
-            if (document.hidden) this.hideCompletedList();
-        });
 
     }
 
@@ -3011,7 +2975,6 @@ ${filePath}`);
     // 목록과 달력은 같은 것을 보는 두 방식이라 한 버튼으로 오간다. 완료는
     // 다른 데이터이므로 이 순환에 끼지 않는다 - 카운터에서 따로 연다.
     toggleViewMode() {
-        this.hideCompletedList();
 
         // 완료 화면 안에서는 이 버튼이 나가는 문이 아니다. 나가는 길은 여전히
         // 불 켜진 카운터 하나뿐이고, 여기서는 같은 자료를 목록으로 볼지 달력으로
@@ -3106,7 +3069,6 @@ ${filePath}`);
         // 달력을 보다 들어왔으면 완료도 달력으로 연다. 보고 있던 방식이
         // 문턱에서 바뀌면 같은 자료의 다른 화면이 아니라 다른 곳으로 읽힌다.
         this.doneView = this.viewMode === 'calendar' ? 'calendar' : 'list';
-        this.hideCompletedList();
         this.viewBeforeCompleted = this.viewMode;
         this.viewMode = 'completed';
         // 카운터가 눌린 채로 남는다. 화면만 바뀌면 목록을 거른 것인지 다른
@@ -3518,11 +3480,6 @@ ${filePath}`);
         }
     }
 
-    hideCompletedList() {
-        const box = document.getElementById('completedList');
-        if (box) box.classList.remove('is-open');
-    }
-
     // position: fixed 라 좌표를 직접 준다. 카운터 바로 아래 왼쪽 끝에 맞추되,
     // 화면 오른쪽으로 넘치면 안쪽으로 당긴다.
     // 끊긴 링크는 감추지 않는다. 무엇이 붙어 있었는지가 남는 것이 첨부의
@@ -3557,48 +3514,6 @@ ${filePath}`);
 ${link.dataset.path}`
                 : link.dataset.path;
         }
-    }
-
-    placeCompletedList() {
-        const box = document.getElementById('completedList');
-        const counter = document.getElementById('completionCounter');
-        if (!box || !counter) return;
-
-        const at = counter.getBoundingClientRect();
-        const width = box.offsetWidth || 260;
-        const left = Math.min(at.left, window.innerWidth - width - 8);
-
-        box.style.top = `${Math.round(at.bottom + 6)}px`;
-        box.style.left = `${Math.round(Math.max(8, left))}px`;
-    }
-
-    async renderCompletedList() {
-        const box = document.getElementById('completedList');
-        if (!box) return;
-
-        const entries = await this.loadCompletedToday();
-        if (entries.length === 0) {
-            box.innerHTML = `<div class="completed-empty">${this.getLocalizedText('nothingCompletedYet')}</div>`;
-            return;
-        }
-
-        // 최근 완료가 위로 오게 뒤집는다. 로그는 시간순으로 쌓이지만, 방금 끝낸
-        // 것이 궁금해서 올려다보는 경우가 대부분이다.
-        const recent = [...entries].reverse();
-        const shown = recent.slice(0, TaskManager.COMPLETED_LIST_LIMIT);
-        const rows = shown.map(entry => {
-            // 로그 본문은 "내용 (completed) at ... 메모" 형태다. 앞의 내용만 뗀다.
-            const label = entry.content.replace(/\s*\(completed\).*$/, '') || entry.content;
-            const time = entry.timestamp.slice(11, 16); // HH:mm
-            return `<div class="completed-row"><span class="completed-time">${this.escapeHtml(time)}</span>` +
-                `<span class="completed-text">${this.escapeHtml(label)}</span></div>`;
-        });
-
-        if (recent.length > shown.length) {
-            rows.push(`<div class="completed-more">+${recent.length - shown.length}</div>`);
-        }
-
-        box.innerHTML = rows.join('');
     }
 
     // 손잡이를 끌면 창이 따라온다. CSS의 -webkit-app-region: drag 는 프레임 없는
@@ -4168,7 +4083,6 @@ ${link.dataset.path}`
         if (this.viewMode === 'completed') return;
 
         // 창이 옮겨가면서 포인터가 어디에 얹힐지 알 수 없다. 열려 있었다면 닫는다.
-        this.hideCompletedList();
         this.isCollapsed = !this.isCollapsed;
         this.pushAlwaysOnTop();
         const container = document.querySelector('.container');

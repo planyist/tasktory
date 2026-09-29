@@ -291,31 +291,6 @@ app.whenReady().then(async () => {
         few.container === many.container && few.pager === many.pager,
         `표 ${few.container}/${many.container}, 줄 ${few.pager}/${many.pager}`)
 
-    // --- 4. 완료 목록이 표 위로 뜬다 ---------------------------------------
-    const panel = JSON.parse(await run(`(() => {
-        taskManager.placeCompletedList();
-        const list = document.getElementById('completedList');
-        list.innerHTML = Array.from({length: 12},
-            (_, i) => '<div class="completed-row">끝낸 작업 ' + i + '</div>').join('');
-        list.classList.add('is-open');
-        const r = list.getBoundingClientRect();
-        const cs = getComputedStyle(list);
-        const at = document.elementFromPoint(r.left + 10, r.top + r.height / 2);
-        return JSON.stringify({
-            position: cs.position,
-            z: Number(cs.zIndex),
-            headerZ: Number(getComputedStyle(document.querySelector('thead')).zIndex),
-            height: Math.round(r.height),
-            topmostClass: at ? String(at.className) : null
-        });
-    })()`))
-    check('완료 목록이 sticky 헤더보다 위',
-        panel.position === 'fixed' && panel.z > panel.headerZ,
-        `${panel.position}, z=${panel.z} vs 헤더 ${panel.headerZ}`)
-    check('완료 목록이 잘리지 않고 최상단에 그려진다',
-        panel.height > 100 && /completed/.test(panel.topmostClass || ''),
-        `높이 ${panel.height}, 그 자리 최상위=${panel.topmostClass}`)
-
     // --- 5. 달력: 요일 머리와 격자 열이 어긋나지 않는다 ---------------------
     const calendar = JSON.parse(await run(`
         taskManager.viewMode = 'calendar'; taskManager.applyViewMode(); taskManager.renderTasks();

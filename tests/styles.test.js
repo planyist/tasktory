@@ -79,17 +79,6 @@ describe('styles.css', () => {
         expect(CSS).toMatch(/\.table-container\s*\{[^}]*scrollbar-gutter:\s*stable/)
     })
 
-    // 호버로 열면 창이 옮겨가거나 최소화에서 돌아올 때 포인터가 얹히면서
-    // 부르지도 않은 목록이 표를 덮었다. 여닫는 것은 JS 가 정한다.
-    test('does not open the completed panel on hover', () => {
-        expect(CSS).not.toMatch(/completion-counter:hover\s+\.completed-list/)
-        expect(CSS).toMatch(/\.completed-list\.is-open/)
-    })
-
-    // main 이 overflow: hidden 이라 absolute 로는 표 경계에서 잘린다.
-    test('floats the completed panel free of the table', () => {
-        expect(CSS).toMatch(/\.completed-list\s*\{[^}]*position:\s*fixed/)
-    })
 })
 
 // 문서가 코드를 따라오는지 기계로 묻는다. 로그 컬럼은 세 번 늘었고 그때마다
